@@ -1,6 +1,6 @@
 /**
  * Atlan Asset Transformer
- * 
+ *
  * Transforms Atlan assets to the internal AssetMetadata format
  * used by the quality metrics calculation system
  */
@@ -227,11 +227,11 @@ export function transformAtlanAsset(asset: AtlanAsset, nameMaps?: NameResolution
   // Consistency factors
   // Extract naming convention from qualifiedName pattern
   const namingConvention = asset.qualifiedName?.split('/').pop() || asset.name;
-  
+
   // For tables, extract hierarchy information
   let databaseName: string | undefined;
   let schemaName: string | undefined;
-  
+
   if (asset.typeName === 'Table' || asset.typeName === 'Schema' || asset.typeName === 'Database') {
     const tableAsset = asset as any;
     databaseName = tableAsset.databaseName || tableAsset.databaseQualifiedName?.split('.').pop();
@@ -463,4 +463,3 @@ export function extractHierarchy(assets: AtlanAsset[]): {
 
   return { connections, databases, schemas, tables };
 }
-

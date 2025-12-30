@@ -4,13 +4,15 @@
  * Combines Atlan connection, asset context, and page navigation into a cohesive header.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Link2, Link2Off, ChevronDown, BarChart3, X, Download, Loader2, AlertTriangle, Settings, Globe } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Link2, Link2Off, ChevronDown, BarChart3, X, Download, Loader2, AlertTriangle, Globe, FolderOpen } from 'lucide-react';
 import { useAssetContextStore } from '../../stores/assetContextStore';
+import { useScoresStore } from '../../stores/scoresStore';
 import { getAtlanConfig, getConnectors, testAtlanConnection, configureAtlanApi, getSavedAtlanBaseUrl } from '../../services/atlan/api';
 import { loadAssetsForContext, generateContextLabel } from '../../utils/assetContextLoader';
 import { sanitizeError } from '../../utils/sanitize';
 import { logger } from '../../utils/logger';
+import { AssetBrowserPanel } from './AssetBrowserPanel';
 import type { AtlanAsset } from '../../services/atlan/types';
 import type { AssetContextType, AssetContextFilters } from '../../stores/assetContextStore';
 import './AppHeader.css';
@@ -45,8 +47,12 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
     getAssetCount,
   } = useAssetContextStore();
 
+  // Scores store for triggering score calculation
+  const { setAssetsWithScores } = useScoresStore();
+
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showContextMenu, setShowContextMenu] = useState(false);
+  const [showBrowserPanel, setShowBrowserPanel] = useState(false);
   const [availableConnectors, setAvailableConnectors] = useState<Array<{ name: string; id: string }>>([]);
 
   // Check connection status on mount
@@ -71,6 +77,18 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
         .catch(err => logger.error('Failed to load connectors', err));
     }
   }, [isConnected]);
+
+  // Trigger score calculation when context assets change
+  const prevAssetsLengthRef = useRef(0);
+  useEffect(() => {
+    if (contextAssets.length > 0 && contextAssets.length !== prevAssetsLengthRef.current) {
+      prevAssetsLengthRef.current = contextAssets.length;
+      logger.info('AppHeader: Triggering score calculation', { assetCount: contextAssets.length });
+      setAssetsWithScores(contextAssets);
+    } else if (contextAssets.length === 0 && prevAssetsLengthRef.current > 0) {
+      prevAssetsLengthRef.current = 0;
+    }
+  }, [contextAssets, setAssetsWithScores]);
 
   // Handle connect form submit
   const handleConnect = async (e: React.FormEvent) => {
@@ -220,6 +238,16 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
             <span>{isConnected ? 'Connected' : 'Connect'}</span>
           </button>
 
+          {/* Browse Assets Button */}
+          <button
+            className={`browse-btn ${showBrowserPanel ? 'active' : ''}`}
+            onClick={() => setShowBrowserPanel(!showBrowserPanel)}
+            title="Browse assets"
+          >
+            <FolderOpen size={16} />
+            <span>Browse</span>
+          </button>
+
           {/* Context Bar */}
           <div
             className={`context-bar ${isDraggingOver ? 'drag-over' : ''} ${context ? 'has-context' : ''}`}
@@ -307,6 +335,12 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
           {children}
         </div>
       </header>
+
+      {/* Asset Browser Panel */}
+      <AssetBrowserPanel
+        isOpen={showBrowserPanel}
+        onClose={() => setShowBrowserPanel(false)}
+      />
 
       {/* Connection Modal */}
       {showConnectModal && (

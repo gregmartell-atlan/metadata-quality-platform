@@ -1,35 +1,117 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Settings, RefreshCw } from 'lucide-react';
 import { Card, Button } from '../shared';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
-import { useScoringSettingsStore } from '../../stores/scoringSettingsStore';
 import { ScoringSettings } from '../settings/ScoringSettings';
-import type { AtlanAsset } from '../../services/atlan/types';
-import { fetchAssetsForModel, getSchemas, getDatabases } from '../../services/atlan/api';
-import { logger } from '../../utils/logger';
+import './Scorecard.css';
+
+// Circular gauge component
+function CircularGauge({ value, size = 160 }: { value: number; size?: number }) {
+  const strokeWidth = 12;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const offset = circumference - (value / 100) * circumference;
+
+  const getColor = (score: number) => {
+    if (score >= 80) return 'var(--score-excellent, #22c55e)';
+    if (score >= 60) return 'var(--score-good, #84cc16)';
+    if (score >= 40) return 'var(--score-fair, #eab308)';
+    if (score >= 20) return 'var(--score-poor, #f97316)';
+    return 'var(--score-critical, #ef4444)';
+  };
+
+  const getLabel = (score: number) => {
+    if (score >= 80) return 'Excellent';
+    if (score >= 60) return 'Good';
+    if (score >= 40) return 'Fair';
+    if (score >= 20) return 'Poor';
+    return 'Critical';
+  };
+
+  return (
+    <div className="circular-gauge" style={{ width: size, height: size }}>
+      <svg width={size} height={size}>
+        {/* Background circle */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="var(--bg-tertiary, #1a1a1d)"
+          strokeWidth={strokeWidth}
+        />
+        {/* Progress circle */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={getColor(value)}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          style={{ transition: 'stroke-dashoffset 0.5s ease-out, stroke 0.3s' }}
+        />
+      </svg>
+      <div className="gauge-content">
+        <div className="gauge-value" style={{ color: getColor(value) }}>{value}</div>
+        <div className="gauge-label">{getLabel(value)}</div>
+      </div>
+    </div>
+  );
+}
+
+// Progress bar for dimension scores
+function DimensionBar({ label, value, icon }: { label: string; value: number; icon: string }) {
+  const getColor = (score: number) => {
+    if (score >= 80) return 'var(--score-excellent, #22c55e)';
+    if (score >= 60) return 'var(--score-good, #84cc16)';
+    if (score >= 40) return 'var(--score-fair, #eab308)';
+    if (score >= 20) return 'var(--score-poor, #f97316)';
+    return 'var(--score-critical, #ef4444)';
+  };
+
+  return (
+    <div className="dimension-bar">
+      <div className="dimension-header">
+        <span className="dimension-icon">{icon}</span>
+        <span className="dimension-name">{label}</span>
+        <span className="dimension-value" style={{ color: getColor(value) }}>{value}</span>
+      </div>
+      <div className="dimension-track">
+        <div
+          className="dimension-fill"
+          style={{
+            width: `${value}%`,
+            backgroundColor: getColor(value)
+          }}
+        />
+      </div>
+    </div>
+  );
+}
 
 export function Scorecard() {
   const { setAssetsWithScores, assetsWithScores } = useScoresStore();
-  const { scoringMode } = useScoringSettingsStore();
   const { contextAssets, getAssetCount } = useAssetContextStore();
-  const [trend, setTrend] = useState<number>(4.2); // Placeholder for trend logic
-  const [error, setError] = useState<string | null>(null);
-  const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false);
-  
-  // Use context assets if available
+  const [showSettings, setShowSettings] = useState(false);
+  const trend = 4.2; // Placeholder for trend logic
+
   const effectiveCount = contextAssets.length > 0 ? getAssetCount() : assetsWithScores.length;
 
   // Calculate average scores from assetsWithScores
   const scores = useMemo(() => {
     if (assetsWithScores.length === 0) return null;
-    
+
     let completeness = 0;
     let accuracy = 0;
     let timeliness = 0;
     let consistency = 0;
     let usability = 0;
-    
+
     assetsWithScores.forEach(({ scores: assetScores }) => {
       completeness += assetScores.completeness;
       accuracy += assetScores.accuracy;
@@ -37,7 +119,7 @@ export function Scorecard() {
       consistency += assetScores.consistency;
       usability += assetScores.usability;
     });
-    
+
     const count = assetsWithScores.length;
     return {
       completeness: Math.round(completeness / count),
@@ -48,150 +130,85 @@ export function Scorecard() {
     };
   }, [assetsWithScores]);
 
-  // Note: Scoring service initialization is handled by AssetContext and scoresStore
-  // This component only reads from scoresStore
+  const overallScore = scores
+    ? Math.round((scores.completeness + scores.accuracy + scores.timeliness + scores.consistency + scores.usability) / 5)
+    : 0;
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = 'copy';
-    setIsDraggingOver(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // Only set dragging over to false if we're actually leaving the drop zone
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const x = e.clientX;
-    const y = e.clientY;
-    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-      setIsDraggingOver(false);
-    }
-  };
-
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDraggingOver(false);
-    // Note: Dropping into Scorecard should set context via AssetContext component
-    // This handler is kept for backward compatibility but should redirect to context
-    logger.info('Scorecard: Drop event - assets should be set via AssetContext component');
-    setError('Please drop assets into the Asset Context header at the top of the page to set context.');
-  };
-
-  // Manual refresh - trigger AssetContext to recalculate scores
   const refreshScores = () => {
     if (contextAssets.length > 0) {
       setAssetsWithScores(contextAssets);
     }
   };
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'var(--score-excellent)';
-    if (score >= 60) return 'var(--score-good)';
-    if (score >= 40) return 'var(--score-fair)';
-    if (score >= 20) return 'var(--score-poor)';
-    return 'var(--score-critical)';
-  };
-
   return (
-    <Card className="scorecard" title="Overall Health">
-      <ScoringSettings />
-      <div 
-        className={`scorecard-drop-zone ${isDraggingOver ? 'drag-over' : ''} ${effectiveCount > 0 ? 'has-assets' : ''}`}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
+    <Card className="scorecard-v2" title="Health Score">
+      {/* Settings toggle */}
+      <button
+        className="scorecard-settings-btn"
+        onClick={() => setShowSettings(!showSettings)}
+        title="Scoring Settings"
       >
-        {effectiveCount === 0 && !isDraggingOver && (
-          <div className="drop-zone-hint">
-            <div className="drop-icon">📥</div>
-            <p><strong>Set asset context</strong> to view scores</p>
-            <p className="drop-hint">Drag assets to the Asset Context header at the top, or select from Asset Browser</p>
-          </div>
-        )}
-        {isDraggingOver && (
-          <div className="drop-zone-hint drag-over-hint">
-            <div className="drop-icon">⬇️</div>
-            <p><strong>Drop in Asset Context header</strong></p>
-            <p className="drop-hint">Use the context header at the top of the page to set context</p>
-          </div>
-        )}
-        {effectiveCount > 0 && !isDraggingOver && (
-          <div className="drop-zone-hint has-assets-hint">
-          </div>
-        )}
-      </div>
-      <div className="scorecard-controls">
-        {effectiveCount > 0 ? (
-          <div className="selection-status success">
-            <span><strong>{effectiveCount}</strong> asset{effectiveCount !== 1 ? 's' : ''} ready for scoring</span>
-          </div>
-        ) : (
-          <div className="selection-status warning">
-          </div>
-        )}
-        {effectiveCount > 0 && (
-          <Button 
-            onClick={refreshScores} 
-            variant="secondary"
-            style={{ marginTop: 12, width: '100%' }}
-          >
-            <RefreshCw size={16} style={{ marginRight: '6px', display: 'inline', verticalAlign: 'middle' }} />
-            Refresh Scores
-          </Button>
-        )}
-      </div>
-      {error && <div style={{ color: 'red', padding: '8px', marginBottom: '12px' }}>Error: {error}</div>}
-      {scores && (
-        <>
-          <div className="score-display">
-            <div className="score-value">{Math.round((scores.completeness + scores.accuracy + scores.timeliness + scores.consistency + scores.usability) / 5)}</div>
-            <div className="score-label">Metadata Health Score</div>
-            <span className={`score-trend ${trend >= 0 ? 'up' : 'down'}`}> 
-              {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}% vs last month
-            </span>
-          </div>
-          <div className="score-breakdown">
-            <div className="score-dimension">
-              <div className="score-dimension-value" style={{ color: getScoreColor(scores.completeness) }}>
-                {scores.completeness}
-              </div>
-              <div className="score-dimension-label">Complete</div>
-            </div>
-            <div className="score-dimension">
-              <div className="score-dimension-value" style={{ color: getScoreColor(scores.accuracy) }}>
-                {scores.accuracy}
-              </div>
-              <div className="score-dimension-label">Accurate</div>
-            </div>
-            <div className="score-dimension">
-              <div className="score-dimension-value" style={{ color: getScoreColor(scores.timeliness) }}>
-                {scores.timeliness}
-              </div>
-              <div className="score-dimension-label">Timely</div>
-            </div>
-            <div className="score-dimension">
-              <div className="score-dimension-value" style={{ color: getScoreColor(scores.consistency) }}>
-                {scores.consistency}
-              </div>
-              <div className="score-dimension-label">Consistent</div>
-            </div>
-            <div className="score-dimension">
-              <div className="score-dimension-value" style={{ color: getScoreColor(scores.usability) }}>
-                {scores.usability}
-              </div>
-              <div className="score-dimension-label">Usable</div>
-            </div>
-          </div>
-        </>
+        <Settings size={16} />
+      </button>
+
+      {/* Settings panel (collapsible) */}
+      {showSettings && (
+        <div className="scorecard-settings-panel">
+          <ScoringSettings />
+        </div>
       )}
-      {!scores && effectiveCount === 0 && (
-        <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
-          Set asset context to see quality scores
+
+      {/* Main content */}
+      {scores ? (
+        <div className="scorecard-content">
+          {/* Circular gauge */}
+          <div className="scorecard-gauge-section">
+            <CircularGauge value={overallScore} />
+            <div className="gauge-meta">
+              <span className={`score-trend ${trend >= 0 ? 'up' : 'down'}`}>
+                {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}%
+              </span>
+              <span className="trend-label">vs last month</span>
+            </div>
+          </div>
+
+          {/* Dimension bars */}
+          <div className="scorecard-dimensions">
+            <DimensionBar label="Completeness" value={scores.completeness} icon="📝" />
+            <DimensionBar label="Accuracy" value={scores.accuracy} icon="🎯" />
+            <DimensionBar label="Timeliness" value={scores.timeliness} icon="⏱️" />
+            <DimensionBar label="Consistency" value={scores.consistency} icon="🔗" />
+            <DimensionBar label="Usability" value={scores.usability} icon="✨" />
+          </div>
+
+          {/* Asset count and refresh */}
+          <div className="scorecard-footer">
+            <span className="asset-count">
+              <strong>{effectiveCount}</strong> assets scored
+            </span>
+            <Button
+              onClick={refreshScores}
+              variant="ghost"
+              className="refresh-btn"
+            >
+              <RefreshCw size={14} />
+              Refresh
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="scorecard-empty">
+          <div className="empty-gauge">
+            <CircularGauge value={0} size={120} />
+          </div>
+          <p className="empty-message">
+            Set asset context to view health scores
+          </p>
+          <p className="empty-hint">
+            Use the Browse button or drop assets into the context bar
+          </p>
         </div>
       )}
     </Card>
   );
 }
-

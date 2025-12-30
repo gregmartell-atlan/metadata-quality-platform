@@ -49,6 +49,34 @@
   color: var(--accent-primary, #00d4aa);
 }
 
+/* Browse Button */
+.browse-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-tertiary, #1a1a1d);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+  color: var(--text-muted, #888);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.browse-btn:hover {
+  background: var(--bg-hover, #1e1e21);
+  border-color: var(--accent-secondary, #fbbf24);
+  color: var(--text-primary, #fff);
+}
+
+.browse-btn.active {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: var(--accent-secondary, #fbbf24);
+  color: var(--accent-secondary, #fbbf24);
+}
+
 /* Context Bar */
 .context-bar {
   display: flex;

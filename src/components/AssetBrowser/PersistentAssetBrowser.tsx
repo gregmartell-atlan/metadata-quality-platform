@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { FolderOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AssetBrowser } from '../AssetBrowser';
 import './PersistentAssetBrowser.css';

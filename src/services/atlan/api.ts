@@ -812,6 +812,18 @@ export async function searchAssets(
       classificationNames: entity.attributes.classificationNames,
       classifications: entity.attributes.classifications,
       assetTags: entity.attributes.assetTags,
+      atlanTags: entity.classifications?.map((tag: any) => ({
+        typeName: tag.typeName,
+        guid: tag.guid,
+        entityGuid: tag.entityGuid,
+        entityStatus: tag.entityStatus,
+        propagate: tag.propagate,
+        removePropagationsOnEntityDelete: tag.removePropagationsOnEntityDelete,
+        restrictPropagationThroughLineage: tag.restrictPropagationThroughLineage,
+        restrictPropagationThroughHierarchy: tag.restrictPropagationThroughHierarchy,
+        tagAttachments: tag.tagAttachments,
+        attributes: tag.attributes,
+      })),
       // Glossary & Domains
       meanings: entity.attributes.meanings,
       assignedTerms: entity.attributes.assignedTerms,

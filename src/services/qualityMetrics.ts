@@ -139,6 +139,14 @@ export interface AssetMetadata {
   description?: string;
   descriptionLength?: number;
   tags?: string[];
+  enrichedTags?: Array<{
+    name: string;
+    guid?: string;
+    isDirect: boolean;          // true if directly assigned, false if propagated
+    propagates: boolean;        // whether this tag propagates to children
+    propagatesToLineage: boolean;
+    propagatesToHierarchy: boolean;
+  }>;
   customProperties?: Record<string, any>;
   columnDescriptions?: number; // For tables
   totalColumns?: number;
