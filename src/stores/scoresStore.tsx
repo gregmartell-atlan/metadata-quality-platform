@@ -9,6 +9,7 @@ import type { ReactNode } from 'react';
 import type { AtlanAsset } from '../services/atlan/types';
 import type { AssetMetadata, QualityScores } from '../services/qualityMetrics';
 import { transformAtlanAsset } from '../services/atlan/transformer';
+import { fetchDomainNames } from '../services/atlan/domainResolver';
 import { calculateAssetQuality } from '../services/qualityMetrics';
 import { useScoringSettingsStore } from './scoringSettingsStore';
 import { scoreAssets, initializeScoringService, setScoringModeGetter } from '../services/scoringService';
@@ -64,6 +65,18 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
   }, [scoringMode]);
 
   const setAssetsWithScores = useCallback(async (assets: AtlanAsset[]) => {
+    // Pre-fetch domain names for human-readable display
+    let domainNameMap: Map<string, string> | undefined;
+    try {
+      const domainGUIDs = assets.flatMap(a => a.domainGUIDs || []).filter(Boolean);
+      const uniqueGUIDs = [...new Set(domainGUIDs)];
+      if (uniqueGUIDs.length > 0) {
+        domainNameMap = await fetchDomainNames(uniqueGUIDs);
+      }
+    } catch (error) {
+      logger.warn('Failed to fetch domain names, using fallback:', error);
+    }
+
     if (scoringMode === "config-driven") {
       try {
         // Transform to scoring format
@@ -104,7 +117,7 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
         
         // Convert ProfileScoreResult[] to QualityScores format
         const withScores: AssetWithScores[] = assets.map((asset) => {
-          const metadata = transformAtlanAsset(asset);
+          const metadata = transformAtlanAsset(asset, domainNameMap);
           const profileResults = results.get(asset.guid) || [];
           
           // Aggregate scores from all profiles
@@ -143,7 +156,7 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
         logger.error('Error calculating config-driven scores', error);
         // Fallback to legacy scoring
         const withScores: AssetWithScores[] = assets.map((asset) => {
-          const metadata = transformAtlanAsset(asset);
+          const metadata = transformAtlanAsset(asset, domainNameMap);
           const scores = calculateAssetQuality(metadata);
           return { asset, metadata, scores };
         });
@@ -152,7 +165,7 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
     } else {
       // Legacy scoring
       const withScores: AssetWithScores[] = assets.map((asset) => {
-        const metadata = transformAtlanAsset(asset);
+        const metadata = transformAtlanAsset(asset, domainNameMap);
         const scores = calculateAssetQuality(metadata);
         return { asset, metadata, scores };
       });
