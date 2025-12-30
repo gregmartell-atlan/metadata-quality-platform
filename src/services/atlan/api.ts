@@ -4,9 +4,10 @@
 // Replicated from atlan-metadata-designer
 // ============================================
 
-import type { AtlanAsset, AtlanSearchResponse, AtlanLineageResponse } from './types';
+import type { AtlanAsset, AtlanSearchResponse, AtlanLineageResponse, AtlanLineageRawResponse } from './types';
 import { apiFetch } from '../../utils/apiClient';
 import { logger } from '../../utils/logger';
+import { deduplicateRequest } from '../../utils/requestDeduplication';
 
 // ============================================
 // CONFIGURATION
@@ -203,50 +204,60 @@ async function atlanFetch<T>(
   const proxyPath = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
   const url = `${PROXY_URL}/proxy/${proxyPath}`;
 
-  // Use enhanced apiFetch with retry logic
-  const response = await apiFetch<T>(url, {
-    ...options,
-    signal,
-    timeout: 30000, // 30 second timeout
-    retries: 3, // Retry up to 3 times
-    retryDelay: 1000, // Start with 1 second delay
-    headers: {
-      'Content-Type': 'application/json',
-      // Pass Atlan URL and API key to proxy via headers
-      'X-Atlan-URL': config.baseUrl,
-      'X-Atlan-API-Key': config.apiKey,
-      ...options.headers,
-    },
-  });
+  // Create deduplication key from endpoint, method, and body (for POST requests)
+  const method = options.method || 'GET';
+  const bodyKey = options.body
+    ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)).slice(0, 200)
+    : '';
+  const dedupeKey = `${method}:${endpoint}:${bodyKey}`;
 
-  // Enhanced error message handling
-  if (response.error) {
-    // Check if we got HTML instead of JSON (common error page)
-    if (response.error.includes('<!DOCTYPE') || response.error.includes('<html')) {
-      // Extract meaningful text from HTML error
-      const preMatch = response.error.match(/<pre>(.*?)<\/pre>/s);
-      if (preMatch) {
-        response.error = preMatch[1].trim();
-      } else if (response.error.includes('Cannot POST') || response.error.includes('Cannot GET')) {
-        response.error = 'Proxy server route not found. Make sure the proxy server is running correctly.';
-      } else {
-        response.error = 'Server returned an HTML error page. Check your Atlan URL and API key.';
-      }
-    }
-
-    // Handle proxy-specific error messages
-    if (response.error.includes('connection refused') || response.error.includes('ERR_CONNECTION_REFUSED')) {
-      response.error = 'Proxy server not running. Start it with: npm run proxy';
-    }
-
-    logger.error('Atlan API request failed', {
-      endpoint,
-      error: response.error,
-      status: response.status,
+  // Use request deduplication to prevent duplicate calls
+  return deduplicateRequest(dedupeKey, async () => {
+    // Use enhanced apiFetch with retry logic
+    const response = await apiFetch<T>(url, {
+      ...options,
+      signal,
+      timeout: 30000, // 30 second timeout
+      retries: 3, // Retry up to 3 times
+      retryDelay: 1000, // Start with 1 second delay
+      headers: {
+        'Content-Type': 'application/json',
+        // Pass Atlan URL and API key to proxy via headers
+        'X-Atlan-URL': config.baseUrl,
+        'X-Atlan-API-Key': config.apiKey,
+        ...options.headers,
+      },
     });
-  }
 
-  return response;
+    // Enhanced error message handling
+    if (response.error) {
+      // Check if we got HTML instead of JSON (common error page)
+      if (response.error.includes('<!DOCTYPE') || response.error.includes('<html')) {
+        // Extract meaningful text from HTML error
+        const preMatch = response.error.match(/<pre>(.*?)<\/pre>/s);
+        if (preMatch) {
+          response.error = preMatch[1].trim();
+        } else if (response.error.includes('Cannot POST') || response.error.includes('Cannot GET')) {
+          response.error = 'Proxy server route not found. Make sure the proxy server is running correctly.';
+        } else {
+          response.error = 'Server returned an HTML error page. Check your Atlan URL and API key.';
+        }
+      }
+
+      // Handle proxy-specific error messages
+      if (response.error.includes('connection refused') || response.error.includes('ERR_CONNECTION_REFUSED')) {
+        response.error = 'Proxy server not running. Start it with: npm run proxy';
+      }
+
+      logger.error('Atlan API request failed', {
+        endpoint,
+        error: response.error,
+        status: response.status,
+      });
+    }
+
+    return response;
+  });
 }
 
 // ============================================
@@ -521,7 +532,8 @@ function buildBoolQuery(filters: {
  * Build connector filter
  */
 function connectorFilter(connector: string): Record<string, unknown> {
-  return { term: { 'connectorName.keyword': connector } };
+  // Use connectorName without .keyword suffix - matches getDatabases behavior
+  return { term: { 'connectorName': connector } };
 }
 
 /**
@@ -934,6 +946,7 @@ export async function fetchAssetsForModel(options?: {
   from?: number;
   connector?: string;
   connectionQualifiedName?: string;
+  databaseQualifiedName?: string;
   schemaQualifiedName?: string;
 }): Promise<AtlanAsset[]> {
   if (!isConfigured()) {
@@ -972,6 +985,11 @@ export async function fetchAssetsForModel(options?: {
   // Also try connectionQualifiedName if provided
   if (options?.connectionQualifiedName) {
     mustFilters.push({ term: { 'connectionQualifiedName': options.connectionQualifiedName } });
+  }
+
+  // Filter by database qualified name (for database-level queries)
+  if (options?.databaseQualifiedName) {
+    mustFilters.push({ term: { 'databaseQualifiedName': options.databaseQualifiedName } });
   }
 
   // Filter by schema qualified name (for scoped imports)
@@ -1167,8 +1185,6 @@ export async function getDatabases(connector: string): Promise<HierarchyItem[]> 
     throw new Error('Atlan API not configured');
   }
 
-  logger.debug('Searching for databases', { connector });
-  
   // First, try the standard database types
   const query = {
     dsl: {
@@ -1195,22 +1211,18 @@ export async function getDatabases(connector: string): Promise<HierarchyItem[]> 
     },
     attributes: ['name', 'qualifiedName', 'schemaCount', 'connectorName', '__typeName'],
   };
-  
+
   const response = await search(query);
 
-  logger.debug('Database search response', { entityCount: response?.entities?.length || 0 });
-  
   // If we found databases, return them
   if (response?.entities && response.entities.length > 0) {
-    const databases = response.entities.map((e) => ({
+    return response.entities.map((e) => ({
       guid: e.guid,
       name: (e.attributes.name as string) || e.typeName || e.guid,
       qualifiedName: (e.attributes.qualifiedName as string) || e.guid,
       typeName: e.typeName,
       childCount: e.attributes.schemaCount as number | undefined,
     }));
-    logger.debug('Found databases', { count: databases.length });
-    return databases;
   }
   
   // If no databases found, try a broader search to see what asset types exist for this connector
@@ -1313,10 +1325,46 @@ export async function getLineage(
   direction: 'upstream' | 'downstream' | 'both' = 'both',
   depth: number = 3
 ): Promise<AtlanLineageResponse> {
+  // Atlan API only accepts "INPUT" (upstream) or "OUTPUT" (downstream), not "BOTH"
+  // For "both", we need to make two separate calls and merge the results
+  if (direction === 'both') {
+    const [upstreamResponse, downstreamResponse] = await Promise.all([
+      getLineage(guid, 'upstream', depth),
+      getLineage(guid, 'downstream', depth),
+    ]);
+
+    // Merge the results
+    const mergedGuidEntityMap = {
+      ...upstreamResponse.guidEntityMap,
+      ...downstreamResponse.guidEntityMap,
+    };
+
+    // Merge relations, avoiding duplicates (handle undefined/null relations)
+    const upstreamRelations = upstreamResponse.relations || [];
+    const downstreamRelations = downstreamResponse.relations || [];
+    const relationMap = new Map<string, (typeof upstreamRelations)[0]>();
+    [...upstreamRelations, ...downstreamRelations].forEach((rel) => {
+      const key = `${rel.fromEntityId}-${rel.toEntityId}-${rel.relationshipType}`;
+      if (!relationMap.has(key)) {
+        relationMap.set(key, rel);
+      }
+    });
+
+    return {
+      guidEntityMap: mergedGuidEntityMap,
+      relations: Array.from(relationMap.values()),
+    };
+  }
+
+  // For single direction, map to Atlan API values
+  // "upstream" -> "INPUT" (assets that feed into this asset)
+  // "downstream" -> "OUTPUT" (assets that this asset feeds into)
+  const apiDirection = direction === 'upstream' ? 'INPUT' : 'OUTPUT';
+
   const body = {
     guid,
     depth,
-    direction: direction === 'both' ? 'BOTH' : direction.toUpperCase(),
+    direction: apiDirection,
     from: 0,
     size: 50,
     attributes: [
@@ -1331,10 +1379,10 @@ export async function getLineage(
       'meanings',
       '__hasLineage',
     ],
-    immediateNeighbors: true,
+    immediateNeighbours: true,
   };
 
-  const response = await atlanFetch<AtlanLineageResponse>('/api/meta/lineage/list', {
+  const response = await atlanFetch<AtlanLineageRawResponse>('/api/meta/lineage/list', {
     method: 'POST',
     body: JSON.stringify(body),
   });
@@ -1343,5 +1391,120 @@ export async function getLineage(
     throw new Error(response.error || 'Failed to fetch lineage');
   }
 
-  return response.data;
+  // Transform raw API response to internal format
+  const rawData = response.data;
+  const guidEntityMap: Record<string, AtlanAsset> = {};
+  const relations: AtlanLineageResponse['relations'] = [];
+
+  // Helper to infer typeName from qualifiedName
+  function inferTypeFromQualifiedName(qualifiedName: string): string {
+    const qn = qualifiedName.toLowerCase();
+    if (qn.includes('/powerbi/')) return 'PowerBITable';
+    if (qn.includes('/thoughtspot/')) return 'ThoughtspotTable';
+    if (qn.includes('/tableau/')) return 'TableauDatasource';
+    if (qn.includes('/looker/')) return 'LookerView';
+    if (qn.includes('/metabase/')) return 'MetabaseTable';
+    if (qn.includes('/snowflake/')) return 'Table';
+    if (qn.includes('/databricks/')) return 'Table';
+    if (qn.includes('/redshift/')) return 'Table';
+    if (qn.includes('/bigquery/')) return 'Table';
+    if (qn.includes('/postgres/')) return 'Table';
+    if (qn.includes('/mysql/')) return 'Table';
+    if (qn.includes('/sqlserver/')) return 'Table';
+    return 'Asset';
+  }
+
+  // Helper to normalize entity by flattening attributes to top level
+  function normalizeEntity(entity: any): AtlanAsset {
+    const attributes = entity.attributes || {};
+    // Compute name with fallbacks
+    const computedName = attributes.name || entity.displayText || 'Unknown';
+
+    // Debug logging - show raw entity structure
+    console.log('[normalizeEntity] RAW entity:', JSON.stringify({
+      guid: entity.guid,
+      typeName: entity.typeName,
+      displayText: entity.displayText,
+      hasAttributes: !!entity.attributes,
+      attributeKeys: entity.attributes ? Object.keys(entity.attributes) : [],
+      'attributes.name': attributes.name,
+    }, null, 2));
+    console.log('[normalizeEntity] Computed name:', computedName);
+
+    // Spread attributes FIRST, then override with explicit values
+    // This ensures our fallback logic takes precedence over undefined values
+    const normalized = {
+      // Spread raw attributes first (may contain undefined values that would overwrite)
+      ...attributes,
+      // Then override with explicit values and fallbacks (these take precedence)
+      guid: entity.guid,
+      typeName: entity.typeName,
+      // Use displayText as reliable fallback for name (always present in Atlan responses)
+      name: computedName,
+      qualifiedName: attributes.qualifiedName || entity.qualifiedName || entity.guid,
+      description: attributes.description || attributes.userDescription,
+      userDescription: attributes.userDescription,
+      certificateStatus: attributes.certificateStatus,
+      assetTags: attributes.atlanTags,
+      // Timestamps from top level of entity
+      createTime: entity.createTime,
+      updateTime: entity.updateTime,
+      createdBy: entity.createdBy,
+      updatedBy: entity.updatedBy,
+    };
+
+    // Log the final normalized result
+    console.log('[normalizeEntity] RESULT:', { guid: normalized.guid, name: normalized.name, typeName: normalized.typeName });
+
+    return normalized;
+  }
+
+  // Build guidEntityMap from entities array
+  for (const entity of rawData.entities || []) {
+    guidEntityMap[entity.guid] = normalizeEntity(entity);
+
+    // Extract relations from immediateUpstream
+    if (entity.immediateUpstream) {
+      for (const upstream of entity.immediateUpstream) {
+        // Create placeholder entry for referenced asset if not already in map
+        if (!guidEntityMap[upstream.guid]) {
+          guidEntityMap[upstream.guid] = {
+            guid: upstream.guid,
+            name: upstream.name || 'Unknown',
+            qualifiedName: upstream.qualifiedName || upstream.guid,
+            typeName: inferTypeFromQualifiedName(upstream.qualifiedName || ''),
+          };
+        }
+        relations.push({
+          fromEntityId: upstream.guid,
+          toEntityId: entity.guid,
+          relationshipId: `${upstream.guid}-${entity.guid}`,
+          relationshipType: 'lineage',
+        });
+      }
+    }
+
+    // Extract relations from immediateDownstream
+    if (entity.immediateDownstream) {
+      for (const downstream of entity.immediateDownstream) {
+        // Create placeholder entry for referenced asset if not already in map
+        if (!guidEntityMap[downstream.guid]) {
+          guidEntityMap[downstream.guid] = {
+            guid: downstream.guid,
+            name: downstream.name || 'Unknown',
+            qualifiedName: downstream.qualifiedName || downstream.guid,
+            typeName: inferTypeFromQualifiedName(downstream.qualifiedName || ''),
+          };
+        }
+        relations.push({
+          fromEntityId: entity.guid,
+          toEntityId: downstream.guid,
+          relationshipId: `${entity.guid}-${downstream.guid}`,
+          relationshipType: 'lineage',
+        });
+      }
+    }
+  }
+
+  return { guidEntityMap, relations };
 }

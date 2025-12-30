@@ -4,7 +4,7 @@
  * Fetches and caches lineage data for assets to support pivot views
  */
 
-import type { AtlanAsset } from '../types';
+import type { AtlanAsset } from './types';
 import { getLineage } from './api';
 
 export interface LineageInfo {
@@ -15,7 +15,6 @@ export interface LineageInfo {
   guid: string;
 }
 
-const lineageCache = new Map<string, LineageInfo>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 interface CacheEntry {

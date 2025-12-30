@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useAssetStore } from '../../stores/assetStore';
+import { useAssetContextStore } from '../../stores/assetContextStore';
 import { usePivotStore } from '../../stores/pivotStore';
+import { useScoresStore } from '../../stores/scoresStore';
+import type { AtlanAsset } from '../../services/atlan/types';
 import { buildPivotHierarchy } from '../../utils/pivotBuilder';
 import { buildDynamicPivot, pivotDataToTableRows } from '../../utils/dynamicPivotBuilder';
 import { HierarchyFilter, type HierarchyFilter as HierarchyFilterType } from './HierarchyFilter';
@@ -50,7 +53,10 @@ interface RealPivotBuilderProps {
 export function RealPivotBuilder(props: RealPivotBuilderProps = {}) {
   const { onSave } = props;
   const { selectedAssets } = useAssetStore();
+  // Subscribe directly to store state to get reactive updates
+  const contextAssets = useAssetContextStore((state) => state.contextAssets);
   const { addView, setCurrentView } = usePivotStore();
+  const { assetsWithScores } = useScoresStore();
   const [saving, setSaving] = useState(false);
   const [hierarchyFilter, setHierarchyFilter] = useState<HierarchyFilterType>({
     level: 'connection',
@@ -58,11 +64,24 @@ export function RealPivotBuilder(props: RealPivotBuilderProps = {}) {
   const [rowDimensions, setRowDimensions] = useState<RowDimension[]>(['connection', 'type']);
   const [measures, setMeasures] = useState<Measure[]>(['assetCount', 'completeness', 'accuracy', 'overall']);
 
+  // Use context assets if available, fallback to selectedAssets for backward compatibility
+  const sourceAssets = contextAssets.length > 0 ? contextAssets : selectedAssets;
+  
+  // Build scores map from scoresStore for efficient pivot calculations
+  const scoresMap = useMemo(() => {
+    if (assetsWithScores.length === 0) return undefined;
+    const map = new Map<string, { completeness: number; accuracy: number; timeliness: number; consistency: number; usability: number; overall: number }>();
+    assetsWithScores.forEach(({ asset, scores }) => {
+      map.set(asset.guid, scores);
+    });
+    return map;
+  }, [assetsWithScores]);
+
   // Filter assets based on hierarchy filter
   const filteredAssets = useMemo(() => {
-    if (selectedAssets.length === 0) return [];
+    if (sourceAssets.length === 0) return [];
     
-    return selectedAssets.filter((asset) => {
+    return sourceAssets.filter((asset) => {
       if (hierarchyFilter.connectionName && asset.connectionName !== hierarchyFilter.connectionName) {
         return false;
       }
@@ -84,15 +103,15 @@ export function RealPivotBuilder(props: RealPivotBuilderProps = {}) {
       }
       return true;
     });
-  }, [selectedAssets, hierarchyFilter]);
+  }, [sourceAssets, hierarchyFilter]);
 
   // Build dynamic pivot table
   const pivotData = useMemo(() => {
     if (filteredAssets.length === 0 || rowDimensions.length === 0 || measures.length === 0) {
       return null;
     }
-    return buildDynamicPivot(filteredAssets, rowDimensions, measures);
-  }, [filteredAssets, rowDimensions, measures]);
+    return buildDynamicPivot(filteredAssets, rowDimensions, measures, undefined, scoresMap);
+  }, [filteredAssets, rowDimensions, measures, scoresMap]);
 
   // Convert to table rows
   const dynamicTableRows = useMemo(() => {
@@ -124,13 +143,13 @@ export function RealPivotBuilder(props: RealPivotBuilderProps = {}) {
     setSaving(true);
     const viewId = addView({
       name: `Pivot View ${new Date().toLocaleDateString()}`,
-      description: `Pivot view with ${filteredAssets.length} assets, grouped by ${rowDimensions.map(getDimensionLabel).join(' × ')}`,
+      description: `Pivot view with ${filteredAssets.length} asset${filteredAssets.length !== 1 ? 's' : ''}, grouped by ${rowDimensions.map(getDimensionLabel).join(' × ')}`,
       hierarchy: hierarchy || {
         id: 'root',
         label: 'All Assets',
         level: 'connection',
         children: [],
-        assetGuids: filteredAssets.map((a) => a.guid),
+        assetGuids: filteredAssets.map((a: AtlanAsset) => a.guid),
         assetCount: filteredAssets.length,
       },
       config: {
@@ -151,11 +170,11 @@ export function RealPivotBuilder(props: RealPivotBuilderProps = {}) {
     showToast('Pivot view saved successfully!', 'success');
   };
 
-  if (selectedAssets.length === 0) {
+  if (sourceAssets.length === 0) {
     return (
       <div className="demo-pivots" style={{ padding: '2rem', textAlign: 'center' }}>
-        <h2>No Assets Selected</h2>
-        <p>Please select assets from the Asset Browser to build pivot views.</p>
+        <h2>No Assets in Context</h2>
+        <p>Please set an asset context by dragging a connection, database, or schema into the context header above, or select assets from the Asset Browser.</p>
       </div>
     );
   }
@@ -165,7 +184,7 @@ export function RealPivotBuilder(props: RealPivotBuilderProps = {}) {
     <div className="demo-pivots">
       {/* Hierarchy Filter */}
       <HierarchyFilter
-        assets={selectedAssets}
+        assets={sourceAssets}
         filter={hierarchyFilter}
         onChange={setHierarchyFilter}
       />

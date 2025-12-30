@@ -149,7 +149,20 @@ export interface AtlanSearchResponse {
 }
 
 /**
- * Atlan Lineage Response
+ * Raw Atlan Lineage API Response (actual format from /api/meta/lineage/list)
+ */
+export interface AtlanLineageRawResponse {
+  entities: Array<AtlanAsset & {
+    depth: number;
+    immediateUpstream?: Array<{ qualifiedName: string; name: string; guid: string }>;
+    immediateDownstream?: Array<{ qualifiedName: string; name: string; guid: string }>;
+  }>;
+  hasMore: boolean;
+  entityCount: number;
+}
+
+/**
+ * Atlan Lineage Response (transformed format for internal use)
  */
 export interface AtlanLineageResponse {
   guidEntityMap: Record<string, AtlanAsset>;
@@ -169,4 +182,3 @@ export interface AtlanConfig {
   apiKey: string;
   apiToken: string;
 }
-

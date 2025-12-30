@@ -5,7 +5,7 @@
  */
 
 import { getAsset } from './api';
-import type { AtlanAsset } from '../types';
+import type { AtlanAsset } from './types';
 
 const domainCache = new Map<string, string>();
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
@@ -99,4 +99,3 @@ export async function fetchDomainNames(guids: string[]): Promise<Map<string, str
 export function clearDomainCache(): void {
   cache.clear();
 }
-

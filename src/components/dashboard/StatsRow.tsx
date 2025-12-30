@@ -1,53 +1,67 @@
+import { useMemo } from 'react';
 import { CheckCircle2, Users, AlertCircle, Shield } from 'lucide-react';
 import { useScoresStore } from '../../stores/scoresStore';
-import { useAssetStore } from '../../stores/assetStore';
+import { useAssetContextStore } from '../../stores/assetContextStore';
 import './StatsRow.css';
 
 export function StatsRow() {
-  const { stats: scoresStats, assetsWithScores } = useScoresStore();
-  const { selectedCount } = useAssetStore();
+  const { stats, assetsWithScores } = useScoresStore();
+  const { getAssetCount } = useAssetContextStore();
   
-  // Calculate percentages and trends (trends are placeholders for now)
-  const totalAssets = assetsWithScores.length || selectedCount || 1;
-  const assetsWithOwnersPercent = totalAssets > 0 
-    ? Math.round((scoresStats.assetsWithOwners / totalAssets) * 100)
-    : 0;
+  const totalAssets = assetsWithScores.length || getAssetCount();
   
-  // Use real stats if available, otherwise show 0
-  const stats = [
-    {
-      icon: CheckCircle2,
-      iconClass: 'green',
-      value: scoresStats.assetsWithDescriptions.toLocaleString(),
-      label: 'Assets with Descriptions',
-      trend: 0, // TODO: Calculate trend from previous period
-    },
-    {
-      icon: Users,
-      iconClass: 'yellow',
-      value: `${assetsWithOwnersPercent}%`,
-      label: 'Assets with Owners',
-      trend: 0, // TODO: Calculate trend
-    },
-    {
-      icon: AlertCircle,
-      iconClass: 'red',
-      value: scoresStats.staleAssets.toLocaleString(),
-      label: 'Stale Assets (>90 days)',
-      trend: 0, // TODO: Calculate trend
-    },
-    {
-      icon: Shield,
-      iconClass: 'blue',
-      value: scoresStats.certifiedAssets.toLocaleString(),
-      label: 'Certified Assets',
-      trend: 0, // TODO: Calculate trend
-    },
-  ];
+  const statsData = useMemo(() => {
+    const assetsWithDescriptionsPercent = totalAssets > 0 
+      ? Math.round((stats.assetsWithDescriptions / totalAssets) * 100)
+      : 0;
+    
+    const assetsWithOwnersPercent = totalAssets > 0 
+      ? Math.round((stats.assetsWithOwners / totalAssets) * 100)
+      : 0;
+    
+    const staleAssetsPercent = totalAssets > 0 
+      ? Math.round((stats.staleAssets / totalAssets) * 100)
+      : 0;
+    
+    const certifiedAssetsPercent = totalAssets > 0 
+      ? Math.round((stats.certifiedAssets / totalAssets) * 100)
+      : 0;
+
+    return [
+      {
+        icon: CheckCircle2,
+        iconClass: 'green',
+        value: stats.assetsWithDescriptions,
+        label: 'With Descriptions',
+        trend: assetsWithDescriptionsPercent,
+      },
+      {
+        icon: Users,
+        iconClass: 'blue',
+        value: stats.assetsWithOwners,
+        label: 'With Owners',
+        trend: assetsWithOwnersPercent,
+      },
+      {
+        icon: AlertCircle,
+        iconClass: 'yellow',
+        value: stats.staleAssets,
+        label: 'Stale Assets',
+        trend: -staleAssetsPercent, // Negative because stale is bad
+      },
+      {
+        icon: Shield,
+        iconClass: 'green',
+        value: stats.certifiedAssets,
+        label: 'Certified',
+        trend: certifiedAssetsPercent,
+      },
+    ];
+  }, [stats, totalAssets]);
 
   return (
     <div className="stats-row">
-      {stats.map((stat, idx) => {
+      {statsData.map((stat, idx) => {
         const Icon = stat.icon;
         return (
           <div key={idx} className="stat-card">

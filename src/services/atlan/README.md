@@ -188,3 +188,9 @@ The transformer converts Atlan assets to the `AssetMetadata` format used by the 
 - The proxy server must be running for the integration to work
 - All requests support AbortController for cancellation
 
+
+
+
+
+
+

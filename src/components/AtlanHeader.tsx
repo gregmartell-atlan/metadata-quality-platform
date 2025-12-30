@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from './shared';
 import { getAtlanClient, testAtlanConnection, configureAtlanApi, getSavedAtlanBaseUrl } from '../services/atlan/api';
+import { sanitizeError } from '../utils/sanitize';
 import './AtlanHeader.css';
 
 interface AtlanCredentials {
@@ -58,7 +59,8 @@ const AtlanHeaderComponent: React.FC<AtlanHeaderProps> = ({ onConfigure }) => {
       if (errorMessage.includes('ERR_CONNECTION_REFUSED') || errorMessage.includes('Proxy server not running')) {
         errorMessage = 'Proxy server not running. Please start it with: npm run proxy';
       }
-      setError(errorMessage);
+      const sanitizedError = sanitizeError(new Error(errorMessage));
+      setError(sanitizedError);
     }
   };
 

@@ -1,33 +1,43 @@
 .pivot-builder-page {
   flex: 1;
-  margin-left: 240px;
-  padding: var(--gap-lg);
+  display: flex;
+  flex-direction: column;
+  margin-left: 560px; /* 240px sidebar + 320px asset browser */
   background: var(--bg-primary);
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 100vh;
+  overflow: hidden;
 }
 
-.container {
+/* Adjust for collapsed asset browser */
+.app:has(.persistent-asset-browser.collapsed) .pivot-builder-page {
+  margin-left: 288px; /* 240px sidebar + 48px collapsed asset browser */
+}
+
+/* Adjust when sidebar is collapsed */
+.app:has(.sidebar.collapsed) .pivot-builder-page {
+  margin-left: 384px; /* 64px collapsed sidebar + 320px asset browser */
+}
+
+/* Adjust when both sidebar and asset browser are collapsed */
+.app:has(.sidebar.collapsed):has(.persistent-asset-browser.collapsed) .pivot-builder-page {
+  margin-left: 112px; /* 64px collapsed sidebar + 48px collapsed asset browser */
+}
+
+.pivot-content {
+  flex: 1;
+  padding: var(--gap-lg);
+  overflow-y: auto;
   max-width: 1600px;
-  margin: 0 auto;
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--gap-lg);
-  padding-bottom: var(--gap-lg);
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.header h1 {
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-}
-
-.header-actions {
-  display: flex;
-  gap: 12px;
+.view-select {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 0.85rem;
 }
 
 .tabs {
@@ -70,4 +80,3 @@
 .pivot-placeholder p {
   margin-bottom: var(--gap-sm);
 }
-

@@ -14,6 +14,7 @@ import { useScoringSettingsStore } from './scoringSettingsStore';
 import { scoreAssets, initializeScoringService, setScoringModeGetter } from '../services/scoringService';
 import { getAtlanConfig } from '../services/atlan/api';
 import type { AtlanAsset as ScoringAtlanAsset } from '../scoring/contracts';
+import { logger } from '../utils/logger';
 
 interface AssetWithScores {
   asset: AtlanAsset;
@@ -83,7 +84,9 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
           certificateStatus: asset.certificateStatus,
           certificateUpdatedAt: asset.certificateUpdatedAt,
           classificationNames: asset.classificationNames,
-          meanings: asset.meanings,
+          meanings: asset.meanings?.map((m: { guid: string; displayText: string } | string) =>
+            typeof m === 'string' ? m : m.displayText
+          ) ?? null,
           domainGUIDs: asset.domainGUIDs,
           updateTime: asset.updateTime,
           sourceUpdatedAt: asset.sourceUpdatedAt,
@@ -93,7 +96,7 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
           viewScore: asset.viewScore,
           starredCount: asset.starredCount,
           __hasLineage: asset.__hasLineage,
-          readme: asset.readme,
+          readme: asset.readme ? { hasReadme: true } : null,
           isDiscoverable: asset.isDiscoverable,
         }));
 

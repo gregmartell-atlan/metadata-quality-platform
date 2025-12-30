@@ -10,10 +10,10 @@ function namingCompliance(name: string, rules: { requiredRegex: string[]; minLen
   if (rules.minLength && n.length < rules.minLength) return 0;
   const req = rules.requiredRegex || [];
   if (req.length === 0) return 1;
-  const hits = req.map(r => {
+  const hits: number[] = req.map(r => {
     try { return new RegExp(r).test(n) ? 1 : 0; } catch { return 0; }
   });
-  return hits.reduce((s, x) => s + x, 0) / hits.length;
+  return hits.reduce((s: number, x: number) => s + x, 0) / hits.length;
 }
 
 export class Industry5DProfile implements ScoringProfile {

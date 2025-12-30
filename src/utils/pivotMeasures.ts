@@ -7,6 +7,7 @@
 import type { AtlanAsset } from '../services/atlan/types';
 import { scoreAssetQuality } from '../services/qualityMetrics';
 import type { LineageInfo } from '../services/atlan/lineageEnricher';
+import { logger } from './logger';
 
 // Type adapter for scoring (matches qualityMetrics.ts)
 interface AtlanAssetSummary {
@@ -74,13 +75,24 @@ function assetToSummary(asset: AtlanAsset): AtlanAssetSummary {
  * @param measure - The measure to calculate
  * @param assets - The assets to calculate the measure for
  * @param lineageMap - Optional map of lineage info by asset GUID (for lineage measures)
+ * @param scoresMap - Optional map of scores by asset GUID (from scoresStore) to avoid recalculation
  */
 export function calculateMeasure(
   measure: string,
   assets: AtlanAsset[],
-  lineageMap?: Map<string, LineageInfo>
+  lineageMap?: Map<string, LineageInfo>,
+  scoresMap?: Map<string, { completeness: number; accuracy: number; timeliness: number; consistency: number; usability: number; overall: number }>
 ): number {
-  if (assets.length === 0) return 0;
+  const startTime = performance.now();
+  if (assets.length === 0) {
+    logger.debug('calculateMeasure: No assets provided', { measure });
+    return 0;
+  }
+  logger.debug('calculateMeasure: Starting calculation', { 
+    measure, 
+    assetCount: assets.length,
+    hasLineageMap: !!lineageMap 
+  });
 
   switch (measure) {
     case 'assetCount':
@@ -91,6 +103,24 @@ export function calculateMeasure(
     case 'timeliness':
     case 'consistency':
     case 'usability': {
+      // Use scores from scoresMap if available, otherwise calculate
+      if (scoresMap && scoresMap.size > 0) {
+        let total = 0;
+        let count = 0;
+        assets.forEach(asset => {
+          const cachedScores = scoresMap.get(asset.guid);
+          if (cachedScores) {
+            total += cachedScores[measure as keyof typeof cachedScores] as number;
+            count++;
+          }
+        });
+        // If we have scores for all assets, use them; otherwise calculate for missing ones
+        if (count === assets.length) {
+          return Math.round(total / count);
+        }
+        // Fall through to calculate for missing assets
+      }
+      // Calculate scores for assets not in scoresMap or if scoresMap not provided
       const summaries = assets.map(assetToSummary);
       const scores = summaries.map((s) => scoreAssetQuality(s));
       const total = scores.reduce((sum, s) => sum + (s[measure as keyof typeof s] as number), 0);
@@ -98,12 +128,44 @@ export function calculateMeasure(
     }
 
     case 'overall': {
+      // Use scores from scoresMap if available, otherwise calculate
+      if (scoresMap && scoresMap.size > 0) {
+        let total = 0;
+        let count = 0;
+        assets.forEach(asset => {
+          const cachedScores = scoresMap.get(asset.guid);
+          if (cachedScores) {
+            total += cachedScores.overall;
+            count++;
+          }
+        });
+        // If we have scores for all assets, use them; otherwise calculate for missing ones
+        if (count === assets.length) {
+          const result = Math.round(total / count);
+          const duration = performance.now() - startTime;
+          logger.debug('calculateMeasure: Overall score calculated from cache', { 
+            measure, 
+            result, 
+            duration: `${duration.toFixed(2)}ms` 
+          });
+          return result;
+        }
+        // Fall through to calculate for missing assets
+      }
+      // Calculate scores for assets not in scoresMap or if scoresMap not provided
       const summaries = assets.map(assetToSummary);
       const scores = summaries.map((s) => scoreAssetQuality(s));
       const overalls = scores.map((s) => 
         (s.completeness + s.accuracy + s.timeliness + s.consistency + s.usability) / 5
       );
-      return Math.round(overalls.reduce((sum, o) => sum + o, 0) / overalls.length);
+      const result = Math.round(overalls.reduce((sum, o) => sum + o, 0) / overalls.length);
+      const duration = performance.now() - startTime;
+      logger.debug('calculateMeasure: Overall score calculated', { 
+        measure, 
+        result, 
+        duration: `${duration.toFixed(2)}ms` 
+      });
+      return result;
     }
 
     case 'descriptionCoverage': {
@@ -186,11 +248,29 @@ export function calculateMeasure(
         return orphaned; // Return count, not percentage
       }
       // Fallback: use __hasLineage flag
-      const orphaned = assets.filter((a) => !a.__hasLineage || a.__hasLineage === false).length;
+      const orphaned = assets.filter((a) => !a.__hasLineage).length;
       return orphaned; // Return count, not percentage
     }
 
     case 'avgCompleteness': {
+      // Use scores from scoresMap if available, otherwise calculate
+      if (scoresMap && scoresMap.size > 0) {
+        let total = 0;
+        let count = 0;
+        assets.forEach(asset => {
+          const cachedScores = scoresMap.get(asset.guid);
+          if (cachedScores) {
+            total += cachedScores.completeness;
+            count++;
+          }
+        });
+        // If we have scores for all assets, use them; otherwise calculate for missing ones
+        if (count === assets.length) {
+          return Math.round(total / count);
+        }
+        // Fall through to calculate for missing assets
+      }
+      // Calculate scores for assets not in scoresMap or if scoresMap not provided
       const summaries = assets.map(assetToSummary);
       const scores = summaries.map((s) => scoreAssetQuality(s));
       const total = scores.reduce((sum, s) => sum + s.completeness, 0);
@@ -198,8 +278,15 @@ export function calculateMeasure(
     }
 
     default:
+      logger.warn('calculateMeasure: Unknown measure type', { measure });
       return 0;
   }
+  
+  const duration = performance.now() - startTime;
+  logger.debug('calculateMeasure: Calculation complete', { 
+    measure, 
+    duration: `${duration.toFixed(2)}ms` 
+  });
 }
 
 /**

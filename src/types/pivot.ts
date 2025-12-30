@@ -32,25 +32,22 @@ export type Measure =
   | 'orphaned'
   | 'avgCompleteness';
 
+export type MeasureDisplayMode = 'numeric' | 'percentage' | 'visual' | 'auto';
+
+export interface MeasureDisplayConfig {
+  measure: Measure;
+  mode: MeasureDisplayMode;
+}
+
 export interface PivotConfig {
   rowDimensions: RowDimension[];
   columnDimensions?: RowDimension[];
   measures: Measure[];
+  measureDisplayModes?: MeasureDisplayConfig[];
 }
 
 export interface MeasureDefinition {
   id: Measure;
   label: string;
-  description: string;
-  format: 'number' | 'percentage' | 'score';
-  calculate: (assets: any[], metadata?: any) => number | string;
+  description?: string;
 }
-
-export interface RowDimensionDefinition {
-  id: RowDimension;
-  label: string;
-  description: string;
-  icon: string;
-  extractValue: (asset: any) => string | null;
-}
-
