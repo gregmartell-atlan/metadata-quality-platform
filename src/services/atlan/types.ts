@@ -1,9 +1,38 @@
 /**
  * Atlan Asset Type Definitions
- * 
+ *
  * Based on Atlan's Connections → Databases → Schemas → Tables hierarchy
  * and the attributes available via Atlan APIs
  */
+
+/**
+ * Atlan Tag with full propagation settings
+ * Reference: https://developer.atlan.com/models/entities/tag/
+ */
+export interface AtlanTag {
+  typeName: string;                          // Tag type name (e.g., "PII", "Sensitive")
+  guid?: string;                             // Tag instance GUID
+  entityGuid?: string;                       // GUID of the asset the tag is on
+  entityStatus?: string;                     // Status of the tagged entity
+  propagate?: boolean;                       // Whether tag propagates to children/downstream
+  removePropagationsOnEntityDelete?: boolean; // Remove propagations when entity deleted
+  restrictPropagationThroughLineage?: boolean; // Only propagate in hierarchy, not lineage
+  restrictPropagationThroughHierarchy?: boolean; // Only propagate through lineage, not hierarchy
+  // Source tag attachment (for source-synced tags)
+  tagAttachments?: Array<{
+    typeName?: string;
+    guid?: string;
+    tagQualifiedName?: string;
+    tagAttachmentKey?: string;
+    tagAttachmentValue?: string;
+  }>;
+  // Attributes from the tag definition
+  attributes?: {
+    tagId?: string;
+    tagName?: string;
+    tagQualifiedName?: string;
+  };
+}
 
 /**
  * Shared asset attributes (applies to Connection / Database / Schema / Table)
@@ -29,6 +58,7 @@ export interface AtlanAssetBase {
   classifications?: string[];
   classificationNames?: string[];
   assetTags?: string[];
+  atlanTags?: AtlanTag[];  // Full tag objects with propagation settings
   meanings?: Array<{ guid: string; displayText: string }>; // Glossary term links
   assignedTerms?: Array<{ guid: string; displayText: string }>;
   domainGUIDs?: string[];

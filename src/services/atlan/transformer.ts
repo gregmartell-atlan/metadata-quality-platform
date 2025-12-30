@@ -35,20 +35,61 @@ function extractOwnerGroup(asset: AtlanAsset): string | undefined {
 }
 
 /**
- * Extract tags from various Atlan tag fields
+ * Extract tags from various Atlan tag fields (simple string array)
  */
 function extractTags(asset: AtlanAsset): string[] {
   const tags: string[] = [];
-  
+
   if (asset.classificationNames && asset.classificationNames.length > 0) {
     tags.push(...asset.classificationNames);
   }
-  
+
   if (asset.assetTags && asset.assetTags.length > 0) {
     tags.push(...asset.assetTags);
   }
-  
+
+  // Also include tag names from atlanTags (full tag objects)
+  if (asset.atlanTags && asset.atlanTags.length > 0) {
+    asset.atlanTags.forEach(tag => {
+      if (tag.typeName && !tags.includes(tag.typeName)) {
+        tags.push(tag.typeName);
+      }
+    });
+  }
+
   return [...new Set(tags)]; // Remove duplicates
+}
+
+/**
+ * Extract enriched tag information including propagation settings
+ */
+function extractEnrichedTags(asset: AtlanAsset): Array<{
+  name: string;
+  guid?: string;
+  isDirect: boolean;          // true if directly assigned, false if propagated
+  propagates: boolean;        // whether this tag propagates to children
+  propagatesToLineage: boolean;
+  propagatesToHierarchy: boolean;
+}> {
+  if (!asset.atlanTags || asset.atlanTags.length === 0) {
+    // Fall back to simple tag names
+    return extractTags(asset).map(name => ({
+      name,
+      isDirect: true,  // Assume direct if we don't have propagation info
+      propagates: false,
+      propagatesToLineage: false,
+      propagatesToHierarchy: false,
+    }));
+  }
+
+  return asset.atlanTags.map(tag => ({
+    name: tag.typeName,
+    guid: tag.guid,
+    isDirect: tag.propagate !== undefined ? !tag.propagate : true, // If propagate is false, it's likely direct
+    propagates: tag.propagate ?? false,
+    propagatesToLineage: tag.propagate === true && !tag.restrictPropagationThroughLineage,
+    propagatesToHierarchy: tag.propagate === true && !tag.restrictPropagationThroughHierarchy,
+  }));
 }
 
 /**
@@ -105,8 +146,9 @@ export function transformAtlanAsset(asset: AtlanAsset): AssetMetadata {
   const owner = extractOwner(asset);
   const ownerGroup = extractOwnerGroup(asset);
 
-  // Extract tags
+  // Extract tags (simple array and enriched with propagation info)
   const tags = extractTags(asset);
+  const enrichedTags = extractEnrichedTags(asset);
 
   // Extract domain
   const domain = extractDomain(asset);
@@ -164,6 +206,7 @@ export function transformAtlanAsset(asset: AtlanAsset): AssetMetadata {
     description,
     descriptionLength,
     tags,
+    enrichedTags,
     customProperties: {
       qualifiedName: asset.qualifiedName,
       connectionQualifiedName: asset.connectionQualifiedName,
@@ -177,6 +220,7 @@ export function transformAtlanAsset(asset: AtlanAsset): AssetMetadata {
       classificationNames: asset.classificationNames,
       classifications: asset.classifications,
       assetTags: asset.assetTags,
+      atlanTags: asset.atlanTags,  // Full tag objects with propagation settings
       meanings: asset.meanings,
       assignedTerms: asset.assignedTerms,
       domainGUIDs: asset.domainGUIDs,
