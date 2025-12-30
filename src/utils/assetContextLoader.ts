@@ -173,32 +173,13 @@ export async function loadAssetsForConnection(
     return cached;
   }
 
-  const assets: AtlanAsset[] = [];
-
   try {
-    const databases = await getDatabases(connectionName);
-
-    for (const database of databases) {
-      try {
-        const schemas = await getSchemas(database.qualifiedName);
-
-        for (const schema of schemas) {
-          try {
-            const schemaAssets = await fetchAssetsForModel({
-              connector: connectionName,
-              schemaQualifiedName: schema.qualifiedName,
-              assetTypes: options?.assetTypes || ['Table', 'View', 'MaterializedView'],
-              size: options?.limit || 200,
-            });
-            assets.push(...schemaAssets);
-          } catch (err) {
-            logger.error(`loadAssetsForConnection: Failed to load schema ${schema.name}`, err);
-          }
-        }
-      } catch (err) {
-        logger.error(`loadAssetsForConnection: Failed to load database ${database.name}`, err);
-      }
-    }
+    // Single query to get all assets for this connector
+    const assets = await fetchAssetsForModel({
+      connector: connectionName,
+      assetTypes: options?.assetTypes || ['Table', 'View', 'MaterializedView'],
+      size: options?.limit || 1000,
+    });
 
     logger.info('loadAssetsForConnection: Completed', { connectionName, totalAssets: assets.length });
     setCachedAssets(cacheKey, assets);
@@ -217,19 +198,15 @@ export async function loadAssetsForDatabase(
   databaseName: string,
   options?: { assetTypes?: string[]; limit?: number }
 ): Promise<AtlanAsset[]> {
-  logger.debug('loadAssetsForDatabase: Starting', { connectionName, databaseName, options });
-
   const cacheKey = getCacheKey('database', { connectionName, databaseName });
 
   const cached = getCachedAssets(cacheKey);
   if (cached) {
-    logger.debug('loadAssetsForDatabase: Cache hit', { count: cached.length });
     return cached;
   }
 
-  const assets: AtlanAsset[] = [];
-
   try {
+    // First, get the database to find its qualified name
     const databases = await getDatabases(connectionName);
     const database = databases.find((db) => db.name === databaseName);
 
@@ -237,22 +214,12 @@ export async function loadAssetsForDatabase(
       throw new Error(`Database ${databaseName} not found in ${connectionName}`);
     }
 
-    const schemas = await getSchemas(database.qualifiedName);
-    logger.debug('loadAssetsForDatabase: Found schemas', { count: schemas.length });
-
-    for (const schema of schemas) {
-      try {
-        const schemaAssets = await fetchAssetsForModel({
-          connector: connectionName,
-          schemaQualifiedName: schema.qualifiedName,
-          assetTypes: options?.assetTypes || ['Table', 'View', 'MaterializedView'],
-          size: options?.limit || 200,
-        });
-        assets.push(...schemaAssets);
-      } catch (err) {
-        logger.error(`loadAssetsForDatabase: Failed to load schema ${schema.name}`, err);
-      }
-    }
+    // Single query to get all assets in this database
+    const assets = await fetchAssetsForModel({
+      databaseQualifiedName: database.qualifiedName,
+      assetTypes: options?.assetTypes || ['Table', 'View', 'MaterializedView'],
+      size: options?.limit || 1000,
+    });
 
     logger.info('loadAssetsForDatabase: Completed', { connectionName, databaseName, totalAssets: assets.length });
     setCachedAssets(cacheKey, assets);

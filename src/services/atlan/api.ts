@@ -946,6 +946,7 @@ export async function fetchAssetsForModel(options?: {
   from?: number;
   connector?: string;
   connectionQualifiedName?: string;
+  databaseQualifiedName?: string;
   schemaQualifiedName?: string;
 }): Promise<AtlanAsset[]> {
   if (!isConfigured()) {
@@ -984,6 +985,11 @@ export async function fetchAssetsForModel(options?: {
   // Also try connectionQualifiedName if provided
   if (options?.connectionQualifiedName) {
     mustFilters.push({ term: { 'connectionQualifiedName': options.connectionQualifiedName } });
+  }
+
+  // Filter by database qualified name (for database-level queries)
+  if (options?.databaseQualifiedName) {
+    mustFilters.push({ term: { 'databaseQualifiedName': options.databaseQualifiedName } });
   }
 
   // Filter by schema qualified name (for scoped imports)
