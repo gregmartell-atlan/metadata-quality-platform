@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Settings, X, Hash, Percent, BarChart3, Zap, ChevronDown, ChevronRight } from 'lucide-react';
+import { Settings, Hash, Percent, BarChart3, Zap, ChevronDown, ChevronRight, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { PivotConfigurator } from './PivotConfigurator';
 import { getMeasureLabel } from '../../utils/pivotMeasures';
 import type { RowDimension, Measure, MeasureDisplayMode } from '../../types/pivot';
@@ -29,7 +29,7 @@ export function PivotConfiguratorFlyout({
   measureDisplayModes,
   onMeasureDisplayModesChange,
 }: PivotConfiguratorFlyoutProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
   const [showDisplayOptions, setShowDisplayOptions] = useState(false);
 
   const handleModeChange = (measure: Measure, mode: MeasureDisplayMode) => {
@@ -40,49 +40,40 @@ export function PivotConfiguratorFlyout({
   };
 
   return (
-    <>
-      {/* Toggle Button - Positioned in top right */}
+    <div className={`configurator-drawer ${isOpen ? 'open' : 'closed'}`}>
+      {/* Drawer Toggle Tab */}
       <button
-        className="configurator-flyout-toggle"
+        className="drawer-toggle"
         onClick={() => setIsOpen(!isOpen)}
-        aria-label={isOpen ? 'Close configuration' : 'Open configuration'}
-        title="Configure Pivot"
+        title={isOpen ? 'Hide configuration' : 'Show configuration'}
       >
-        <Settings size={16} className="toggle-icon" />
-        <span className="toggle-label">Configure</span>
-        {rowDimensions.length > 0 && (
-          <span className="toggle-badge">{rowDimensions.length}D</span>
-        )}
-        {measures.length > 0 && (
-          <span className="toggle-badge">{measures.length}M</span>
+        {isOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+        {!isOpen && (
+          <span className="drawer-toggle-label">
+            <Settings size={14} />
+            Configure
+          </span>
         )}
       </button>
 
-      {/* Overlay */}
-      {isOpen && (
-        <div
-          className="configurator-flyout-overlay"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
-
-      {/* Flyout Panel */}
-      <div className={`configurator-flyout ${isOpen ? 'open' : ''}`}>
-        <div className="flyout-header">
-          <div className="flyout-title">
-            <Settings size={20} className="flyout-icon" />
-            <span>Configure Pivot</span>
+      {/* Drawer Content */}
+      <div className="drawer-content">
+        <div className="drawer-header">
+          <div className="drawer-title">
+            <Settings size={18} />
+            <span>Configure</span>
           </div>
-          <button
-            className="flyout-close"
-            onClick={() => setIsOpen(false)}
-            aria-label="Close"
-          >
-            <X size={20} />
-          </button>
+          <div className="drawer-badges">
+            {rowDimensions.length > 0 && (
+              <span className="drawer-badge">{rowDimensions.length}D</span>
+            )}
+            {measures.length > 0 && (
+              <span className="drawer-badge">{measures.length}M</span>
+            )}
+          </div>
         </div>
 
-        <div className="flyout-content">
+        <div className="drawer-body">
           {/* Pivot Configurator (Dimensions & Measures) */}
           <PivotConfigurator
             rowDimensions={rowDimensions}
@@ -94,9 +85,9 @@ export function PivotConfiguratorFlyout({
 
           {/* Measure Display Options */}
           {measures.length > 0 && measureDisplayModes && onMeasureDisplayModesChange && (
-            <div className="flyout-section">
+            <div className="drawer-section">
               <button
-                className="flyout-section-header"
+                className="drawer-section-header"
                 onClick={() => setShowDisplayOptions(!showDisplayOptions)}
               >
                 <span className="section-title">
@@ -131,6 +122,6 @@ export function PivotConfiguratorFlyout({
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }

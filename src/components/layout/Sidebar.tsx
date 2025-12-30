@@ -1,91 +1,107 @@
 /**
- * Sidebar - Main navigation sidebar
- * Based on dashboard.html mockup
+ * Sidebar - Main navigation sidebar with collapse functionality
  */
 
-import { LayoutGrid, BarChart3, Target, Users, RefreshCw, Zap, GitBranch } from 'lucide-react';
+import { useState } from 'react';
+import { LayoutGrid, BarChart3, Target, Users, RefreshCw, Zap, GitBranch, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import './Sidebar.css';
 
 export function Sidebar() {
   const location = useLocation();
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
       <div className="logo">
         <div className="logo-icon">MQ</div>
-        <span className="logo-text">Metadata Quality</span>
+        {!isCollapsed && <span className="logo-text">Metadata Quality</span>}
       </div>
+
+      <button
+        className="sidebar-toggle"
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+      </button>
 
       <nav>
         <div className="nav-section">
-          <div className="nav-label">Dashboards</div>
+          {!isCollapsed && <div className="nav-label">Dashboards</div>}
           <Link
             to="/"
             className={`nav-item ${isActive('/') ? 'active' : ''}`}
+            title="Executive Overview"
           >
             <LayoutGrid size={18} />
-            Executive Overview
+            {!isCollapsed && <span>Executive Overview</span>}
           </Link>
           <Link
             to="/stewardship"
             className={`nav-item ${isActive('/stewardship') ? 'active' : ''}`}
+            title="Stewardship Ops"
           >
             <BarChart3 size={18} />
-            Stewardship Ops
+            {!isCollapsed && <span>Stewardship Ops</span>}
           </Link>
           <Link
             to="/campaigns"
             className={`nav-item ${isActive('/campaigns') ? 'active' : ''}`}
+            title="Campaign Tracking"
           >
             <Target size={18} />
-            Campaign Tracking
+            {!isCollapsed && <span>Campaign Tracking</span>}
           </Link>
         </div>
 
         <div className="nav-section">
-          <div className="nav-label">Analysis</div>
+          {!isCollapsed && <div className="nav-label">Analysis</div>}
           <Link
             to="/pivot"
             className={`nav-item ${isActive('/pivot') ? 'active' : ''}`}
+            title="Pivot Builder"
           >
             <LayoutGrid size={18} />
-            Pivot Builder
+            {!isCollapsed && <span>Pivot Builder</span>}
           </Link>
           <Link
             to="/lineage"
             className={`nav-item ${isActive('/lineage') ? 'active' : ''}`}
+            title="Lineage Explorer"
           >
             <GitBranch size={18} />
-            Lineage Explorer
+            {!isCollapsed && <span>Lineage Explorer</span>}
           </Link>
           <Link
             to="/trends"
             className={`nav-item ${isActive('/trends') ? 'active' : ''}`}
+            title="Quality Trends"
           >
             <RefreshCw size={18} />
-            Quality Trends
+            {!isCollapsed && <span>Quality Trends</span>}
           </Link>
           <Link
             to="/accountability"
             className={`nav-item ${isActive('/accountability') ? 'active' : ''}`}
+            title="Accountability"
           >
             <Users size={18} />
-            Accountability
+            {!isCollapsed && <span>Accountability</span>}
           </Link>
         </div>
 
         <div className="nav-section">
-          <div className="nav-label">Actions</div>
-          <button className="nav-item">
+          {!isCollapsed && <div className="nav-label">Actions</div>}
+          <button className="nav-item" title="Campaigns">
             <Target size={18} />
-            Campaigns
+            {!isCollapsed && <span>Campaigns</span>}
           </button>
-          <button className="nav-item">
+          <button className="nav-item" title="Automation Rules">
             <Zap size={18} />
-            Automation Rules
+            {!isCollapsed && <span>Automation Rules</span>}
           </button>
         </div>
       </nav>
