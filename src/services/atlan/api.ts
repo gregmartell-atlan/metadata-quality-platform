@@ -1013,24 +1013,40 @@ export async function fetchAssetsForModel(options?: {
 
 /**
  * Get a single asset by GUID
+ * Note: Atlan's Atlas API returns { entity: {...} } not { entities: [...] }
  */
 export async function getAsset(guid: string, attributes: string[] = []): Promise<AtlanAsset | null> {
-  const response = await atlanFetch<{ entities?: AtlanEntity[] }>(`/api/meta/entity/guid/${guid}`, {
+  // Build attributes query param if specified
+  const attrParam = attributes.length > 0 ? `?attr=${attributes.join(',')}` : '';
+
+  const response = await atlanFetch<{
+    entity?: AtlanEntity;
+    entities?: AtlanEntity[]; // Some endpoints might still use plural
+  }>(`/api/meta/entity/guid/${guid}${attrParam}`, {
     method: 'GET',
   });
 
-  if (response.error || !response.data?.entities || response.data.entities.length === 0) {
+  if (response.error) {
+    console.warn(`getAsset error for ${guid}:`, response.error);
     return null;
   }
 
-  const entity = response.data.entities[0];
+  // Handle both singular (entity) and plural (entities) response formats
+  const entity = response.data?.entity || response.data?.entities?.[0];
+
+  if (!entity) {
+    console.warn(`getAsset: No entity found for ${guid}`);
+    return null;
+  }
+
   // Transform to AtlanAsset format (similar to searchAssets)
   return {
     guid: entity.guid,
     typeName: entity.typeName,
-    name: entity.attributes.name || '',
-    qualifiedName: entity.attributes.qualifiedName || '',
-    // ... map other attributes
+    name: entity.attributes?.name || entity.attributes?.displayName || '',
+    qualifiedName: entity.attributes?.qualifiedName || '',
+    description: entity.attributes?.description,
+    // ... map other attributes as needed
   } as AtlanAsset;
 }
 
