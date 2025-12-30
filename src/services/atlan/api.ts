@@ -1414,9 +1414,38 @@ export async function getLineage(
     return 'Asset';
   }
 
+  // Helper to normalize entity by flattening attributes to top level
+  function normalizeEntity(entity: any): AtlanAsset {
+    const attributes = entity.attributes || {};
+    return {
+      // Core fields from top level
+      guid: entity.guid,
+      typeName: entity.typeName,
+      // Flatten attributes to top level, use displayText as fallback for name
+      name: attributes.name || entity.displayText || entity.name || 'Unknown',
+      qualifiedName: attributes.qualifiedName || entity.qualifiedName || entity.guid,
+      description: attributes.description || attributes.userDescription,
+      userDescription: attributes.userDescription,
+      ownerUsers: attributes.ownerUsers,
+      ownerGroups: attributes.ownerGroups,
+      certificateStatus: attributes.certificateStatus,
+      classificationNames: attributes.classificationNames,
+      assetTags: attributes.atlanTags,
+      meanings: attributes.meanings,
+      __hasLineage: attributes.__hasLineage,
+      // Timestamps
+      createTime: entity.createTime,
+      updateTime: entity.updateTime,
+      createdBy: entity.createdBy,
+      updatedBy: entity.updatedBy,
+      // Keep raw attributes for any additional fields
+      ...attributes,
+    };
+  }
+
   // Build guidEntityMap from entities array
   for (const entity of rawData.entities || []) {
-    guidEntityMap[entity.guid] = entity;
+    guidEntityMap[entity.guid] = normalizeEntity(entity);
 
     // Extract relations from immediateUpstream
     if (entity.immediateUpstream) {
