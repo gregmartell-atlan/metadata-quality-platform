@@ -5,7 +5,7 @@ import './PivotSection.css';
 interface PivotSectionProps {
   title: string;
   subtitle: string;
-  meta: { label: string; value: string }[];
+  meta: { label: ReactNode; value: string }[];
   rows: ReactNode;
   columns?: ReactNode;
   measures?: ReactNode;

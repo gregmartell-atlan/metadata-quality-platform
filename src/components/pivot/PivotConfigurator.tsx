@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { Settings, ChevronDown, ChevronRight } from 'lucide-react';
 import type { RowDimension, Measure } from '../../types/pivot';
 import { getDimensionLabel, getDimensionIcon } from '../../utils/pivotDimensions';
 import { getMeasureLabel } from '../../utils/pivotMeasures';
@@ -107,13 +108,13 @@ export function PivotConfigurator({
   const filteredMeasures = useMemo(() => {
     if (!searchQuery) return MEASURE_CATEGORIES;
     const query = searchQuery.toLowerCase();
-    const filtered: typeof MEASURE_CATEGORIES = {};
+    const filtered: Partial<typeof MEASURE_CATEGORIES> = {};
     Object.entries(MEASURE_CATEGORIES).forEach(([category, measureList]) => {
       const filteredList = measureList.filter((measure) =>
-        getMeasureLabel(measure).toLowerCase().includes(query)
+        getMeasureLabel(measure as Measure).toLowerCase().includes(query)
       );
       if (filteredList.length > 0) {
-        filtered[category] = filteredList;
+        (filtered as Record<string, string[]>)[category] = filteredList;
       }
     });
     return filtered;
@@ -323,11 +324,12 @@ export function PivotConfigurator({
               <div key={category} className="measure-category">
                 <div className="measure-category-label">{category}</div>
                 <div className="measure-list">
-                  {measureList.map((measure) => {
+                  {measureList.map((measureStr) => {
+                    const measure = measureStr as Measure;
                     const isSelected = measures.includes(measure);
                     return (
                       <button
-                        key={measure}
+                        key={measureStr}
                         className={`measure-item ${isSelected ? 'selected' : ''}`}
                         onClick={() => toggleMeasure(measure)}
                       >

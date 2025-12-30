@@ -390,8 +390,7 @@ export function pivotDataToTableRows(
         );
       } else if (displayMode === 'percentage' && measure !== 'assetCount') {
         // Show as percentage
-        const percentValue = measure === 'assetCount' ? value : value;
-        cells.push(`${percentValue}%`);
+        cells.push(`${value}%`);
       } else {
         // Show as numeric
         cells.push(formatted);

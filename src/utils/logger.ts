@@ -61,12 +61,13 @@ class Logger {
       // Import dynamically to avoid circular dependencies
       import('./monitoring').then(({ errorTracking }) => {
         if (data && typeof data === 'object' && 'error' in data) {
-          const error = data.error instanceof Error 
-            ? data.error 
-            : new Error(typeof data.error === 'string' ? data.error : message);
-          errorTracking.captureException(error, data);
+          const errorData = data as Record<string, unknown>;
+          const error = errorData.error instanceof Error
+            ? errorData.error
+            : new Error(typeof errorData.error === 'string' ? errorData.error : message);
+          errorTracking.captureException(error, errorData);
         } else {
-          errorTracking.captureMessage(message, 'error', data);
+          errorTracking.captureMessage(message, 'error', data as Record<string, unknown> | undefined);
         }
       }).catch(() => {
         // Silently fail if monitoring module not available
@@ -87,10 +88,11 @@ class Logger {
   }
 
   error(message: string, error?: Error | unknown, data?: unknown): void {
+    const extraData = (data && typeof data === 'object') ? data as Record<string, unknown> : {};
     if (error instanceof Error) {
-      this.addLog('error', message, { error: error.message, stack: error.stack, ...data });
+      this.addLog('error', message, { error: error.message, stack: error.stack, ...extraData });
     } else {
-      this.addLog('error', message, { error, ...data });
+      this.addLog('error', message, { error, ...extraData });
     }
   }
 

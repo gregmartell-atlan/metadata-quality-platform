@@ -201,8 +201,8 @@ class AssetContextSubscriptionTracker {
           },
         ])
       ),
-      mostActiveComponent: mostActive?.name || null,
-      leastActiveComponent: leastActive?.name || null,
+      mostActiveComponent: (mostActive as { name: string; updates: number } | null)?.name ?? null,
+      leastActiveComponent: (leastActive as { name: string; updates: number } | null)?.name ?? null,
     };
 
     return stats;

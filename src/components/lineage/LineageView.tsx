@@ -20,6 +20,7 @@ import { getLineage } from '../../services/atlan/api';
 import { useAssetStore } from '../../stores/assetStore';
 import { scoreAssets } from '../../services/scoringService';
 import type { AtlanAsset } from '../../services/atlan/types';
+import { sanitizeError } from '../../utils/sanitize';
 import type {
   LineageViewConfig,
   LineageGraph,

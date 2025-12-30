@@ -49,7 +49,8 @@ interface AssetContextState {
   getAssetCount: () => number;
 }
 
-const defaultContext: AssetContext = {
+// Default context used when no context is set
+const _defaultContext: AssetContext = {
   type: 'manual',
   filters: {},
   label: 'No context set',
@@ -167,16 +168,9 @@ export const useAssetContextStore = create<AssetContextState>()(
 
 // Subscribe to cross-tab sync after store is created
 if (typeof window !== 'undefined') {
-  useAssetContextStore.subscribe(
-    (state) => state.context,
-    (context) => {
-      // This will be called when context changes, but we don't want to broadcast here
-      // to avoid infinite loops. Broadcasting happens in the actions.
-    }
-  );
-  
   // Listen for cross-tab updates
-  assetContextSync.subscribe((data: { context?: AssetContext | null; assets?: AtlanAsset[] }) => {
+  assetContextSync.subscribe((rawData: unknown) => {
+    const data = rawData as { context?: AssetContext | null; assets?: AtlanAsset[] };
     const currentState = useAssetContextStore.getState();
     if (data.context !== undefined && data.context !== currentState.context) {
       useAssetContextStore.setState({ context: data.context });

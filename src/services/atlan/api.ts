@@ -225,38 +225,36 @@ async function atlanFetch<T>(
         ...options.headers,
       },
     });
-    
+
+    // Enhanced error message handling
+    if (response.error) {
+      // Check if we got HTML instead of JSON (common error page)
+      if (response.error.includes('<!DOCTYPE') || response.error.includes('<html')) {
+        // Extract meaningful text from HTML error
+        const preMatch = response.error.match(/<pre>(.*?)<\/pre>/s);
+        if (preMatch) {
+          response.error = preMatch[1].trim();
+        } else if (response.error.includes('Cannot POST') || response.error.includes('Cannot GET')) {
+          response.error = 'Proxy server route not found. Make sure the proxy server is running correctly.';
+        } else {
+          response.error = 'Server returned an HTML error page. Check your Atlan URL and API key.';
+        }
+      }
+
+      // Handle proxy-specific error messages
+      if (response.error.includes('connection refused') || response.error.includes('ERR_CONNECTION_REFUSED')) {
+        response.error = 'Proxy server not running. Start it with: npm run proxy';
+      }
+
+      logger.error('Atlan API request failed', {
+        endpoint,
+        error: response.error,
+        status: response.status,
+      });
+    }
+
     return response;
   });
-
-  // Enhanced error message handling
-  if (response.error) {
-    // Check if we got HTML instead of JSON (common error page)
-    if (response.error.includes('<!DOCTYPE') || response.error.includes('<html')) {
-      // Extract meaningful text from HTML error
-      const preMatch = response.error.match(/<pre>(.*?)<\/pre>/s);
-      if (preMatch) {
-        response.error = preMatch[1].trim();
-      } else if (response.error.includes('Cannot POST') || response.error.includes('Cannot GET')) {
-        response.error = 'Proxy server route not found. Make sure the proxy server is running correctly.';
-      } else {
-        response.error = 'Server returned an HTML error page. Check your Atlan URL and API key.';
-      }
-    }
-
-    // Handle proxy-specific error messages
-    if (response.error.includes('connection refused') || response.error.includes('ERR_CONNECTION_REFUSED')) {
-      response.error = 'Proxy server not running. Start it with: npm run proxy';
-    }
-
-    logger.error('Atlan API request failed', {
-      endpoint,
-      error: response.error,
-      status: response.status,
-    });
-  }
-
-  return response;
 }
 
 // ============================================

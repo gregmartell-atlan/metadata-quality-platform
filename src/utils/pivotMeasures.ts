@@ -248,7 +248,7 @@ export function calculateMeasure(
         return orphaned; // Return count, not percentage
       }
       // Fallback: use __hasLineage flag
-      const orphaned = assets.filter((a) => !a.__hasLineage || a.__hasLineage === false).length;
+      const orphaned = assets.filter((a) => !a.__hasLineage).length;
       return orphaned; // Return count, not percentage
     }
 

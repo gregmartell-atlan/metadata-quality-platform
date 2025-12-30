@@ -18,6 +18,7 @@ import { PivotSection } from './PivotSection';
 import { PivotTable } from './PivotTable';
 import { HierarchicalPivotTable } from './HierarchicalPivotTable';
 import { PivotConfiguratorFlyout } from './PivotConfiguratorFlyout';
+import { MeasureDisplayToggle } from './MeasureDisplayToggle';
 import { getDimensionLabel, getDimensionIcon } from '../../utils/pivotDimensions';
 import { getMeasureLabel, formatMeasure, calculateMeasure } from '../../utils/pivotMeasures';
 import { extractDimensionValue } from '../../utils/pivotDimensions';

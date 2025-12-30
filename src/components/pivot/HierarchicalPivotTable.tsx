@@ -16,7 +16,7 @@ interface HierarchicalPivotTableProps {
 interface TreeNode extends HierarchicalPivotRow {
   rowKey: string;
   children: TreeNode[];
-  childRows: typeof data.rows;
+  childRows: PivotTableData['rows'];
   level: number;
   isParent: boolean;
 }

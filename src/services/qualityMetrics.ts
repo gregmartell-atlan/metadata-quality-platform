@@ -12,8 +12,8 @@ export interface QualityScores {
   usability: number;
 }
 
-// Utility: presence check
-function hasValue(val: any): boolean {
+// Utility: presence check (type guard)
+function hasValue<T>(val: T | null | undefined): val is T {
   return val !== undefined && val !== null && val !== '';
 }
 
@@ -41,7 +41,7 @@ export function scoreAccuracy(asset: AtlanAssetSummary): number {
   if (/^[\w\-\.]+$/.test(asset.name)) score++;
   // Owner validity
   total++;
-  if (hasValue(asset.ownerUsers) && asset.ownerUsers !== 'unknown') score++;
+  if (hasValue(asset.ownerUsers) && asset.ownerUsers.length > 0) score++;
   // Certificate recency
   total++;
   if (hasValue(asset.certificateStatus) && hasValue(asset.certificateUpdatedAt)) score++;

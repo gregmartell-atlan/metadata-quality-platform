@@ -20,7 +20,8 @@ import {
 import { useAssetStore } from '../stores/assetStore';
 import type { AtlanAsset } from '../services/atlan/types';
 import { logger } from '../utils/logger';
-import { GitBranch, ChevronRight, ChevronDown, Link2, Database, Folder, Table2, GripVertical, Upload, Loader2 } from 'lucide-react';
+import { sanitizeError } from '../utils/sanitize';
+import { GitBranch, ChevronRight, ChevronDown, Upload, Loader2 } from 'lucide-react';
 import './AssetBrowser.css';
 
 interface TreeNode {
@@ -39,7 +40,7 @@ interface TreeNode {
 
 export function AssetBrowser() {
   const navigate = useNavigate();
-  const { selectedAssets, toggleAsset, isSelected, selectedCount, clearAssets, addAsset } = useAssetStore();
+  const { toggleAsset, isSelected, selectedCount, clearAssets, addAsset } = useAssetStore();
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
   const [connectors, setConnectors] = useState<ConnectorInfo[]>([]);
   const [selectedConnector, setSelectedConnector] = useState<string | null>(null);

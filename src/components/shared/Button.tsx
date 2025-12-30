@@ -4,10 +4,11 @@ import './Button.css';
 interface ButtonProps {
   children: ReactNode;
   onClick?: () => void;
-  variant?: 'primary' | 'secondary' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   className?: string;
   type?: 'button' | 'submit' | 'reset';
   disabled?: boolean;
+  style?: React.CSSProperties;
 }
 
 export function Button({
@@ -17,6 +18,7 @@ export function Button({
   className = '',
   type = 'button',
   disabled = false,
+  style,
 }: ButtonProps) {
   return (
     <button
@@ -24,6 +26,7 @@ export function Button({
       className={`btn btn-${variant} ${className}`}
       onClick={onClick}
       disabled={disabled}
+      style={style}
     >
       {children}
     </button>

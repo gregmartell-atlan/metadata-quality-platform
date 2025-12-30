@@ -18,10 +18,10 @@ import { initializeScoringService, scoreAssets } from '../services/scoringServic
 import type { AssetContextType, AssetContextFilters } from '../stores/assetContextStore';
 import type { AtlanAsset } from '../services/atlan/types';
 import type { AtlanAsset as ScoringAtlanAsset } from '../scoring/contracts';
-import { getConnectors, getDatabases, getSchemas } from '../services/atlan/api';
+import { getConnectors } from '../services/atlan/api';
 import { logger } from '../utils/logger';
 import { sanitizeError } from '../utils/sanitize';
-import { isValidScoringType } from '../utils/typeGuards';
+import { isValidScoringType, type ScoringAssetType } from '../utils/typeGuards';
 import './AssetContext.css';
 
 export function AssetContext() {
@@ -155,29 +155,35 @@ export function AssetContext() {
           // Transform legacy assets to scoring format - filter to valid types
           const scoringAssets: ScoringAtlanAsset[] = contextAssets
             .filter(asset => isValidScoringType(asset.typeName))
-            .map(asset => ({
-              guid: asset.guid,
-              typeName: asset.typeName as ScoringAssetType, // Now type-safe
-            name: asset.name,
-            qualifiedName: asset.qualifiedName,
-            connectionName: asset.connectionName,
-            description: asset.description,
-            userDescription: asset.userDescription,
-            certificateStatus: asset.certificateStatus,
-            ownerUsers: asset.ownerUsers,
-            ownerGroups: asset.ownerGroups,
-            domainGUIDs: asset.domainGUIDs,
-            classificationNames: asset.classificationNames,
-            meanUserRating: asset.meanUserRating,
-            popularityScore: asset.popularityScore,
-            viewCount: asset.viewCount,
-            userCount: asset.userCount,
-            updateTime: asset.updateTime,
-            createTime: asset.createTime,
-            customMetadata: asset.customMetadata,
-            lineage: asset.lineage,
-            readme: asset.readme,
-          }));
+            .map(asset => {
+              // Normalize ownerUsers/ownerGroups to string arrays for scoring
+              const normalizeOwners = (owners: string[] | Array<{ guid: string; name: string }> | undefined): string[] | null => {
+                if (!owners) return null;
+                if (owners.length === 0) return null;
+                if (typeof owners[0] === 'string') return owners as string[];
+                return (owners as Array<{ guid: string; name: string }>).map(o => o.name);
+              };
+
+              return {
+                guid: asset.guid,
+                typeName: asset.typeName as ScoringAssetType,
+                name: asset.name,
+                qualifiedName: asset.qualifiedName,
+                connectionName: asset.connectionName,
+                description: asset.description,
+                userDescription: asset.userDescription,
+                certificateStatus: asset.certificateStatus,
+                ownerUsers: normalizeOwners(asset.ownerUsers),
+                ownerGroups: normalizeOwners(asset.ownerGroups),
+                domainGUIDs: asset.domainGUIDs,
+                classificationNames: asset.classificationNames,
+                popularityScore: asset.popularityScore,
+                viewScore: asset.viewScore,
+                updateTime: asset.updateTime,
+                __hasLineage: asset.__hasLineage,
+                readme: asset.readme ? { hasReadme: true } : null,
+              };
+            });
           const transformDuration = performance.now() - transformStart;
           logger.debug('AssetContext: Asset transformation complete', { 
             duration: `${transformDuration.toFixed(2)}ms`,
