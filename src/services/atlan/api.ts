@@ -1377,7 +1377,7 @@ export async function getLineage(
       'meanings',
       '__hasLineage',
     ],
-    immediateNeighbors: true,
+    immediateNeighbours: true,
   };
 
   const response = await atlanFetch<AtlanLineageResponse>('/api/meta/lineage/list', {
