@@ -1420,18 +1420,20 @@ export async function getLineage(
     // Compute name with fallbacks
     const computedName = attributes.name || entity.displayText || 'Unknown';
 
-    // Debug logging
-    console.log('[normalizeEntity] Processing:', {
+    // Debug logging - show raw entity structure
+    console.log('[normalizeEntity] RAW entity:', JSON.stringify({
       guid: entity.guid,
       typeName: entity.typeName,
+      displayText: entity.displayText,
+      hasAttributes: !!entity.attributes,
+      attributeKeys: entity.attributes ? Object.keys(entity.attributes) : [],
       'attributes.name': attributes.name,
-      'entity.displayText': entity.displayText,
-      computedName,
-    });
+    }, null, 2));
+    console.log('[normalizeEntity] Computed name:', computedName);
 
     // Spread attributes FIRST, then override with explicit values
     // This ensures our fallback logic takes precedence over undefined values
-    return {
+    const normalized = {
       // Spread raw attributes first (may contain undefined values that would overwrite)
       ...attributes,
       // Then override with explicit values and fallbacks (these take precedence)
@@ -1450,6 +1452,11 @@ export async function getLineage(
       createdBy: entity.createdBy,
       updatedBy: entity.updatedBy,
     };
+
+    // Log the final normalized result
+    console.log('[normalizeEntity] RESULT:', { guid: normalized.guid, name: normalized.name, typeName: normalized.typeName });
+
+    return normalized;
   }
 
   // Build guidEntityMap from entities array
