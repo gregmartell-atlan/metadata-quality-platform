@@ -1,0 +1,10 @@
+.trend-card {
+  grid-column: span 6;
+}
+
+.trend-chart {
+  height: 200px;
+  position: relative;
+  padding: var(--gap-md) 0;
+}
+

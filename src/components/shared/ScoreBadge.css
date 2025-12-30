@@ -1,0 +1,34 @@
+.score-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+
+.score-badge.excellent {
+  background: rgba(0, 212, 170, 0.2);
+  color: var(--score-excellent);
+}
+
+.score-badge.good {
+  background: rgba(34, 197, 94, 0.2);
+  color: var(--score-good);
+}
+
+.score-badge.fair {
+  background: rgba(234, 179, 8, 0.2);
+  color: var(--score-fair);
+}
+
+.score-badge.poor {
+  background: rgba(249, 115, 23, 0.2);
+  color: var(--score-poor);
+}
+
+.score-badge.critical {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--score-critical);
+}
+

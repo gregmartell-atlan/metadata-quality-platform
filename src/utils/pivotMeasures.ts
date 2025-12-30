@@ -1,0 +1,243 @@
+/**
+ * Pivot Measure Calculations
+ * 
+ * Functions to calculate various measures for pivot tables
+ */
+
+import type { AtlanAsset } from '../services/atlan/types';
+import { scoreAssetQuality } from '../services/qualityMetrics';
+import type { LineageInfo } from '../services/atlan/lineageEnricher';
+
+// Type adapter for scoring (matches qualityMetrics.ts)
+interface AtlanAssetSummary {
+  guid: string;
+  typeName: string;
+  name: string;
+  qualifiedName: string;
+  connectionName?: string;
+  description?: string;
+  userDescription?: string;
+  ownerUsers?: string[];
+  ownerGroups?: string[];
+  certificateStatus?: string;
+  certificateUpdatedAt?: number;
+  classificationNames?: string[];
+  meanings?: string[];
+  domainGUIDs?: string[];
+  updateTime?: number;
+  sourceUpdatedAt?: number;
+  sourceLastReadAt?: number;
+  lastRowChangedAt?: number;
+  popularityScore?: number;
+  viewScore?: number;
+  starredCount?: number;
+  __hasLineage?: boolean;
+  isDiscoverable?: boolean;
+  readme?: any;
+}
+
+function assetToSummary(asset: AtlanAsset): AtlanAssetSummary {
+  return {
+    guid: asset.guid,
+    typeName: asset.typeName,
+    name: asset.name || '',
+    qualifiedName: asset.qualifiedName || '',
+    connectionName: asset.connectionName,
+    description: asset.description,
+    userDescription: asset.userDescription,
+    ownerUsers: Array.isArray(asset.ownerUsers)
+      ? asset.ownerUsers.map((u) => (typeof u === 'string' ? u : (u as any).name || ''))
+      : undefined,
+    ownerGroups: Array.isArray(asset.ownerGroups)
+      ? asset.ownerGroups.map((g) => (typeof g === 'string' ? g : (g as any).name || ''))
+      : undefined,
+    certificateStatus: asset.certificateStatus || undefined,
+    certificateUpdatedAt: asset.certificateUpdatedAt,
+    classificationNames: asset.classificationNames,
+    meanings: asset.meanings?.map((m) => (typeof m === 'string' ? m : (m as any).displayText || '')),
+    domainGUIDs: asset.domainGUIDs,
+    updateTime: asset.updateTime,
+    sourceUpdatedAt: asset.sourceUpdatedAt,
+    sourceLastReadAt: asset.sourceLastReadAt,
+    lastRowChangedAt: asset.lastRowChangedAt,
+    popularityScore: asset.popularityScore,
+    viewScore: asset.viewScore,
+    starredCount: asset.starredCount,
+    __hasLineage: asset.__hasLineage || false,
+    isDiscoverable: asset.isDiscoverable !== false,
+    readme: asset.readme,
+  };
+}
+
+/**
+ * Calculate measure values for a set of assets
+ * @param measure - The measure to calculate
+ * @param assets - The assets to calculate the measure for
+ * @param lineageMap - Optional map of lineage info by asset GUID (for lineage measures)
+ */
+export function calculateMeasure(
+  measure: string,
+  assets: AtlanAsset[],
+  lineageMap?: Map<string, LineageInfo>
+): number {
+  if (assets.length === 0) return 0;
+
+  switch (measure) {
+    case 'assetCount':
+      return assets.length;
+
+    case 'completeness':
+    case 'accuracy':
+    case 'timeliness':
+    case 'consistency':
+    case 'usability': {
+      const summaries = assets.map(assetToSummary);
+      const scores = summaries.map((s) => scoreAssetQuality(s));
+      const total = scores.reduce((sum, s) => sum + (s[measure as keyof typeof s] as number), 0);
+      return Math.round(total / scores.length);
+    }
+
+    case 'overall': {
+      const summaries = assets.map(assetToSummary);
+      const scores = summaries.map((s) => scoreAssetQuality(s));
+      const overalls = scores.map((s) => 
+        (s.completeness + s.accuracy + s.timeliness + s.consistency + s.usability) / 5
+      );
+      return Math.round(overalls.reduce((sum, o) => sum + o, 0) / overalls.length);
+    }
+
+    case 'descriptionCoverage': {
+      const withDescription = assets.filter(
+        (a) => a.description || a.userDescription
+      ).length;
+      return Math.round((withDescription / assets.length) * 100);
+    }
+
+    case 'ownerCoverage': {
+      const withOwner = assets.filter(
+        (a) => 
+          (Array.isArray(a.ownerUsers) && a.ownerUsers.length > 0) ||
+          (Array.isArray(a.ownerGroups) && a.ownerGroups.length > 0)
+      ).length;
+      return Math.round((withOwner / assets.length) * 100);
+    }
+
+    case 'certificationCoverage': {
+      const certified = assets.filter(
+        (a) => a.certificateStatus === 'VERIFIED'
+      ).length;
+      return Math.round((certified / assets.length) * 100);
+    }
+
+    case 'lineageCoverage': {
+      const withLineage = assets.filter((a) => a.__hasLineage === true).length;
+      return Math.round((withLineage / assets.length) * 100);
+    }
+
+    case 'hasUpstream': {
+      // Assets with upstream lineage (has inputs)
+      if (lineageMap) {
+        const withUpstream = assets.filter((a) => {
+          const lineage = lineageMap.get(a.guid);
+          return lineage?.hasUpstream === true;
+        }).length;
+        return Math.round((withUpstream / assets.length) * 100);
+      }
+      // Fallback: use __hasLineage flag as proxy
+      const withUpstream = assets.filter((a) => a.__hasLineage === true).length;
+      return Math.round((withUpstream / assets.length) * 100);
+    }
+
+    case 'hasDownstream': {
+      // Assets with downstream lineage (has outputs)
+      if (lineageMap) {
+        const withDownstream = assets.filter((a) => {
+          const lineage = lineageMap.get(a.guid);
+          return lineage?.hasDownstream === true;
+        }).length;
+        return Math.round((withDownstream / assets.length) * 100);
+      }
+      // Fallback: use __hasLineage flag as proxy
+      const withDownstream = assets.filter((a) => a.__hasLineage === true).length;
+      return Math.round((withDownstream / assets.length) * 100);
+    }
+
+    case 'fullLineage': {
+      // Assets with both upstream and downstream lineage
+      if (lineageMap) {
+        const withFullLineage = assets.filter((a) => {
+          const lineage = lineageMap.get(a.guid);
+          return lineage?.hasUpstream === true && lineage?.hasDownstream === true;
+        }).length;
+        return Math.round((withFullLineage / assets.length) * 100);
+      }
+      // Fallback: use __hasLineage as proxy
+      const withFullLineage = assets.filter((a) => a.__hasLineage === true).length;
+      return Math.round((withFullLineage / assets.length) * 100);
+    }
+
+    case 'orphaned': {
+      // Assets with no lineage at all
+      if (lineageMap) {
+        const orphaned = assets.filter((a) => {
+          const lineage = lineageMap.get(a.guid);
+          return !lineage || (!lineage.hasUpstream && !lineage.hasDownstream);
+        }).length;
+        return orphaned; // Return count, not percentage
+      }
+      // Fallback: use __hasLineage flag
+      const orphaned = assets.filter((a) => !a.__hasLineage || a.__hasLineage === false).length;
+      return orphaned; // Return count, not percentage
+    }
+
+    case 'avgCompleteness': {
+      const summaries = assets.map(assetToSummary);
+      const scores = summaries.map((s) => scoreAssetQuality(s));
+      const total = scores.reduce((sum, s) => sum + s.completeness, 0);
+      return Math.round(total / scores.length);
+    }
+
+    default:
+      return 0;
+  }
+}
+
+/**
+ * Get measure label
+ */
+export function getMeasureLabel(measure: string): string {
+  const labels: Record<string, string> = {
+    assetCount: '# Assets',
+    completeness: '% Completeness',
+    accuracy: '% Accuracy',
+    timeliness: '% Timeliness',
+    consistency: '% Consistency',
+    usability: '% Usability',
+    overall: 'Overall Score',
+    descriptionCoverage: '% with Description',
+    ownerCoverage: '% with Owner',
+    certificationCoverage: '% Certified',
+    lineageCoverage: '% with Lineage',
+    hasUpstream: 'Has Upstream',
+    hasDownstream: 'Has Downstream',
+    fullLineage: 'Full Lineage',
+    orphaned: 'Orphaned',
+    avgCompleteness: 'Avg Completeness',
+  };
+  return labels[measure] || measure;
+}
+
+/**
+ * Format measure value
+ */
+export function formatMeasure(measure: string, value: number): string {
+  if (measure === 'assetCount' || measure === 'orphaned') {
+    return value.toString();
+  }
+  if (measure === 'overall' || measure === 'avgCompleteness' || measure === 'completeness' || measure === 'accuracy' || measure === 'timeliness' || measure === 'consistency' || measure === 'usability') {
+    return value.toString();
+  }
+  // All others are percentages
+  return `${value}%`;
+}
+

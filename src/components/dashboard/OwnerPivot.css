@@ -1,0 +1,123 @@
+.pivot-card {
+  grid-column: span 12;
+}
+
+.pivot-controls {
+  display: flex;
+  gap: var(--gap-md);
+  padding: var(--gap-md);
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+
+.pivot-shelf {
+  flex: 1;
+  min-width: 200px;
+}
+
+.pivot-shelf-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: var(--gap-xs);
+}
+
+.pivot-shelf-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-xs);
+  min-height: 32px;
+  padding: var(--gap-xs);
+  background: var(--bg-secondary);
+  border: 1px dashed var(--border-default);
+  border-radius: 6px;
+}
+
+.pivot-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: grab;
+}
+
+.pivot-chip:hover {
+  border-color: var(--accent-primary);
+}
+
+.pivot-chip .remove {
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.pivot-chip .remove:hover {
+  color: var(--accent-danger);
+}
+
+.pivot-table-container {
+  overflow-x: auto;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.pivot-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.pivot-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.pivot-table th {
+  background: var(--bg-tertiary);
+  padding: var(--gap-sm) var(--gap-md);
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 2px solid var(--border-default);
+  white-space: nowrap;
+}
+
+.pivot-table th.measure {
+  text-align: right;
+}
+
+.pivot-table td {
+  padding: var(--gap-sm) var(--gap-md);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.pivot-table td.measure {
+  text-align: right;
+  font-family: var(--font-mono);
+}
+
+.pivot-table tr:hover {
+  background: var(--bg-hover);
+}
+
+.pivot-table .dimension-cell {
+  font-weight: 500;
+}
+
+.pivot-table .dimension-cell.unowned {
+  color: var(--accent-danger);
+}
+
+.pivot-table .measure.unowned {
+  color: var(--accent-danger);
+}
+
