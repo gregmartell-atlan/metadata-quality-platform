@@ -109,7 +109,16 @@ export function buildLineageGraph(
     if (asset.guid === actualCenterAsset.guid) return; // Skip center node (already added)
 
     const entityType = isProcessType(asset.typeName || '') ? 'process' : 'asset';
-    
+
+    // Debug logging
+    console.log('[buildLineageGraph] Creating node:', {
+      guid: asset.guid,
+      'asset.name': asset.name,
+      'asset.qualifiedName': asset.qualifiedName,
+      typeName: asset.typeName,
+      label: asset.name || asset.qualifiedName || 'Unknown',
+    });
+
     const node: LineageNode = {
       id: asset.guid,
       guid: asset.guid,
