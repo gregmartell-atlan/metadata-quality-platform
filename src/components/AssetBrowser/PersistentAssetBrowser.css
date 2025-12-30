@@ -1,0 +1,132 @@
+.persistent-asset-browser {
+  position: fixed;
+  left: 240px; /* Account for main sidebar */
+  top: 0;
+  bottom: 0;
+  width: 320px;
+  background: var(--bg-primary, #ffffff);
+  border-right: 1px solid var(--border-subtle, #e5e7eb);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+}
+
+.persistent-asset-browser.collapsed {
+  width: 48px;
+}
+
+.asset-browser-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-subtle, #e5e7eb);
+  background: var(--bg-tertiary, #f9fafb);
+  flex-shrink: 0;
+  min-height: 48px;
+}
+
+.persistent-asset-browser.collapsed .asset-browser-header {
+  padding: 0.75rem;
+  justify-content: center;
+}
+
+.asset-browser-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--text-primary, #111827);
+}
+
+.persistent-asset-browser.collapsed .asset-browser-title {
+  display: none;
+}
+
+.asset-browser-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.asset-browser-label {
+  white-space: nowrap;
+}
+
+.asset-browser-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.875rem;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.asset-browser-toggle:hover {
+  background: var(--bg-hover, #f3f4f6);
+  color: var(--text-primary, #111827);
+}
+
+.persistent-asset-browser.collapsed .asset-browser-toggle {
+  transform: rotate(180deg);
+}
+
+.asset-browser-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.5rem;
+}
+
+.asset-browser-wrapper {
+  height: 100%;
+}
+
+.asset-browser-wrapper > * {
+  height: 100%;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+/* Adjust main content to account for asset browser */
+/* This is handled by individual page components */
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .persistent-asset-browser {
+    width: 280px;
+  }
+
+  .app:has(.persistent-asset-browser:not(.collapsed)) {
+    margin-left: 520px;
+  }
+}
+
+@media (max-width: 768px) {
+  .persistent-asset-browser {
+    left: 0;
+    width: 100%;
+    max-width: 320px;
+    transform: translateX(-100%);
+  }
+
+  .persistent-asset-browser:not(.collapsed) {
+    transform: translateX(0);
+  }
+
+  .app:has(.persistent-asset-browser:not(.collapsed)) {
+    margin-left: 0;
+  }
+}
+

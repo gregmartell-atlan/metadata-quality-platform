@@ -63,11 +63,7 @@
   gap: var(--gap-md);
 }
 
-/* Asset Browser and Scorecard side by side */
-.asset-browser {
-  grid-column: span 4;
-}
-
+/* Scorecard */
 .scorecard {
   grid-column: span 3;
 }

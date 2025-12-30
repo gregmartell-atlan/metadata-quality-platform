@@ -3,7 +3,7 @@
  * Based on dashboard.html mockup
  */
 
-import { LayoutGrid, BarChart3, Target, Users, RefreshCw, Zap } from 'lucide-react';
+import { LayoutGrid, BarChart3, Target, Users, RefreshCw, Zap, GitBranch } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import './Sidebar.css';
 
@@ -53,6 +53,13 @@ export function Sidebar() {
           >
             <LayoutGrid size={18} />
             Pivot Builder
+          </Link>
+          <Link
+            to="/lineage"
+            className={`nav-item ${isActive('/lineage') ? 'active' : ''}`}
+          >
+            <GitBranch size={18} />
+            Lineage Explorer
           </Link>
           <Link
             to="/trends"

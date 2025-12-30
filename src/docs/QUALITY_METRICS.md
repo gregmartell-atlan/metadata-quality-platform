@@ -191,3 +191,8 @@ The weights and thresholds can be customized per organization by:
 - The system is designed to be forgiving - partial information still contributes to scores
 - In production, these calculations would be run server-side and cached for performance
 
+
+
+
+
+

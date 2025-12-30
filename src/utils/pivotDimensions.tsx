@@ -4,6 +4,8 @@
  * Functions to extract dimension values from assets for grouping
  */
 
+import React from 'react';
+import { Link2, Database, Folder, Package, User, Users, Building2, CheckCircle2, BarChart3 } from 'lucide-react';
 import type { AtlanAsset } from '../services/atlan/types';
 
 // Domain name cache (will be populated by domain resolver)
@@ -186,17 +188,17 @@ export function getDimensionLabel(dimension: string): string {
 /**
  * Get dimension icon
  */
-export function getDimensionIcon(dimension: string): string {
-  const icons: Record<string, string> = {
-    connection: '🔗',
-    database: '🗄️',
-    schema: '📁',
-    type: '📦',
-    owner: '👤',
-    ownerGroup: '👥',
-    domain: '🏢',
-    certificationStatus: '✓',
+export function getDimensionIcon(dimension: string): React.ReactNode {
+  const icons: Record<string, React.ReactNode> = {
+    connection: <Link2 size={14} />,
+    database: <Database size={14} />,
+    schema: <Folder size={14} />,
+    type: <Package size={14} />,
+    owner: <User size={14} />,
+    ownerGroup: <Users size={14} />,
+    domain: <Building2 size={14} />,
+    certificationStatus: <CheckCircle2 size={14} />,
   };
-  return icons[dimension] || '📊';
+  return icons[dimension] || <BarChart3 size={14} />;
 }
 

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Card, Button } from '../shared';
 import { useAssetStore } from '../../stores/assetStore';
+import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
 import { transformAtlanAsset } from '../../services/atlan/transformer';
 import { calculateAssetQuality, type QualityScores } from '../../services/qualityMetrics';
@@ -14,6 +16,9 @@ import { logger } from '../../utils/logger';
 
 export function Scorecard() {
   const { selectedAssets, selectedCount, addAsset } = useAssetStore();
+  // Subscribe directly to store state to get reactive updates
+  const contextAssets = useAssetContextStore((state) => state.contextAssets);
+  const getAssetCount = useAssetContextStore((state) => state.getAssetCount);
   const { setAssetsWithScores, assetsWithScores } = useScoresStore();
   const { scoringMode } = useScoringSettingsStore();
   const [trend, setTrend] = useState<number>(4.2); // Placeholder for trend logic
@@ -23,6 +28,10 @@ export function Scorecard() {
   const [configDrivenScores, setConfigDrivenScores] = useState<QualityScores | null>(null);
   
   const { setConfigVersion } = useScoringSettingsStore();
+  
+  // Use context assets if available, fallback to selectedAssets for backward compatibility
+  const effectiveAssets = contextAssets.length > 0 ? contextAssets : selectedAssets;
+  const effectiveCount = contextAssets.length > 0 ? getAssetCount() : selectedCount;
 
   // Initialize scoring service when Atlan config is available
   useEffect(() => {
@@ -39,9 +48,9 @@ export function Scorecard() {
     initService();
   }, [scoringMode, setConfigVersion]);
 
-  // Auto-calculate scores when selected assets change
+  // Auto-calculate scores when assets change (context or selected)
   const scores = useMemo(() => {
-    if (selectedAssets.length === 0) {
+    if (effectiveAssets.length === 0) {
       return configDrivenScores;
     }
     
@@ -53,7 +62,7 @@ export function Scorecard() {
     try {
       // Transform Atlan assets to AssetMetadata and calculate scores
       const agg = { completeness: 0, accuracy: 0, timeliness: 0, consistency: 0, usability: 0 };
-      selectedAssets.forEach(asset => {
+      effectiveAssets.forEach(asset => {
         const metadata = transformAtlanAsset(asset);
         const s = calculateAssetQuality(metadata);
         agg.completeness += s.completeness;
@@ -62,7 +71,7 @@ export function Scorecard() {
         agg.consistency += s.consistency;
         agg.usability += s.usability;
       });
-      const n = selectedAssets.length;
+      const n = effectiveAssets.length;
       return {
         completeness: Math.round(agg.completeness / n),
         accuracy: Math.round(agg.accuracy / n),
@@ -74,16 +83,16 @@ export function Scorecard() {
       logger.error('Error calculating scores', e);
       return null;
     }
-  }, [selectedAssets, scoringMode, configDrivenScores]);
+  }, [effectiveAssets, scoringMode, configDrivenScores]);
 
   // Calculate config-driven scores when assets change and mode is config-driven
   useEffect(() => {
-    if (scoringMode === "config-driven" && selectedAssets.length > 0) {
+    if (scoringMode === "config-driven" && effectiveAssets.length > 0) {
       const calculateConfigScores = async () => {
         try {
           setLoading(true);
           // Transform legacy assets to scoring format
-          const scoringAssets: ScoringAtlanAsset[] = selectedAssets.map(asset => ({
+          const scoringAssets: ScoringAtlanAsset[] = effectiveAssets.map(asset => ({
             guid: asset.guid,
             typeName: asset.typeName as any,
             name: asset.name,
@@ -154,11 +163,11 @@ export function Scorecard() {
     } else {
       setConfigDrivenScores(null);
     }
-  }, [selectedAssets, scoringMode]);
+  }, [effectiveAssets, scoringMode]);
   
   // Update scores store when assets change
   useEffect(() => {
-    if (selectedAssets.length > 0) {
+    if (effectiveAssets.length > 0) {
       setAssetsWithScores(selectedAssets);
     }
   }, [selectedAssets, setAssetsWithScores]);
@@ -254,7 +263,7 @@ export function Scorecard() {
 
   // Scores are now auto-calculated via useMemo, but keep this for manual refresh if needed
   const refreshScores = () => {
-    if (selectedAssets.length > 0) {
+    if (effectiveAssets.length > 0) {
       setAssetsWithScores(selectedAssets);
     }
   };
@@ -271,12 +280,12 @@ export function Scorecard() {
     <Card className="scorecard" title="Overall Health">
       <ScoringSettings />
       <div 
-        className={`scorecard-drop-zone ${isDraggingOver ? 'drag-over' : ''} ${selectedCount > 0 ? 'has-assets' : ''}`}
+        className={`scorecard-drop-zone ${isDraggingOver ? 'drag-over' : ''} ${effectiveCount > 0 ? 'has-assets' : ''}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        {selectedCount === 0 && !isDraggingOver && (
+        {effectiveCount === 0 && !isDraggingOver && (
           <div className="drop-zone-hint">
             <div className="drop-icon">📥</div>
             <p><strong>Drag assets here</strong> from the Asset Browser</p>
@@ -290,33 +299,34 @@ export function Scorecard() {
             <p className="drop-hint">Release to select all tables under this entity</p>
           </div>
         )}
-        {selectedCount > 0 && !isDraggingOver && (
+        {effectiveCount > 0 && !isDraggingOver && (
           <div className="drop-zone-hint has-assets-hint">
-            <div className="drop-icon">✓</div>
-            <p><strong>{selectedCount} asset{selectedCount !== 1 ? 's' : ''} selected</strong></p>
+            <CheckCircle2 size={20} className="drop-icon" />
+            <p><strong>{effectiveCount} asset{effectiveCount !== 1 ? 's' : ''} in context</strong></p>
             <p className="drop-hint">Drag more assets here to add them</p>
           </div>
         )}
       </div>
       <div className="scorecard-controls">
-        {selectedCount > 0 ? (
+        {effectiveCount > 0 ? (
           <div className="selection-status success">
-            <span className="status-icon">✓</span>
-            <span><strong>{selectedCount}</strong> asset{selectedCount !== 1 ? 's' : ''} ready for scoring</span>
+            <CheckCircle2 size={16} className="status-icon" />
+            <span><strong>{effectiveCount}</strong> asset{effectiveCount !== 1 ? 's' : ''} ready for scoring</span>
           </div>
         ) : (
           <div className="selection-status warning">
-            <span className="status-icon">⚠️</span>
+            <AlertTriangle size={16} className="status-icon" />
             <span>No assets selected. Use the <strong>Asset Browser</strong> to select assets for scoring.</span>
           </div>
         )}
-        {selectedCount > 0 && (
+        {effectiveCount > 0 && (
           <Button 
             onClick={refreshScores} 
             variant="secondary"
             style={{ marginTop: 12, width: '100%' }}
           >
-            ↻ Refresh Scores
+            <RefreshCw size={16} style={{ marginRight: '6px', display: 'inline', verticalAlign: 'middle' }} />
+            Refresh Scores
           </Button>
         )}
       </div>
@@ -366,7 +376,7 @@ export function Scorecard() {
           </div>
         </>
       )}
-      {!scores && selectedCount === 0 && (
+      {!scores && effectiveCount === 0 && (
         <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
           Select assets to see quality scores
         </div>

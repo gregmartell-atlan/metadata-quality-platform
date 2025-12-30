@@ -9,6 +9,7 @@ import {
   OwnerPivot,
 } from './index';
 import { AssetBrowser } from '../AssetBrowser';
+import { AssetContext } from '../AssetContext';
 import { AtlanHeader } from '../AtlanHeader';
 import { Button } from '../shared';
 import { getAtlanClient } from '../../services/atlan/api';
@@ -57,6 +58,9 @@ export function ExecutiveDashboard() {
 
   return (
     <div className="executive-dashboard">
+      {/* Asset Context Header */}
+      <AssetContext />
+      
       <header className="dashboard-header">
         <div className="header-left">
           <h1>Executive Overview</h1>
@@ -81,7 +85,6 @@ export function ExecutiveDashboard() {
       </header>
 
       <div className="dashboard-grid">
-        <AssetBrowser />
         <Scorecard />
         <StatsRow />
         <Heatmap />

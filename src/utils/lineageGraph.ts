@@ -2,10 +2,64 @@
  * Lineage Graph Utilities
  * 
  * Transform lineage API responses into graph data structures
+ * Based on Atlan's lineage model with Assets and Processes
  */
 
 import type { AtlanLineageResponse, AtlanAsset } from '../services/atlan/types';
-import type { LineageNode, LineageEdge, LineageGraph, LineageCoverageMetrics } from '../types/lineage';
+import type {
+  LineageNode,
+  LineageEdge,
+  LineageGraph,
+  LineageCoverageMetrics,
+  LineageQualityMetrics,
+  LineageMetrics,
+  QualityScores,
+  GovernanceMetadata,
+  FreshnessMetadata,
+} from '../types/lineage';
+
+/**
+ * Check if an entity is a Process type
+ */
+function isProcessType(typeName: string): boolean {
+  const processTypes = ['Process', 'ColumnProcess', 'BIProcess', 'SparkJob'];
+  return processTypes.some(pt => typeName.includes(pt) || typeName === pt);
+}
+
+/**
+ * Calculate freshness metadata for an asset
+ */
+function calculateFreshness(asset: AtlanAsset): FreshnessMetadata {
+  const now = Date.now();
+  const lastUpdated = asset.updateTime || asset.sourceUpdatedAt || asset.lastSyncRunAt;
+  const stalenessDays = lastUpdated ? Math.floor((now - lastUpdated) / (1000 * 60 * 60 * 24)) : undefined;
+  
+  // Consider stale if not updated in 90 days
+  const isStale = stalenessDays !== undefined && stalenessDays > 90;
+  
+  return {
+    lastUpdated,
+    lastSyncRunAt: asset.lastSyncRunAt,
+    sourceLastReadAt: asset.sourceLastReadAt,
+    updateTime: asset.updateTime,
+    isStale,
+    stalenessDays,
+  };
+}
+
+/**
+ * Extract governance metadata from asset
+ */
+function extractGovernance(asset: AtlanAsset): GovernanceMetadata {
+  return {
+    certificateStatus: asset.certificateStatus,
+    ownerUsers: Array.isArray(asset.ownerUsers) ? asset.ownerUsers.map((u: any) => typeof u === 'string' ? u : u.name || u.guid) : [],
+    ownerGroups: Array.isArray(asset.ownerGroups) ? asset.ownerGroups.map((g: any) => typeof g === 'string' ? g : g.name || g.guid) : [],
+    tags: asset.assetTags || asset.classificationNames || [],
+    terms: asset.meanings || asset.assignedTerms || [],
+    domainGUIDs: asset.domainGUIDs || [],
+  };
+}
 
 /**
  * Transform Atlan lineage response to graph nodes and edges
@@ -13,7 +67,8 @@ import type { LineageNode, LineageEdge, LineageGraph, LineageCoverageMetrics } f
 export function buildLineageGraph(
   centerAsset: AtlanAsset,
   lineageResponse: AtlanLineageResponse,
-  direction: 'upstream' | 'downstream' | 'both' = 'both'
+  direction: 'upstream' | 'downstream' | 'both' = 'both',
+  qualityScoresMap?: Map<string, QualityScores>
 ): LineageGraph {
   const nodes: LineageNode[] = [];
   const edges: LineageEdge[] = [];
@@ -26,16 +81,23 @@ export function buildLineageGraph(
     guid: centerAsset.guid,
     label: centerAsset.name || centerAsset.qualifiedName || 'Unknown',
     type: centerAsset.typeName || 'Unknown',
+    entityType: isProcessType(centerAsset.typeName || '') ? 'process' : 'asset',
     data: centerAsset,
     hasDescription: !!(centerAsset.description || centerAsset.userDescription),
     hasOwner: !!(centerAsset.ownerUsers?.length || centerAsset.ownerGroups?.length),
-    hasTags: !!(centerAsset.atlanTags?.length),
-    hasTerms: !!(centerAsset.meanings?.length),
+    hasTags: !!(centerAsset.assetTags?.length || centerAsset.classificationNames?.length),
+    hasTerms: !!(centerAsset.meanings?.length || centerAsset.assignedTerms?.length),
     hasCertificate: !!centerAsset.certificateStatus,
     hasUpstream: false,
     hasDownstream: false,
     upstreamCount: 0,
     downstreamCount: 0,
+    isExpandable: false,
+    isExpanded: true,
+    isCenterNode: true,
+    qualityScores: qualityScoresMap?.get(centerAsset.guid),
+    governance: extractGovernance(centerAsset),
+    freshness: calculateFreshness(centerAsset),
   };
   nodes.push(centerNode);
 
@@ -43,21 +105,30 @@ export function buildLineageGraph(
   Object.values(guidEntityMap).forEach((asset) => {
     if (asset.guid === centerAsset.guid) return; // Skip center node
 
+    const entityType = isProcessType(asset.typeName || '') ? 'process' : 'asset';
+    
     const node: LineageNode = {
       id: asset.guid,
       guid: asset.guid,
       label: asset.name || asset.qualifiedName || 'Unknown',
       type: asset.typeName || 'Unknown',
+      entityType,
       data: asset,
       hasDescription: !!(asset.description || asset.userDescription),
       hasOwner: !!(asset.ownerUsers?.length || asset.ownerGroups?.length),
-      hasTags: !!(asset.atlanTags?.length),
-      hasTerms: !!(asset.meanings?.length),
+      hasTags: !!(asset.assetTags?.length || asset.classificationNames?.length),
+      hasTerms: !!(asset.meanings?.length || asset.assignedTerms?.length),
       hasCertificate: !!asset.certificateStatus,
       hasUpstream: false,
       hasDownstream: false,
       upstreamCount: 0,
       downstreamCount: 0,
+      isExpandable: true, // Assume expandable until we know otherwise
+      isExpanded: false,
+      isCenterNode: false,
+      qualityScores: qualityScoresMap?.get(asset.guid),
+      governance: extractGovernance(asset),
+      freshness: calculateFreshness(asset),
     };
     nodes.push(node);
   });
@@ -91,6 +162,8 @@ export function buildLineageGraph(
       relationshipType: relation.relationshipType || 'unknown',
       relationshipId: relation.relationshipId,
       isUpstream: isUpstream,
+      sourceType: fromNode.type,
+      targetType: toNode.type,
     };
 
     // Filter edges based on direction
@@ -124,27 +197,30 @@ export function buildLineageGraph(
  */
 export function calculateCoverageMetrics(graph: LineageGraph): LineageCoverageMetrics {
   const { nodes } = graph;
-  const totalAssets = nodes.length;
+  const totalAssets = nodes.filter((n) => n.entityType === 'asset').length;
+  const totalProcesses = nodes.filter((n) => n.entityType === 'process').length;
+  const totalNodes = nodes.length;
   
   const withUpstream = nodes.filter((n) => n.hasUpstream).length;
   const withDownstream = nodes.filter((n) => n.hasDownstream).length;
   const withFullLineage = nodes.filter((n) => n.hasUpstream && n.hasDownstream).length;
   const orphaned = nodes.filter((n) => !n.hasUpstream && !n.hasDownstream).length;
   
-  const coveragePercentage = totalAssets > 0 
-    ? Math.round(((totalAssets - orphaned) / totalAssets) * 100)
+  const coveragePercentage = totalNodes > 0 
+    ? Math.round(((totalNodes - orphaned) / totalNodes) * 100)
     : 0;
   
-  const avgUpstreamCount = totalAssets > 0
-    ? Math.round(nodes.reduce((sum, n) => sum + n.upstreamCount, 0) / totalAssets * 10) / 10
+  const avgUpstreamCount = totalNodes > 0
+    ? Math.round(nodes.reduce((sum, n) => sum + n.upstreamCount, 0) / totalNodes * 10) / 10
     : 0;
   
-  const avgDownstreamCount = totalAssets > 0
-    ? Math.round(nodes.reduce((sum, n) => sum + n.downstreamCount, 0) / totalAssets * 10) / 10
+  const avgDownstreamCount = totalNodes > 0
+    ? Math.round(nodes.reduce((sum, n) => sum + n.downstreamCount, 0) / totalNodes * 10) / 10
     : 0;
 
   return {
     totalAssets,
+    totalProcesses,
     withUpstream,
     withDownstream,
     withFullLineage,
@@ -153,6 +229,125 @@ export function calculateCoverageMetrics(graph: LineageGraph): LineageCoverageMe
     avgUpstreamCount,
     avgDownstreamCount,
   };
+}
+
+/**
+ * Calculate quality metrics for a lineage graph
+ */
+export function calculateQualityMetrics(graph: LineageGraph): LineageQualityMetrics {
+  const { nodes } = graph;
+  const assetsWithScores = nodes.filter((n) => n.qualityScores && n.entityType === 'asset');
+  
+  if (assetsWithScores.length === 0) {
+    return {
+      avgCompleteness: 0,
+      avgAccuracy: 0,
+      avgTimeliness: 0,
+      avgConsistency: 0,
+      avgUsability: 0,
+      avgOverall: 0,
+      assetsWithIssues: 0,
+      assetsWithIssuesPercentage: 0,
+    };
+  }
+  
+  const totals = assetsWithScores.reduce(
+    (acc, node) => {
+      const scores = node.qualityScores!;
+      acc.completeness += scores.completeness || 0;
+      acc.accuracy += scores.accuracy || 0;
+      acc.timeliness += scores.timeliness || 0;
+      acc.consistency += scores.consistency || 0;
+      acc.usability += scores.usability || 0;
+      acc.overall += scores.overall || 0;
+      return acc;
+    },
+    { completeness: 0, accuracy: 0, timeliness: 0, consistency: 0, usability: 0, overall: 0 }
+  );
+  
+  const count = assetsWithScores.length;
+  const assetsWithIssues = assetsWithScores.filter((n) => (n.qualityScores?.overall || 0) < 50).length;
+  
+  return {
+    avgCompleteness: Math.round(totals.completeness / count),
+    avgAccuracy: Math.round(totals.accuracy / count),
+    avgTimeliness: Math.round(totals.timeliness / count),
+    avgConsistency: Math.round(totals.consistency / count),
+    avgUsability: Math.round(totals.usability / count),
+    avgOverall: Math.round(totals.overall / count),
+    assetsWithIssues,
+    assetsWithIssuesPercentage: Math.round((assetsWithIssues / count) * 100),
+  };
+}
+
+/**
+ * Calculate combined metrics
+ */
+export function calculateMetrics(graph: LineageGraph): LineageMetrics {
+  const coverage = calculateCoverageMetrics(graph);
+  const quality = calculateQualityMetrics(graph);
+  
+  const staleAssets = graph.nodes.filter((n) => n.freshness?.isStale && n.entityType === 'asset').length;
+  const stalePercentage = coverage.totalAssets > 0
+    ? Math.round((staleAssets / coverage.totalAssets) * 100)
+    : 0;
+  
+  return {
+    coverage,
+    quality,
+    freshness: {
+      staleAssets,
+      stalePercentage,
+    },
+  };
+}
+
+/**
+ * Find all downstream assets from a given node (for impact analysis)
+ */
+export function findImpactPath(graph: LineageGraph, nodeId: string): string[] {
+  const affected: string[] = [];
+  const visited = new Set<string>();
+  
+  function traverseDownstream(currentId: string) {
+    if (visited.has(currentId)) return;
+    visited.add(currentId);
+    
+    const outgoingEdges = graph.edges.filter((e) => e.source === currentId && !e.isUpstream);
+    outgoingEdges.forEach((edge) => {
+      if (!affected.includes(edge.target)) {
+        affected.push(edge.target);
+      }
+      traverseDownstream(edge.target);
+    });
+  }
+  
+  traverseDownstream(nodeId);
+  return affected;
+}
+
+/**
+ * Find upstream path from a node (for root cause analysis)
+ */
+export function findRootCausePath(graph: LineageGraph, nodeId: string): string[] {
+  const path: string[] = [];
+  const visited = new Set<string>();
+  
+  function traverseUpstream(currentId: string) {
+    if (visited.has(currentId)) return;
+    visited.add(currentId);
+    
+    const incomingEdges = graph.edges.filter((e) => e.target === currentId && e.isUpstream);
+    incomingEdges.forEach((edge) => {
+      if (!path.includes(edge.source)) {
+        path.push(edge.source);
+      }
+      traverseUpstream(edge.source);
+    });
+  }
+  
+  traverseUpstream(nodeId);
+  return path;
 }
 
 /**
@@ -167,7 +362,6 @@ export function applyHierarchicalLayout(
   if (!centerNode) return nodes;
 
   const layoutNodes = [...nodes];
-  const nodeMap = new Map(layoutNodes.map((n) => [n.id, n]));
 
   // Build adjacency lists
   const upstreamMap = new Map<string, string[]>();

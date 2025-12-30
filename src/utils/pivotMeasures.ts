@@ -80,7 +80,16 @@ export function calculateMeasure(
   assets: AtlanAsset[],
   lineageMap?: Map<string, LineageInfo>
 ): number {
-  if (assets.length === 0) return 0;
+  const startTime = performance.now();
+  if (assets.length === 0) {
+    logger.debug('calculateMeasure: No assets provided', { measure });
+    return 0;
+  }
+  logger.debug('calculateMeasure: Starting calculation', { 
+    measure, 
+    assetCount: assets.length,
+    hasLineageMap: !!lineageMap 
+  });
 
   switch (measure) {
     case 'assetCount':
@@ -103,7 +112,14 @@ export function calculateMeasure(
       const overalls = scores.map((s) => 
         (s.completeness + s.accuracy + s.timeliness + s.consistency + s.usability) / 5
       );
-      return Math.round(overalls.reduce((sum, o) => sum + o, 0) / overalls.length);
+      const result = Math.round(overalls.reduce((sum, o) => sum + o, 0) / overalls.length);
+      const duration = performance.now() - startTime;
+      logger.debug('calculateMeasure: Overall score calculated', { 
+        measure, 
+        result, 
+        duration: `${duration.toFixed(2)}ms` 
+      });
+      return result;
     }
 
     case 'descriptionCoverage': {
@@ -198,8 +214,15 @@ export function calculateMeasure(
     }
 
     default:
+      logger.warn('calculateMeasure: Unknown measure type', { measure });
       return 0;
   }
+  
+  const duration = performance.now() - startTime;
+  logger.debug('calculateMeasure: Calculation complete', { 
+    measure, 
+    duration: `${duration.toFixed(2)}ms` 
+  });
 }
 
 /**
