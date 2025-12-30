@@ -25,22 +25,69 @@
   gap: var(--gap-md);
   padding: var(--gap-lg, 24px);
   flex: 1;
+  align-content: start;
 }
 
-/* Scorecard */
-.scorecard {
+/* Scorecard - Health Score */
+.scorecard-v2 {
   grid-column: span 3;
+  grid-row: span 2;
 }
 
+/* Stats Row */
+.stats-row {
+  grid-column: span 9;
+}
+
+/* Heatmap */
+.heatmap-card {
+  grid-column: span 9;
+}
+
+/* Campaigns */
+.campaign-card {
+  grid-column: span 4;
+}
+
+/* Owner Pivot */
+.owner-pivot {
+  grid-column: span 12;
+}
+
+/* Trend Chart */
+.trend-card {
+  grid-column: span 4;
+}
+
+/* Tasks */
+.tasks-card {
+  grid-column: span 4;
+}
+
+/* Accountability */
+.accountability-card {
+  grid-column: span 4;
+}
+
+/* Responsive breakpoints */
 @media (max-width: 1400px) {
+  .scorecard-v2 {
+    grid-column: span 4;
+    grid-row: span 1;
+  }
+  .stats-row {
+    grid-column: span 8;
+  }
   .heatmap-card {
     grid-column: span 12;
   }
   .campaign-card {
     grid-column: span 6;
   }
-  .stats-row {
-    grid-column: span 12;
+  .trend-card,
+  .tasks-card,
+  .accountability-card {
+    grid-column: span 6;
   }
 }
 
@@ -48,7 +95,17 @@
   .executive-dashboard {
     margin-left: 0;
   }
+  .scorecard-v2 {
+    grid-column: span 12;
+  }
   .stats-row {
+    grid-column: span 12;
     grid-template-columns: repeat(2, 1fr);
+  }
+  .campaign-card,
+  .trend-card,
+  .tasks-card,
+  .accountability-card {
+    grid-column: span 12;
   }
 }
