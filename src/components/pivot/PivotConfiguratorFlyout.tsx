@@ -41,24 +41,22 @@ export function PivotConfiguratorFlyout({
 
   return (
     <div className={`config-flyout ${isOpen ? 'open' : 'collapsed'}`}>
-      {/* Collapsed Tab - visible when closed */}
-      {!isOpen && (
-        <button
-          className="flyout-collapsed-tab"
-          onClick={() => setIsOpen(true)}
-          title="Show configuration"
-        >
-          <ChevronLeft size={14} />
-          <Settings size={16} />
-          <span className="collapsed-label">Configure</span>
-          {(rowDimensions.length > 0 || measures.length > 0) && (
-            <span className="collapsed-badges">
-              {rowDimensions.length > 0 && <span>{rowDimensions.length}D</span>}
-              {measures.length > 0 && <span>{measures.length}M</span>}
-            </span>
-          )}
-        </button>
-      )}
+      {/* Collapsed Tab - CSS hides when panel is open */}
+      <button
+        className="flyout-collapsed-tab"
+        onClick={() => setIsOpen(true)}
+        title="Show configuration"
+      >
+        <ChevronLeft size={14} />
+        <Settings size={16} />
+        <span className="collapsed-label">Configure</span>
+        {(rowDimensions.length > 0 || measures.length > 0) && (
+          <span className="collapsed-badges">
+            {rowDimensions.length > 0 && <span>{rowDimensions.length}D</span>}
+            {measures.length > 0 && <span>{measures.length}M</span>}
+          </span>
+        )}
+      </button>
 
       {/* Flyout Panel */}
       <div className="flyout-panel">

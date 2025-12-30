@@ -7,76 +7,105 @@
   z-index: 50;
   display: flex;
   align-items: stretch;
-}
-
-/* Collapsed state - only show tab */
-.config-flyout.collapsed .flyout-panel {
-  width: 0;
-  opacity: 0;
-  overflow: hidden;
   pointer-events: none;
 }
 
-/* Open state - show full panel */
-.config-flyout.open .flyout-panel {
-  width: 280px;
-  opacity: 1;
+.config-flyout > * {
+  pointer-events: auto;
 }
 
-/* Collapsed Tab Button */
+/* Collapsed Tab Button - Always visible on right edge */
 .flyout-collapsed-tab {
   position: fixed;
   top: 50%;
   right: 0;
   transform: translateY(-50%);
+  width: 36px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 0.5rem;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 8px;
   background: var(--bg-card, #141416);
   border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
   border-right: none;
   border-radius: 8px 0 0 8px;
   cursor: pointer;
   color: var(--text-muted, #888);
-  transition: all 0.2s;
-  z-index: 51;
+  transition: all 0.2s ease;
+  z-index: 100;
 }
 
 .flyout-collapsed-tab:hover {
   background: var(--bg-hover, #1e1e21);
   color: var(--text-primary, #fff);
-  padding-left: 0.75rem;
+  width: 42px;
+}
+
+.flyout-collapsed-tab svg {
+  flex-shrink: 0;
 }
 
 .flyout-collapsed-tab .collapsed-label {
   writing-mode: vertical-rl;
   text-orientation: mixed;
-  font-size: 0.7rem;
+  transform: rotate(180deg);
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
+  white-space: nowrap;
 }
 
 .flyout-collapsed-tab .collapsed-badges {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.65rem;
-  font-weight: 600;
+  align-items: center;
+  gap: 4px;
+}
+
+.flyout-collapsed-tab .collapsed-badges span {
+  font-size: 10px;
+  font-weight: 700;
   color: var(--accent-primary, #00d4aa);
+  background: var(--bg-tertiary, #1a1a1d);
+  padding: 2px 4px;
+  border-radius: 3px;
 }
 
 /* Flyout Panel */
 .flyout-panel {
-  height: 100%;
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
   background: var(--bg-card, #141416);
   border-left: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: width 0.25s ease, opacity 0.2s ease;
+  transition: width 0.25s ease, opacity 0.2s ease, transform 0.25s ease;
+  z-index: 99;
+}
+
+/* Collapsed state */
+.config-flyout.collapsed .flyout-panel {
+  width: 0;
+  opacity: 0;
+  transform: translateX(100%);
+  pointer-events: none;
+}
+
+/* Open state */
+.config-flyout.open .flyout-panel {
+  width: 280px;
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.config-flyout.open .flyout-collapsed-tab {
+  display: none;
 }
 
 /* Flyout Header */
