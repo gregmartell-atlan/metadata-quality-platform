@@ -532,7 +532,8 @@ function buildBoolQuery(filters: {
  * Build connector filter
  */
 function connectorFilter(connector: string): Record<string, unknown> {
-  return { term: { 'connectorName.keyword': connector } };
+  // Use connectorName without .keyword suffix - matches getDatabases behavior
+  return { term: { 'connectorName': connector } };
 }
 
 /**
