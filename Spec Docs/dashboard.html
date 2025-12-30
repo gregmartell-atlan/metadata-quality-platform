@@ -1,0 +1,1706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metadata Quality Command Center</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Dark industrial theme */
+      --bg-primary: #0a0a0b;
+      --bg-secondary: #111113;
+      --bg-tertiary: #1a1a1d;
+      --bg-card: #141416;
+      --bg-hover: #1e1e21;
+      
+      /* Accent colors */
+      --accent-primary: #00d4aa;
+      --accent-secondary: #7c3aed;
+      --accent-warning: #f59e0b;
+      --accent-danger: #ef4444;
+      --accent-info: #3b82f6;
+      
+      /* Score colors */
+      --score-excellent: #00d4aa;
+      --score-good: #22c55e;
+      --score-fair: #eab308;
+      --score-poor: #f97316;
+      --score-critical: #ef4444;
+      
+      /* Text */
+      --text-primary: #f4f4f5;
+      --text-secondary: #a1a1aa;
+      --text-muted: #71717a;
+      
+      /* Borders */
+      --border-subtle: rgba(255,255,255,0.06);
+      --border-default: rgba(255,255,255,0.1);
+      
+      /* Fonts */
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-sans: 'DM Sans', sans-serif;
+      
+      /* Spacing */
+      --gap-xs: 4px;
+      --gap-sm: 8px;
+      --gap-md: 16px;
+      --gap-lg: 24px;
+      --gap-xl: 32px;
+      
+      /* Effects */
+      --glow-primary: 0 0 20px rgba(0, 212, 170, 0.15);
+      --glow-danger: 0 0 20px rgba(239, 68, 68, 0.15);
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+    
+    /* ============================================
+       LAYOUT
+       ============================================ */
+    
+    .app {
+      display: flex;
+      min-height: 100vh;
+    }
+    
+    .sidebar {
+      width: 240px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border-subtle);
+      padding: var(--gap-lg);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      height: 100vh;
+      z-index: 100;
+    }
+    
+    .main {
+      flex: 1;
+      margin-left: 240px;
+      padding: var(--gap-lg);
+      background: linear-gradient(180deg, var(--bg-primary) 0%, #0d0d0f 100%);
+    }
+    
+    /* ============================================
+       SIDEBAR
+       ============================================ */
+    
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: var(--gap-sm);
+      margin-bottom: var(--gap-xl);
+      padding-bottom: var(--gap-lg);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    
+    .logo-text {
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: -0.5px;
+    }
+    
+    .nav-section {
+      margin-bottom: var(--gap-lg);
+    }
+    
+    .nav-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: var(--gap-sm);
+      font-weight: 600;
+    }
+    
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: var(--gap-sm);
+      padding: var(--gap-sm) var(--gap-md);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 14px;
+      transition: all 0.2s;
+      cursor: pointer;
+      margin-bottom: 2px;
+    }
+    
+    .nav-item:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+    
+    .nav-item.active {
+      background: rgba(0, 212, 170, 0.1);
+      color: var(--accent-primary);
+    }
+    
+    .nav-item svg {
+      width: 18px;
+      height: 18px;
+      opacity: 0.7;
+    }
+    
+    .nav-item.active svg {
+      opacity: 1;
+    }
+    
+    /* ============================================
+       HEADER
+       ============================================ */
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--gap-lg);
+    }
+    
+    .header-left h1 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: var(--gap-xs);
+    }
+    
+    .header-left p {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    
+    .header-right {
+      display: flex;
+      gap: var(--gap-md);
+      align-items: center;
+    }
+    
+    .filter-group {
+      display: flex;
+      gap: var(--gap-sm);
+    }
+    
+    .filter-btn {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-default);
+      color: var(--text-secondary);
+      padding: var(--gap-sm) var(--gap-md);
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: var(--gap-xs);
+    }
+    
+    .filter-btn:hover {
+      background: var(--bg-hover);
+      border-color: var(--accent-primary);
+      color: var(--text-primary);
+    }
+    
+    .filter-btn.active {
+      background: rgba(0, 212, 170, 0.1);
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
+    }
+    
+    .refresh-btn {
+      background: var(--accent-primary);
+      color: var(--bg-primary);
+      border: none;
+      padding: var(--gap-sm) var(--gap-md);
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .refresh-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--glow-primary);
+    }
+    
+    /* ============================================
+       GRID LAYOUT
+       ============================================ */
+    
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: var(--gap-md);
+    }
+    
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--gap-md);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .card-actions {
+      display: flex;
+      gap: var(--gap-sm);
+    }
+    
+    .card-action {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+    
+    .card-action:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+    
+    .card-body {
+      padding: var(--gap-md);
+    }
+    
+    /* ============================================
+       SCORECARD
+       ============================================ */
+    
+    .scorecard {
+      grid-column: span 3;
+    }
+    
+    .score-display {
+      text-align: center;
+      padding: var(--gap-lg) var(--gap-md);
+    }
+    
+    .score-value {
+      font-family: var(--font-mono);
+      font-size: 56px;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: var(--gap-sm);
+      background: linear-gradient(135deg, var(--score-good), var(--accent-primary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .score-label {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: var(--gap-md);
+    }
+    
+    .score-trend {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--gap-xs);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    
+    .score-trend.up {
+      background: rgba(0, 212, 170, 0.15);
+      color: var(--accent-primary);
+    }
+    
+    .score-trend.down {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--accent-danger);
+    }
+    
+    .score-breakdown {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1px;
+      background: var(--border-subtle);
+      border-top: 1px solid var(--border-subtle);
+    }
+    
+    .score-dimension {
+      background: var(--bg-card);
+      padding: var(--gap-sm);
+      text-align: center;
+    }
+    
+    .score-dimension-value {
+      font-family: var(--font-mono);
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    
+    .score-dimension-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+    }
+    
+    /* ============================================
+       STAT CARDS
+       ============================================ */
+    
+    .stats-row {
+      grid-column: span 9;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--gap-md);
+    }
+    
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: var(--gap-md);
+    }
+    
+    .stat-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: var(--gap-sm);
+    }
+    
+    .stat-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .stat-icon.green { background: rgba(0, 212, 170, 0.15); color: var(--accent-primary); }
+    .stat-icon.yellow { background: rgba(245, 158, 11, 0.15); color: var(--accent-warning); }
+    .stat-icon.red { background: rgba(239, 68, 68, 0.15); color: var(--accent-danger); }
+    .stat-icon.blue { background: rgba(59, 130, 246, 0.15); color: var(--accent-info); }
+    
+    .stat-trend {
+      font-size: 11px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+    
+    .stat-trend.up { color: var(--accent-primary); }
+    .stat-trend.down { color: var(--accent-danger); }
+    
+    .stat-value {
+      font-family: var(--font-mono);
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    
+    /* ============================================
+       HEATMAP
+       ============================================ */
+    
+    .heatmap-card {
+      grid-column: span 8;
+    }
+    
+    .heatmap-container {
+      overflow-x: auto;
+    }
+    
+    .heatmap {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    
+    .heatmap th {
+      padding: var(--gap-sm);
+      text-align: center;
+      font-weight: 600;
+      color: var(--text-muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .heatmap th:first-child {
+      text-align: left;
+      min-width: 140px;
+    }
+    
+    .heatmap td {
+      padding: var(--gap-sm);
+      text-align: center;
+    }
+    
+    .heatmap td:first-child {
+      text-align: left;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+    
+    .heatmap-cell {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      font-size: 13px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      display: inline-block;
+      min-width: 48px;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    
+    .heatmap-cell:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    
+    .heatmap-cell.excellent { background: var(--score-excellent); color: #000; }
+    .heatmap-cell.good { background: var(--score-good); color: #000; }
+    .heatmap-cell.fair { background: var(--score-fair); color: #000; }
+    .heatmap-cell.poor { background: var(--score-poor); color: #000; }
+    .heatmap-cell.critical { background: var(--score-critical); color: #fff; }
+    
+    .heatmap-row-avg {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+    
+    .heatmap-legend {
+      display: flex;
+      justify-content: center;
+      gap: var(--gap-md);
+      padding-top: var(--gap-md);
+      border-top: 1px solid var(--border-subtle);
+      margin-top: var(--gap-md);
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: var(--gap-xs);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+    }
+    
+    /* ============================================
+       PIVOT TABLE
+       ============================================ */
+    
+    .pivot-card {
+      grid-column: span 12;
+    }
+    
+    .pivot-controls {
+      display: flex;
+      gap: var(--gap-md);
+      padding: var(--gap-md);
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border-subtle);
+      flex-wrap: wrap;
+    }
+    
+    .pivot-shelf {
+      flex: 1;
+      min-width: 200px;
+    }
+    
+    .pivot-shelf-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: var(--gap-xs);
+    }
+    
+    .pivot-shelf-items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--gap-xs);
+      min-height: 32px;
+      padding: var(--gap-xs);
+      background: var(--bg-secondary);
+      border: 1px dashed var(--border-default);
+      border-radius: 6px;
+    }
+    
+    .pivot-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      background: var(--bg-hover);
+      border: 1px solid var(--border-default);
+      border-radius: 4px;
+      font-size: 12px;
+      color: var(--text-primary);
+      cursor: grab;
+    }
+    
+    .pivot-chip:hover {
+      border-color: var(--accent-primary);
+    }
+    
+    .pivot-chip .remove {
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+    }
+    
+    .pivot-chip .remove:hover {
+      color: var(--accent-danger);
+    }
+    
+    .pivot-table-container {
+      overflow-x: auto;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    
+    .pivot-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    
+    .pivot-table thead {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    
+    .pivot-table th {
+      background: var(--bg-tertiary);
+      padding: var(--gap-sm) var(--gap-md);
+      text-align: left;
+      font-weight: 600;
+      color: var(--text-secondary);
+      border-bottom: 2px solid var(--border-default);
+      white-space: nowrap;
+    }
+    
+    .pivot-table th.measure {
+      text-align: right;
+    }
+    
+    .pivot-table td {
+      padding: var(--gap-sm) var(--gap-md);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    
+    .pivot-table td.measure {
+      text-align: right;
+      font-family: var(--font-mono);
+    }
+    
+    .pivot-table tr:hover {
+      background: var(--bg-hover);
+    }
+    
+    .pivot-table .dimension-cell {
+      font-weight: 500;
+    }
+    
+    .pivot-table .score-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 12px;
+    }
+    
+    .pivot-table .score-badge.excellent { background: rgba(0, 212, 170, 0.2); color: var(--score-excellent); }
+    .pivot-table .score-badge.good { background: rgba(34, 197, 94, 0.2); color: var(--score-good); }
+    .pivot-table .score-badge.fair { background: rgba(234, 179, 8, 0.2); color: var(--score-fair); }
+    .pivot-table .score-badge.poor { background: rgba(249, 115, 23, 0.2); color: var(--score-poor); }
+    .pivot-table .score-badge.critical { background: rgba(239, 68, 68, 0.2); color: var(--score-critical); }
+    
+    .pivot-table .bar-cell {
+      position: relative;
+      min-width: 120px;
+    }
+    
+    .pivot-table .bar-bg {
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      height: 6px;
+      background: var(--bg-hover);
+      border-radius: 3px;
+      width: 100px;
+    }
+    
+    .pivot-table .bar-fill {
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      height: 6px;
+      border-radius: 3px;
+      transition: width 0.3s;
+    }
+    
+    .pivot-table .bar-value {
+      position: relative;
+      margin-left: 110px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+    
+    /* ============================================
+       CAMPAIGN PROGRESS
+       ============================================ */
+    
+    .campaign-card {
+      grid-column: span 4;
+    }
+    
+    .campaign-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--gap-md);
+    }
+    
+    .campaign-item {
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      padding: var(--gap-md);
+      border: 1px solid var(--border-subtle);
+      transition: border-color 0.2s;
+    }
+    
+    .campaign-item:hover {
+      border-color: var(--accent-primary);
+    }
+    
+    .campaign-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: var(--gap-sm);
+    }
+    
+    .campaign-name {
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 2px;
+    }
+    
+    .campaign-type {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    
+    .campaign-status {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+    
+    .campaign-status.active {
+      background: rgba(0, 212, 170, 0.15);
+      color: var(--accent-primary);
+    }
+    
+    .campaign-status.at-risk {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-warning);
+    }
+    
+    .campaign-progress-bar {
+      height: 6px;
+      background: var(--bg-secondary);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: var(--gap-sm);
+    }
+    
+    .campaign-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-primary), var(--score-good));
+      border-radius: 3px;
+      transition: width 0.5s ease-out;
+    }
+    
+    .campaign-stats {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    
+    .campaign-stat span {
+      color: var(--text-primary);
+      font-weight: 600;
+      font-family: var(--font-mono);
+    }
+    
+    /* ============================================
+       TASK LIST
+       ============================================ */
+    
+    .tasks-card {
+      grid-column: span 6;
+    }
+    
+    .task-list {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .task-item {
+      display: flex;
+      align-items: center;
+      gap: var(--gap-md);
+      padding: var(--gap-md);
+      border-bottom: 1px solid var(--border-subtle);
+      transition: background 0.2s;
+    }
+    
+    .task-item:hover {
+      background: var(--bg-hover);
+    }
+    
+    .task-item:last-child {
+      border-bottom: none;
+    }
+    
+    .task-priority {
+      width: 4px;
+      height: 36px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    
+    .task-priority.critical { background: var(--accent-danger); }
+    .task-priority.high { background: var(--accent-warning); }
+    .task-priority.medium { background: var(--accent-info); }
+    .task-priority.low { background: var(--text-muted); }
+    
+    .task-content {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .task-title {
+      font-weight: 500;
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 2px;
+    }
+    
+    .task-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      gap: var(--gap-sm);
+    }
+    
+    .task-asset {
+      color: var(--accent-primary);
+    }
+    
+    .task-assignee {
+      display: flex;
+      align-items: center;
+      gap: var(--gap-xs);
+    }
+    
+    .task-avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--bg-tertiary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+    
+    .task-due {
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    
+    .task-due.overdue {
+      color: var(--accent-danger);
+    }
+    
+    /* ============================================
+       TREND CHART
+       ============================================ */
+    
+    .trend-card {
+      grid-column: span 6;
+    }
+    
+    .trend-chart {
+      height: 200px;
+      position: relative;
+      padding: var(--gap-md) 0;
+    }
+    
+    .trend-svg {
+      width: 100%;
+      height: 100%;
+    }
+    
+    .trend-line {
+      fill: none;
+      stroke: var(--accent-primary);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    
+    .trend-area {
+      fill: url(#trendGradient);
+    }
+    
+    .trend-grid-line {
+      stroke: var(--border-subtle);
+      stroke-width: 1;
+    }
+    
+    .trend-label {
+      fill: var(--text-muted);
+      font-size: 10px;
+      font-family: var(--font-mono);
+    }
+    
+    .trend-target {
+      stroke: var(--text-muted);
+      stroke-width: 1;
+      stroke-dasharray: 4 4;
+    }
+    
+    .trend-target-label {
+      fill: var(--text-muted);
+      font-size: 10px;
+    }
+    
+    .trend-dot {
+      fill: var(--accent-primary);
+      stroke: var(--bg-card);
+      stroke-width: 2;
+    }
+    
+    /* ============================================
+       OWNER ACCOUNTABILITY TABLE
+       ============================================ */
+    
+    .accountability-card {
+      grid-column: span 6;
+    }
+    
+    .accountability-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    
+    .accountability-table th {
+      text-align: left;
+      padding: var(--gap-sm) var(--gap-md);
+      font-weight: 600;
+      color: var(--text-muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border-default);
+    }
+    
+    .accountability-table td {
+      padding: var(--gap-sm) var(--gap-md);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    
+    .accountability-table tr:hover {
+      background: var(--bg-hover);
+    }
+    
+    .owner-cell {
+      display: flex;
+      align-items: center;
+      gap: var(--gap-sm);
+    }
+    
+    .owner-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent-secondary), var(--accent-primary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: #fff;
+    }
+    
+    .owner-name {
+      font-weight: 500;
+    }
+    
+    .assets-cell {
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+    
+    /* ============================================
+       ANIMATIONS
+       ============================================ */
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .card {
+      animation: fadeIn 0.4s ease-out;
+    }
+    
+    .card:nth-child(1) { animation-delay: 0.05s; }
+    .card:nth-child(2) { animation-delay: 0.1s; }
+    .card:nth-child(3) { animation-delay: 0.15s; }
+    .card:nth-child(4) { animation-delay: 0.2s; }
+    .card:nth-child(5) { animation-delay: 0.25s; }
+    
+    .loading {
+      animation: pulse 1.5s infinite;
+    }
+    
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    
+    @media (max-width: 1400px) {
+      .heatmap-card { grid-column: span 12; }
+      .campaign-card { grid-column: span 6; }
+      .stats-row { grid-column: span 12; }
+    }
+    
+    @media (max-width: 1024px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">MQ</div>
+        <span class="logo-text">Metadata Quality</span>
+      </div>
+      
+      <nav>
+        <div class="nav-section">
+          <div class="nav-label">Dashboards</div>
+          <a class="nav-item active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Executive Overview
+          </a>
+          <a class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+            Stewardship Ops
+          </a>
+          <a class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+            Campaign Tracking
+          </a>
+        </div>
+        
+        <div class="nav-section">
+          <div class="nav-label">Analysis</div>
+          <a class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            Pivot Builder
+          </a>
+          <a class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path d="M9 12l2 2 4-4"/></svg>
+            Quality Trends
+          </a>
+          <a class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+            Accountability
+          </a>
+        </div>
+        
+        <div class="nav-section">
+          <div class="nav-label">Actions</div>
+          <a class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 4h-5L7 7H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+            Campaigns
+          </a>
+          <a class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            Automation Rules
+          </a>
+        </div>
+      </nav>
+    </aside>
+    
+    <!-- Main Content -->
+    <main class="main">
+      <header class="header">
+        <div class="header-left">
+          <h1>Executive Overview</h1>
+          <p>Metadata quality health across your data estate • Last updated 2 minutes ago</p>
+        </div>
+        <div class="header-right">
+          <div class="filter-group">
+            <button class="filter-btn active">All Domains</button>
+            <button class="filter-btn">Last 30 Days</button>
+          </div>
+          <button class="refresh-btn">↻ Refresh</button>
+        </div>
+      </header>
+      
+      <div class="dashboard-grid">
+        
+        <!-- Overall Health Score -->
+        <div class="card scorecard">
+          <div class="card-header">
+            <span class="card-title">Overall Health</span>
+          </div>
+          <div class="score-display">
+            <div class="score-value">67</div>
+            <div class="score-label">Metadata Health Score</div>
+            <span class="score-trend up">↑ 4.2% vs last month</span>
+          </div>
+          <div class="score-breakdown">
+            <div class="score-dimension">
+              <div class="score-dimension-value" style="color: var(--score-good)">72</div>
+              <div class="score-dimension-label">Complete</div>
+            </div>
+            <div class="score-dimension">
+              <div class="score-dimension-value" style="color: var(--score-fair)">58</div>
+              <div class="score-dimension-label">Accurate</div>
+            </div>
+            <div class="score-dimension">
+              <div class="score-dimension-value" style="color: var(--score-good)">74</div>
+              <div class="score-dimension-label">Timely</div>
+            </div>
+            <div class="score-dimension">
+              <div class="score-dimension-value" style="color: var(--score-fair)">61</div>
+              <div class="score-dimension-label">Consistent</div>
+            </div>
+            <div class="score-dimension">
+              <div class="score-dimension-value" style="color: var(--score-good)">69</div>
+              <div class="score-dimension-label">Usable</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Stats Row -->
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-header">
+              <div class="stat-icon green">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>
+              </div>
+              <span class="stat-trend up">↑ 12%</span>
+            </div>
+            <div class="stat-value">2,847</div>
+            <div class="stat-label">Assets with Descriptions</div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-header">
+              <div class="stat-icon yellow">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+              </div>
+              <span class="stat-trend up">↑ 8%</span>
+            </div>
+            <div class="stat-value">78%</div>
+            <div class="stat-label">Assets with Owners</div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-header">
+              <div class="stat-icon red">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </div>
+              <span class="stat-trend down">↑ 3%</span>
+            </div>
+            <div class="stat-value">342</div>
+            <div class="stat-label">Stale Assets (&gt;90 days)</div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-header">
+              <div class="stat-icon blue">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+              </div>
+              <span class="stat-trend up">↑ 15%</span>
+            </div>
+            <div class="stat-value">1,234</div>
+            <div class="stat-label">Certified Assets</div>
+          </div>
+        </div>
+        
+        <!-- Domain × Dimension Heatmap -->
+        <div class="card heatmap-card">
+          <div class="card-header">
+            <span class="card-title">Quality by Domain × Dimension</span>
+            <div class="card-actions">
+              <button class="card-action">⋮</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="heatmap-container">
+              <table class="heatmap">
+                <thead>
+                  <tr>
+                    <th>Domain</th>
+                    <th>Completeness</th>
+                    <th>Accuracy</th>
+                    <th>Timeliness</th>
+                    <th>Consistency</th>
+                    <th>Usability</th>
+                    <th>Overall</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Customer Data</td>
+                    <td><span class="heatmap-cell excellent">92</span></td>
+                    <td><span class="heatmap-cell good">78</span></td>
+                    <td><span class="heatmap-cell excellent">85</span></td>
+                    <td><span class="heatmap-cell good">71</span></td>
+                    <td><span class="heatmap-cell excellent">88</span></td>
+                    <td class="heatmap-row-avg">83</td>
+                  </tr>
+                  <tr>
+                    <td>Financial</td>
+                    <td><span class="heatmap-cell excellent">88</span></td>
+                    <td><span class="heatmap-cell excellent">91</span></td>
+                    <td><span class="heatmap-cell good">76</span></td>
+                    <td><span class="heatmap-cell excellent">84</span></td>
+                    <td><span class="heatmap-cell good">79</span></td>
+                    <td class="heatmap-row-avg">84</td>
+                  </tr>
+                  <tr>
+                    <td>Product</td>
+                    <td><span class="heatmap-cell good">74</span></td>
+                    <td><span class="heatmap-cell fair">62</span></td>
+                    <td><span class="heatmap-cell good">68</span></td>
+                    <td><span class="heatmap-cell fair">55</span></td>
+                    <td><span class="heatmap-cell good">71</span></td>
+                    <td class="heatmap-row-avg">66</td>
+                  </tr>
+                  <tr>
+                    <td>Marketing</td>
+                    <td><span class="heatmap-cell fair">58</span></td>
+                    <td><span class="heatmap-cell fair">52</span></td>
+                    <td><span class="heatmap-cell poor">41</span></td>
+                    <td><span class="heatmap-cell poor">38</span></td>
+                    <td><span class="heatmap-cell fair">49</span></td>
+                    <td class="heatmap-row-avg">48</td>
+                  </tr>
+                  <tr>
+                    <td>Operations</td>
+                    <td><span class="heatmap-cell good">65</span></td>
+                    <td><span class="heatmap-cell fair">58</span></td>
+                    <td><span class="heatmap-cell good">72</span></td>
+                    <td><span class="heatmap-cell fair">61</span></td>
+                    <td><span class="heatmap-cell fair">54</span></td>
+                    <td class="heatmap-row-avg">62</td>
+                  </tr>
+                  <tr>
+                    <td>HR</td>
+                    <td><span class="heatmap-cell poor">42</span></td>
+                    <td><span class="heatmap-cell critical">28</span></td>
+                    <td><span class="heatmap-cell poor">35</span></td>
+                    <td><span class="heatmap-cell critical">22</span></td>
+                    <td><span class="heatmap-cell poor">31</span></td>
+                    <td class="heatmap-row-avg">32</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="heatmap-legend">
+              <div class="legend-item"><div class="legend-color" style="background: var(--score-excellent)"></div> Excellent (80+)</div>
+              <div class="legend-item"><div class="legend-color" style="background: var(--score-good)"></div> Good (60-79)</div>
+              <div class="legend-item"><div class="legend-color" style="background: var(--score-fair)"></div> Fair (40-59)</div>
+              <div class="legend-item"><div class="legend-color" style="background: var(--score-poor)"></div> Poor (20-39)</div>
+              <div class="legend-item"><div class="legend-color" style="background: var(--score-critical)"></div> Critical (&lt;20)</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Campaign Progress -->
+        <div class="card campaign-card">
+          <div class="card-header">
+            <span class="card-title">Active Campaigns</span>
+            <div class="card-actions">
+              <button class="card-action">+</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="campaign-list">
+              <div class="campaign-item">
+                <div class="campaign-header">
+                  <div>
+                    <div class="campaign-name">Q4 Description Blitz</div>
+                    <div class="campaign-type">Resolution • 3 stewards</div>
+                  </div>
+                  <span class="campaign-status active">On Track</span>
+                </div>
+                <div class="campaign-progress-bar">
+                  <div class="campaign-progress-fill" style="width: 68%"></div>
+                </div>
+                <div class="campaign-stats">
+                  <span class="campaign-stat"><span>342</span> / 503 tasks</span>
+                  <span class="campaign-stat">Due <span>Dec 31</span></span>
+                </div>
+              </div>
+              
+              <div class="campaign-item">
+                <div class="campaign-header">
+                  <div>
+                    <div class="campaign-name">Owner Assignment Sprint</div>
+                    <div class="campaign-type">Resolution • 5 stewards</div>
+                  </div>
+                  <span class="campaign-status at-risk">At Risk</span>
+                </div>
+                <div class="campaign-progress-bar">
+                  <div class="campaign-progress-fill" style="width: 34%"></div>
+                </div>
+                <div class="campaign-stats">
+                  <span class="campaign-stat"><span>89</span> / 264 tasks</span>
+                  <span class="campaign-stat">Due <span>Jan 15</span></span>
+                </div>
+              </div>
+              
+              <div class="campaign-item">
+                <div class="campaign-header">
+                  <div>
+                    <div class="campaign-name">PII Classification Review</div>
+                    <div class="campaign-type">Certification • 2 stewards</div>
+                  </div>
+                  <span class="campaign-status active">On Track</span>
+                </div>
+                <div class="campaign-progress-bar">
+                  <div class="campaign-progress-fill" style="width: 82%"></div>
+                </div>
+                <div class="campaign-stats">
+                  <span class="campaign-stat"><span>156</span> / 190 tasks</span>
+                  <span class="campaign-stat">Due <span>Jan 5</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Pivot Table: Owner × Completeness Band -->
+        <div class="card pivot-card">
+          <div class="card-header">
+            <span class="card-title">Owner Accountability: Assets by Completeness Score</span>
+            <div class="card-actions">
+              <button class="card-action">⤓</button>
+              <button class="card-action">⋮</button>
+            </div>
+          </div>
+          <div class="pivot-controls">
+            <div class="pivot-shelf">
+              <div class="pivot-shelf-label">Rows</div>
+              <div class="pivot-shelf-items">
+                <span class="pivot-chip">Owner Group <span class="remove">×</span></span>
+              </div>
+            </div>
+            <div class="pivot-shelf">
+              <div class="pivot-shelf-label">Columns</div>
+              <div class="pivot-shelf-items">
+                <span class="pivot-chip">Completeness Band <span class="remove">×</span></span>
+              </div>
+            </div>
+            <div class="pivot-shelf">
+              <div class="pivot-shelf-label">Measures</div>
+              <div class="pivot-shelf-items">
+                <span class="pivot-chip">Asset Count <span class="remove">×</span></span>
+                <span class="pivot-chip">Avg Score <span class="remove">×</span></span>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="pivot-table-container">
+              <table class="pivot-table">
+                <thead>
+                  <tr>
+                    <th>Owner Group</th>
+                    <th class="measure">Critical (0-24)</th>
+                    <th class="measure">Poor (25-49)</th>
+                    <th class="measure">Fair (50-74)</th>
+                    <th class="measure">Good (75-100)</th>
+                    <th class="measure">Total Assets</th>
+                    <th class="measure">Avg Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="dimension-cell">Data Engineering</td>
+                    <td class="measure">12</td>
+                    <td class="measure">45</td>
+                    <td class="measure">189</td>
+                    <td class="measure">342</td>
+                    <td class="measure"><strong>588</strong></td>
+                    <td class="measure"><span class="score-badge good">72</span></td>
+                  </tr>
+                  <tr>
+                    <td class="dimension-cell">Analytics</td>
+                    <td class="measure">8</td>
+                    <td class="measure">67</td>
+                    <td class="measure">234</td>
+                    <td class="measure">156</td>
+                    <td class="measure"><strong>465</strong></td>
+                    <td class="measure"><span class="score-badge fair">64</span></td>
+                  </tr>
+                  <tr>
+                    <td class="dimension-cell">Finance</td>
+                    <td class="measure">2</td>
+                    <td class="measure">18</td>
+                    <td class="measure">89</td>
+                    <td class="measure">203</td>
+                    <td class="measure"><strong>312</strong></td>
+                    <td class="measure"><span class="score-badge good">78</span></td>
+                  </tr>
+                  <tr>
+                    <td class="dimension-cell">Marketing</td>
+                    <td class="measure">34</td>
+                    <td class="measure">89</td>
+                    <td class="measure">112</td>
+                    <td class="measure">43</td>
+                    <td class="measure"><strong>278</strong></td>
+                    <td class="measure"><span class="score-badge poor">48</span></td>
+                  </tr>
+                  <tr>
+                    <td class="dimension-cell">Product</td>
+                    <td class="measure">15</td>
+                    <td class="measure">52</td>
+                    <td class="measure">98</td>
+                    <td class="measure">67</td>
+                    <td class="measure"><strong>232</strong></td>
+                    <td class="measure"><span class="score-badge fair">58</span></td>
+                  </tr>
+                  <tr>
+                    <td class="dimension-cell">Operations</td>
+                    <td class="measure">28</td>
+                    <td class="measure">76</td>
+                    <td class="measure">84</td>
+                    <td class="measure">31</td>
+                    <td class="measure"><strong>219</strong></td>
+                    <td class="measure"><span class="score-badge poor">45</span></td>
+                  </tr>
+                  <tr>
+                    <td class="dimension-cell" style="color: var(--accent-danger)">⚠ Unowned</td>
+                    <td class="measure" style="color: var(--accent-danger)">156</td>
+                    <td class="measure">89</td>
+                    <td class="measure">42</td>
+                    <td class="measure">12</td>
+                    <td class="measure"><strong style="color: var(--accent-danger)">299</strong></td>
+                    <td class="measure"><span class="score-badge critical">24</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Trend Chart -->
+        <div class="card trend-card">
+          <div class="card-header">
+            <span class="card-title">Health Score Trend (90 Days)</span>
+            <div class="card-actions">
+              <button class="card-action">⋮</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="trend-chart">
+              <svg class="trend-svg" viewBox="0 0 600 180">
+                <defs>
+                  <linearGradient id="trendGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" style="stop-color:rgba(0,212,170,0.3)"/>
+                    <stop offset="100%" style="stop-color:rgba(0,212,170,0)"/>
+                  </linearGradient>
+                </defs>
+                
+                <!-- Grid lines -->
+                <line class="trend-grid-line" x1="50" y1="20" x2="580" y2="20"/>
+                <line class="trend-grid-line" x1="50" y1="60" x2="580" y2="60"/>
+                <line class="trend-grid-line" x1="50" y1="100" x2="580" y2="100"/>
+                <line class="trend-grid-line" x1="50" y1="140" x2="580" y2="140"/>
+                
+                <!-- Y-axis labels -->
+                <text class="trend-label" x="40" y="24" text-anchor="end">100</text>
+                <text class="trend-label" x="40" y="64" text-anchor="end">75</text>
+                <text class="trend-label" x="40" y="104" text-anchor="end">50</text>
+                <text class="trend-label" x="40" y="144" text-anchor="end">25</text>
+                
+                <!-- X-axis labels -->
+                <text class="trend-label" x="50" y="170">Oct</text>
+                <text class="trend-label" x="200" y="170">Nov</text>
+                <text class="trend-label" x="400" y="170">Dec</text>
+                <text class="trend-label" x="560" y="170">Now</text>
+                
+                <!-- Target line -->
+                <line class="trend-target" x1="50" y1="60" x2="580" y2="60"/>
+                <text class="trend-target-label" x="585" y="64">Target: 75</text>
+                
+                <!-- Area fill -->
+                <path class="trend-area" d="M50,120 L100,115 L150,110 L200,105 L250,95 L300,90 L350,85 L400,80 L450,75 L500,70 L550,68 L580,66 L580,140 L50,140 Z"/>
+                
+                <!-- Trend line -->
+                <path class="trend-line" d="M50,120 L100,115 L150,110 L200,105 L250,95 L300,90 L350,85 L400,80 L450,75 L500,70 L550,68 L580,66"/>
+                
+                <!-- Data points -->
+                <circle class="trend-dot" cx="50" cy="120" r="4"/>
+                <circle class="trend-dot" cx="150" cy="110" r="4"/>
+                <circle class="trend-dot" cx="250" cy="95" r="4"/>
+                <circle class="trend-dot" cx="350" cy="85" r="4"/>
+                <circle class="trend-dot" cx="450" cy="75" r="4"/>
+                <circle class="trend-dot" cx="580" cy="66" r="6"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Task List -->
+        <div class="card tasks-card">
+          <div class="card-header">
+            <span class="card-title">Recent Tasks</span>
+            <div class="card-actions">
+              <button class="card-action">View All →</button>
+            </div>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            <div class="task-list">
+              <div class="task-item">
+                <div class="task-priority critical"></div>
+                <div class="task-content">
+                  <div class="task-title">Add description to customer_transactions</div>
+                  <div class="task-meta">
+                    <span class="task-asset">snowflake/prod/customer_transactions</span>
+                  </div>
+                </div>
+                <div class="task-assignee">
+                  <div class="task-avatar">JD</div>
+                </div>
+                <div class="task-due overdue">Overdue 2d</div>
+              </div>
+              
+              <div class="task-item">
+                <div class="task-priority high"></div>
+                <div class="task-content">
+                  <div class="task-title">Assign owner to marketing_campaigns</div>
+                  <div class="task-meta">
+                    <span class="task-asset">bigquery/analytics/marketing_campaigns</span>
+                  </div>
+                </div>
+                <div class="task-assignee">
+                  <div class="task-avatar">AS</div>
+                </div>
+                <div class="task-due">Due Today</div>
+              </div>
+              
+              <div class="task-item">
+                <div class="task-priority medium"></div>
+                <div class="task-content">
+                  <div class="task-title">Review PII classification for user_profiles</div>
+                  <div class="task-meta">
+                    <span class="task-asset">redshift/warehouse/user_profiles</span>
+                  </div>
+                </div>
+                <div class="task-assignee">
+                  <div class="task-avatar">MK</div>
+                </div>
+                <div class="task-due">Due in 3d</div>
+              </div>
+              
+              <div class="task-item">
+                <div class="task-priority medium"></div>
+                <div class="task-content">
+                  <div class="task-title">Certify dim_products after review</div>
+                  <div class="task-meta">
+                    <span class="task-asset">snowflake/analytics/dim_products</span>
+                  </div>
+                </div>
+                <div class="task-assignee">
+                  <div class="task-avatar">RJ</div>
+                </div>
+                <div class="task-due">Due in 5d</div>
+              </div>
+              
+              <div class="task-item">
+                <div class="task-priority low"></div>
+                <div class="task-content">
+                  <div class="task-title">Update stale metadata on legacy_orders</div>
+                  <div class="task-meta">
+                    <span class="task-asset">postgres/legacy/orders</span>
+                  </div>
+                </div>
+                <div class="task-assignee">
+                  <div class="task-avatar">TL</div>
+                </div>
+                <div class="task-due">Due in 7d</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Owner Accountability -->
+        <div class="card accountability-card">
+          <div class="card-header">
+            <span class="card-title">Steward Performance</span>
+            <div class="card-actions">
+              <button class="card-action">⋮</button>
+            </div>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            <table class="accountability-table">
+              <thead>
+                <tr>
+                  <th>Steward</th>
+                  <th>Assets</th>
+                  <th>Avg Score</th>
+                  <th>Tasks Done</th>
+                  <th>Trend</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="owner-cell">
+                      <div class="owner-avatar">JD</div>
+                      <span class="owner-name">Jane Doe</span>
+                    </div>
+                  </td>
+                  <td class="assets-cell">342</td>
+                  <td><span class="score-badge good">76</span></td>
+                  <td class="assets-cell">48/52</td>
+                  <td style="color: var(--accent-primary)">↑ 8%</td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="owner-cell">
+                      <div class="owner-avatar">AS</div>
+                      <span class="owner-name">Alex Smith</span>
+                    </div>
+                  </td>
+                  <td class="assets-cell">289</td>
+                  <td><span class="score-badge good">71</span></td>
+                  <td class="assets-cell">35/41</td>
+                  <td style="color: var(--accent-primary)">↑ 5%</td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="owner-cell">
+                      <div class="owner-avatar">MK</div>
+                      <span class="owner-name">Maria Kim</span>
+                    </div>
+                  </td>
+                  <td class="assets-cell">198</td>
+                  <td><span class="score-badge fair">62</span></td>
+                  <td class="assets-cell">22/38</td>
+                  <td style="color: var(--accent-warning)">→ 0%</td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="owner-cell">
+                      <div class="owner-avatar">RJ</div>
+                      <span class="owner-name">Raj Patel</span>
+                    </div>
+                  </td>
+                  <td class="assets-cell">156</td>
+                  <td><span class="score-badge fair">58</span></td>
+                  <td class="assets-cell">18/29</td>
+                  <td style="color: var(--accent-danger)">↓ 3%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+      </div>
+    </main>
+  </div>
+</body>
+</html>

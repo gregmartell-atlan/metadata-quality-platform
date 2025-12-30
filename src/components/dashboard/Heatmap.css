@@ -1,0 +1,110 @@
+.heatmap-card {
+  grid-column: span 8;
+}
+
+.heatmap-container {
+  overflow-x: auto;
+}
+
+.heatmap {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.heatmap th {
+  padding: var(--gap-sm);
+  text-align: center;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.heatmap th:first-child {
+  text-align: left;
+  min-width: 140px;
+}
+
+.heatmap td {
+  padding: var(--gap-sm);
+  text-align: center;
+}
+
+.heatmap td:first-child {
+  text-align: left;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.heatmap-cell {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  display: inline-block;
+  min-width: 48px;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.heatmap-cell:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.heatmap-cell.excellent {
+  background: var(--score-excellent);
+  color: #000;
+}
+
+.heatmap-cell.good {
+  background: var(--score-good);
+  color: #000;
+}
+
+.heatmap-cell.fair {
+  background: var(--score-fair);
+  color: #000;
+}
+
+.heatmap-cell.poor {
+  background: var(--score-poor);
+  color: #000;
+}
+
+.heatmap-cell.critical {
+  background: var(--score-critical);
+  color: #fff;
+}
+
+.heatmap-row-avg {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.heatmap-legend {
+  display: flex;
+  justify-content: center;
+  gap: var(--gap-md);
+  padding-top: var(--gap-md);
+  border-top: 1px solid var(--border-subtle);
+  margin-top: var(--gap-md);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-xs);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+

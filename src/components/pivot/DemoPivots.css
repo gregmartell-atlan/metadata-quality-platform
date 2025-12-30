@@ -1,0 +1,46 @@
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-md);
+  margin: var(--gap-xl) 0 var(--gap-lg);
+}
+
+.section-divider::before,
+.section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-subtle);
+}
+
+.section-divider span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.legend {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  padding: var(--gap-md);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.legend-color {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+}
+

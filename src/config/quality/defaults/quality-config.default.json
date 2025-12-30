@@ -1,0 +1,107 @@
+{
+  "version": "v1",
+  "activeProfiles": ["industry5d", "standardCompleteness"],
+  "bands": { "excellent": 80, "good": 60, "fair": 40, "poor": 20 },
+  "profiles": {
+    "industry5d": {
+      "dimensionWeights": {
+        "completeness": 0.30,
+        "accuracy": 0.25,
+        "timeliness": 0.20,
+        "consistency": 0.15,
+        "usability": 0.10
+      },
+      "dimensions": {
+        "completeness": { "checks": [
+          { "id": "hasDescription", "weight": 25, "appliesTo": ["Connection","Database","Schema","Table"] },
+          { "id": "hasOwner", "weight": 20, "appliesTo": ["Connection","Database","Schema","Table"] },
+          { "id": "hasCertification", "weight": 15, "appliesTo": ["Connection","Database","Schema","Table"] },
+          { "id": "hasClassification", "weight": 15, "appliesTo": ["Connection","Database","Schema","Table"] },
+          { "id": "hasGlossaryTerms", "weight": 10, "appliesTo": ["Connection","Database","Schema","Table"] },
+          { "id": "hasLineage", "weight": 10, "appliesTo": ["Table"] },
+          { "id": "hasReadme", "weight": 5, "appliesTo": ["Connection","Database","Schema","Table"] }
+        ]},
+        "accuracy": { "checks": [
+          { "id": "certificationStrength", "weight": 40, "appliesTo": ["Connection","Database","Schema","Table"] },
+          { "id": "namingCompliance", "weight": 25, "appliesTo": ["Connection","Database","Schema","Table"] },
+          { "id": "ownerPlausible", "weight": 20, "appliesTo": ["Connection","Database","Schema","Table"], "params": { "denylist": ["unknown","tbd","na"] } },
+          { "id": "classificationPolicy", "weight": 15, "appliesTo": ["Connection","Database","Schema","Table"] }
+        ]},
+        "timeliness": { "checks": [
+          { "id": "metadataFreshness", "weight": 40, "appliesTo": ["Connection","Database","Schema","Table"] },
+          { "id": "certificationAge", "weight": 30, "appliesTo": ["Connection","Database","Schema","Table"] },
+          { "id": "usageRecency", "weight": 30, "appliesTo": ["Table"] }
+        ]},
+        "consistency": { "checks": [
+          { "id": "taxonomyAllowlist", "weight": 40, "appliesTo": ["Connection","Database","Schema","Table"] },
+          { "id": "domainGlossaryAlignment", "weight": 35, "appliesTo": ["Connection","Database","Schema","Table"] },
+          { "id": "hierarchyIntegrity", "weight": 25, "appliesTo": ["Table"] }
+        ]},
+        "usability": { "checks": [
+          { "id": "descriptionUsability", "weight": 40, "appliesTo": ["Connection","Database","Schema","Table"] },
+          { "id": "searchabilityProxy", "weight": 35, "appliesTo": ["Connection","Database","Schema","Table"] },
+          { "id": "engagement", "weight": 25, "appliesTo": ["Table"] }
+        ]}
+      },
+      "timeliness": {
+        "mode": "bands",
+        "bands": { "freshDays": 7, "recentDays": 30, "agingDays": 90, "staleDays": 180 },
+        "decay": { "tauMetadataDays": 60, "tauSourceDays": 90, "tauUsageDays": 30, "tauCertDays": 90 }
+      },
+      "namingRules": {
+        "default": {
+          "requiredRegex": ["^[a-z0-9_]+$"],
+          "optionalRegex": ["^(dim|fct|stg|tmp)_[a-z0-9_]+$"],
+          "minLength": 3
+        },
+        "Table": {
+          "requiredRegex": ["^[a-z0-9_]+$"],
+          "optionalRegex": ["^(dim|fct)_[a-z0-9_]+$"]
+        }
+      },
+      "usability": {
+        "descriptionTargetChars": 200,
+        "blacklistPhrases": ["tbd","lorem ipsum","temp","fixme"],
+        "discoverabilityCap": 0.3,
+        "engagementNorm": { "pMax": 1000, "vMax": 10000, "kMax": 500 }
+      }
+    },
+    "standardCompleteness": {
+      "assetTypeRubrics": {
+        "Connection": { "checks": [
+          { "id": "hasDescription", "points": 30 },
+          { "id": "hasOwner", "points": 25 },
+          { "id": "hasCertification", "points": 15 },
+          { "id": "hasClassification", "points": 10 },
+          { "id": "hasGlossaryTerms", "points": 10 },
+          { "id": "hasReadme", "points": 10 }
+        ]},
+        "Database": { "checks": [
+          { "id": "hasDescription", "points": 30 },
+          { "id": "hasOwner", "points": 25 },
+          { "id": "hasCertification", "points": 15 },
+          { "id": "hasClassification", "points": 10 },
+          { "id": "hasGlossaryTerms", "points": 10 },
+          { "id": "hasReadme", "points": 10 }
+        ]},
+        "Schema": { "checks": [
+          { "id": "hasDescription", "points": 30 },
+          { "id": "hasOwner", "points": 25 },
+          { "id": "hasCertification", "points": 15 },
+          { "id": "hasClassification", "points": 10 },
+          { "id": "hasGlossaryTerms", "points": 10 },
+          { "id": "hasReadme", "points": 10 }
+        ]},
+        "Table": { "checks": [
+          { "id": "hasDescription", "points": 30 },
+          { "id": "hasOwner", "points": 25 },
+          { "id": "hasCertification", "points": 15 },
+          { "id": "hasClassification", "points": 10 },
+          { "id": "hasGlossaryTerms", "points": 10 },
+          { "id": "hasLineage", "points": 10 }
+        ]}
+      }
+    }
+  }
+}
+

@@ -1,35 +1,31 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { ErrorBoundary } from './components/shared';
+import { Sidebar } from './components/layout/Sidebar';
+import { ExecutiveDashboard } from './components/dashboard/ExecutiveDashboard';
+import { PivotBuilder } from './pages/PivotBuilder';
+import './App.css';
+
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <ErrorBoundary>
+      <BrowserRouter>
+        <div className="app">
+          <Sidebar />
+          <ErrorBoundary>
+            <Routes>
+              <Route path="/" element={<ExecutiveDashboard />} />
+              <Route path="/pivot" element={<PivotBuilder />} />
+              <Route path="/stewardship" element={<div className="page-placeholder">Stewardship Ops</div>} />
+              <Route path="/campaigns" element={<div className="page-placeholder">Campaign Tracking</div>} />
+              <Route path="/trends" element={<div className="page-placeholder">Quality Trends</div>} />
+              <Route path="/accountability" element={<div className="page-placeholder">Accountability</div>} />
+            </Routes>
+          </ErrorBoundary>
+        </div>
+      </BrowserRouter>
+    </ErrorBoundary>
+  );
 }
 
-export default App
+export default App;

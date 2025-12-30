@@ -1,0 +1,186 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Metadata Quality Platform Config",
+  "type": "object",
+  "required": ["version", "activeProfiles", "bands", "profiles"],
+  "properties": {
+    "version": { "type": "string" },
+    "activeProfiles": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["industry5d", "standardCompleteness"] },
+      "minItems": 1
+    },
+    "bands": {
+      "type": "object",
+      "required": ["excellent", "good", "fair", "poor"],
+      "properties": {
+        "excellent": { "type": "number", "minimum": 0, "maximum": 100 },
+        "good": { "type": "number", "minimum": 0, "maximum": 100 },
+        "fair": { "type": "number", "minimum": 0, "maximum": 100 },
+        "poor": { "type": "number", "minimum": 0, "maximum": 100 }
+      }
+    },
+    "profiles": {
+      "type": "object",
+      "required": ["industry5d", "standardCompleteness"],
+      "properties": {
+        "industry5d": { "$ref": "#/definitions/industry5dProfile" },
+        "standardCompleteness": { "$ref": "#/definitions/standardCompletenessProfile" }
+      }
+    },
+    "overrides": {
+      "type": "object",
+      "properties": {
+        "domains": { "$ref": "#/definitions/overrideMap" },
+        "connections": { "$ref": "#/definitions/overrideMap" },
+        "assetTypes": { "$ref": "#/definitions/overrideMap" }
+      }
+    }
+  },
+  "definitions": {
+    "overrideMap": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/profileOverride" }
+    },
+    "profileOverride": {
+      "type": "object",
+      "properties": {
+        "industry5d": { "type": "object" },
+        "standardCompleteness": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "industry5dProfile": {
+      "type": "object",
+      "required": ["dimensionWeights", "dimensions", "timeliness", "namingRules", "usability"],
+      "properties": {
+        "dimensionWeights": {
+          "type": "object",
+          "required": ["completeness", "accuracy", "timeliness", "consistency", "usability"],
+          "properties": {
+            "completeness": { "type": "number", "minimum": 0 },
+            "accuracy": { "type": "number", "minimum": 0 },
+            "timeliness": { "type": "number", "minimum": 0 },
+            "consistency": { "type": "number", "minimum": 0 },
+            "usability": { "type": "number", "minimum": 0 }
+          }
+        },
+        "dimensions": {
+          "type": "object",
+          "properties": {
+            "completeness": { "$ref": "#/definitions/weightedChecks" },
+            "accuracy": { "$ref": "#/definitions/weightedChecks" },
+            "timeliness": { "$ref": "#/definitions/weightedChecks" },
+            "consistency": { "$ref": "#/definitions/weightedChecks" },
+            "usability": { "$ref": "#/definitions/weightedChecks" }
+          }
+        },
+        "timeliness": {
+          "type": "object",
+          "required": ["mode", "bands", "decay"],
+          "properties": {
+            "mode": { "type": "string", "enum": ["bands", "decay", "blend"] },
+            "bands": {
+              "type": "object",
+              "required": ["freshDays", "recentDays", "agingDays", "staleDays"],
+              "properties": {
+                "freshDays": { "type": "number", "minimum": 0 },
+                "recentDays": { "type": "number", "minimum": 0 },
+                "agingDays": { "type": "number", "minimum": 0 },
+                "staleDays": { "type": "number", "minimum": 0 }
+              }
+            },
+            "decay": {
+              "type": "object",
+              "properties": {
+                "tauMetadataDays": { "type": "number", "minimum": 1 },
+                "tauSourceDays": { "type": "number", "minimum": 1 },
+                "tauUsageDays": { "type": "number", "minimum": 1 },
+                "tauCertDays": { "type": "number", "minimum": 1 }
+              }
+            }
+          }
+        },
+        "namingRules": {
+          "type": "object",
+          "properties": {
+            "default": { "$ref": "#/definitions/namingRuleSet" }
+          },
+          "additionalProperties": { "$ref": "#/definitions/namingRuleSet" }
+        },
+        "usability": {
+          "type": "object",
+          "required": ["descriptionTargetChars", "blacklistPhrases", "discoverabilityCap"],
+          "properties": {
+            "descriptionTargetChars": { "type": "number", "minimum": 1 },
+            "blacklistPhrases": { "type": "array", "items": { "type": "string" } },
+            "discoverabilityCap": { "type": "number", "minimum": 0, "maximum": 1 },
+            "engagementNorm": {
+              "type": "object",
+              "properties": {
+                "pMax": { "type": "number", "minimum": 0 },
+                "vMax": { "type": "number", "minimum": 0 },
+                "kMax": { "type": "number", "minimum": 0 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "standardCompletenessProfile": {
+      "type": "object",
+      "required": ["assetTypeRubrics"],
+      "properties": {
+        "assetTypeRubrics": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/pointsRubric" }
+        }
+      }
+    },
+    "weightedChecks": {
+      "type": "object",
+      "required": ["checks"],
+      "properties": {
+        "checks": { "type": "array", "items": { "$ref": "#/definitions/check" }, "minItems": 1 }
+      }
+    },
+    "check": {
+      "type": "object",
+      "required": ["id", "weight", "appliesTo"],
+      "properties": {
+        "id": { "type": "string" },
+        "weight": { "type": "number", "minimum": 0 },
+        "appliesTo": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "params": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "pointsRubric": {
+      "type": "object",
+      "required": ["checks"],
+      "properties": {
+        "checks": { "type": "array", "items": { "$ref": "#/definitions/pointsCheck" }, "minItems": 1 }
+      }
+    },
+    "pointsCheck": {
+      "type": "object",
+      "required": ["id", "points"],
+      "properties": {
+        "id": { "type": "string" },
+        "points": { "type": "number", "minimum": 0 },
+        "params": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "namingRuleSet": {
+      "type": "object",
+      "required": ["requiredRegex", "optionalRegex"],
+      "properties": {
+        "requiredRegex": { "type": "array", "items": { "type": "string" } },
+        "optionalRegex": { "type": "array", "items": { "type": "string" } },
+        "minLength": { "type": "number", "minimum": 1 }
+      }
+    }
+  }
+}
+
