@@ -2,7 +2,7 @@
 
 .asset-panel-backdrop {
   position: fixed;
-  top: 0;
+  top: 56px; /* Start below header so drags can reach context bar */
   left: 0;
   right: 0;
   bottom: 0;
@@ -94,26 +94,68 @@
 
 .asset-panel-content {
   flex: 1;
-  overflow: hidden;
+  overflow-y: auto;
   min-height: 300px;
   max-height: 500px;
 }
 
 /* Override AssetBrowser styles when in panel */
-.asset-panel-content .asset-browser-card {
+.asset-panel-content .asset-browser-card,
+.asset-panel-content .asset-browser {
   border: none;
   border-radius: 0;
   background: transparent;
   height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-.asset-panel-content .asset-browser-card .card-body {
+.asset-panel-content .asset-browser-card .card-body,
+.asset-panel-content .asset-browser .card-body {
   padding: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.asset-panel-content .asset-tree {
-  max-height: 100%;
+.asset-panel-content .tree-container {
+  flex: 1;
+  overflow-y: auto;
   padding: 0.5rem;
+}
+
+.asset-panel-content .tree-list {
+  min-height: min-content;
+}
+
+/* Search input in panel header */
+.asset-panel-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  background: var(--bg-tertiary, #1a1a1d);
+}
+
+.asset-panel-search input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-secondary, #111113);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+  color: var(--text-primary, #fff);
+  font-size: 0.85rem;
+}
+
+.asset-panel-search input:focus {
+  outline: none;
+  border-color: var(--accent-primary, #00d4aa);
+}
+
+.asset-panel-search input::placeholder {
+  color: var(--text-muted, #666);
 }
 
 /* Responsive */

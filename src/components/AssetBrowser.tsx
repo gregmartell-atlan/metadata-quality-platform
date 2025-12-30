@@ -38,9 +38,13 @@ interface TreeNode {
   childCount?: number;
 }
 
-export function AssetBrowser() {
+interface AssetBrowserProps {
+  searchFilter?: string;
+}
+
+export function AssetBrowser({ searchFilter = '' }: AssetBrowserProps) {
   const navigate = useNavigate();
-  const { selectedAssets, toggleAsset, isSelected, selectedCount, clearAssets, addAsset } = useAssetStore();
+  const { toggleAsset, isSelected, selectedCount, clearAssets, addAsset } = useAssetStore();
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
   const [connectors, setConnectors] = useState<ConnectorInfo[]>([]);
   const [selectedConnector, setSelectedConnector] = useState<string | null>(null);
@@ -592,6 +596,17 @@ export function AssetBrowser() {
           <div className="tree-list">
             {treeData
               .filter((node) => !selectedConnector || node.connectorName === selectedConnector || node.name === selectedConnector)
+              .filter((node) => {
+                if (!searchFilter) return true;
+                const term = searchFilter.toLowerCase();
+                // Check if this node or any of its children match
+                const matchesNode = (n: TreeNode): boolean => {
+                  if (n.name.toLowerCase().includes(term)) return true;
+                  if (n.children?.some(matchesNode)) return true;
+                  return false;
+                };
+                return matchesNode(node);
+              })
               .map((node) => renderTreeNode(node))}
           </div>
         )}

@@ -4,7 +4,8 @@
  * Renders the AssetBrowser in a dropdown panel that expands from the header.
  */
 
-import { X, FolderOpen } from 'lucide-react';
+import { useState } from 'react';
+import { X, FolderOpen, Search } from 'lucide-react';
 import { AssetBrowser } from '../AssetBrowser';
 import './AssetBrowserPanel.css';
 
@@ -14,6 +15,8 @@ interface AssetBrowserPanelProps {
 }
 
 export function AssetBrowserPanel({ isOpen, onClose }: AssetBrowserPanelProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+
   if (!isOpen) return null;
 
   return (
@@ -35,8 +38,18 @@ export function AssetBrowserPanel({ isOpen, onClose }: AssetBrowserPanelProps) {
             <X size={18} />
           </button>
         </div>
+        <div className="asset-panel-search">
+          <Search size={16} color="#666" />
+          <input
+            type="text"
+            placeholder="Search assets..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            autoFocus
+          />
+        </div>
         <div className="asset-panel-content">
-          <AssetBrowser />
+          <AssetBrowser searchFilter={searchTerm} />
         </div>
       </div>
     </>
