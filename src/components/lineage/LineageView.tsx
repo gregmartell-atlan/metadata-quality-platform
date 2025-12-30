@@ -17,7 +17,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { getLineage } from '../../services/atlan/api';
-import { useAssetStore } from '../../stores/assetStore';
+import { useAssetContextStore } from '../../stores/assetContextStore';
 import { scoreAssets } from '../../services/scoringService';
 import type { AtlanAsset } from '../../services/atlan/types';
 import type {
@@ -77,7 +77,7 @@ const DEFAULT_CONFIG: LineageViewConfig = {
 };
 
 export function LineageView() {
-  const { selectedAssets } = useAssetStore();
+  const { contextAssets } = useAssetContextStore();
   const [searchParams] = useSearchParams();
   const [config, setConfig] = useState<LineageViewConfig>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(false);
@@ -92,15 +92,15 @@ export function LineageView() {
   // Get center asset from URL params or selected assets
   useEffect(() => {
     const guid = searchParams.get('guid');
-    if (guid && selectedAssets.length > 0) {
-      const asset = selectedAssets.find((a) => a.guid === guid);
+    if (guid && contextAssets.length > 0) {
+      const asset = contextAssets.find((a) => a.guid === guid);
       if (asset && asset.guid !== centerAsset?.guid) {
         setCenterAsset(asset);
       }
-    } else if (selectedAssets.length > 0 && !centerAsset) {
-      setCenterAsset(selectedAssets[0]);
+    } else if (contextAssets.length > 0 && !centerAsset) {
+      setCenterAsset(contextAssets[0]);
     }
-  }, [searchParams, selectedAssets, centerAsset]);
+  }, [searchParams, contextAssets, centerAsset]);
 
   // Fetch lineage data
   const fetchLineage = useCallback(async () => {
@@ -373,7 +373,7 @@ export function LineageView() {
       <LineageConfigPanel
         config={config}
         centerAsset={centerAsset}
-        availableAssets={selectedAssets}
+        availableAssets={contextAssets}
         onConfigChange={handleConfigChange}
         onCenterAssetChange={handleCenterAssetChange}
         onRefresh={fetchLineage}
