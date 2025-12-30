@@ -93,9 +93,3 @@
 
 **Impact:** Graph layout might reset when filtering.
 
-
-
-
-
-
-

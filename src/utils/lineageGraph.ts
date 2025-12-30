@@ -174,54 +174,37 @@ export function buildLineageGraph(
   });
 
   // Traverse graph to determine which nodes are upstream/downstream of center
-  // Use iterative BFS instead of recursion to avoid stack overflow
   const upstreamNodes = new Set<string>();
   const downstreamNodes = new Set<string>();
   
-  // Iterative BFS from center going backwards (following incoming edges) to find upstream nodes
+  // BFS from center going backwards (following incoming edges) to find upstream nodes
   // Upstream = nodes that feed INTO center (data flows from them to center)
-  function findUpstreamNodes(startId: string) {
-    const visited = new Set<string>();
-    const queue: string[] = [startId];
+  function findUpstreamNodes(startId: string, visited: Set<string>) {
+    if (visited.has(startId)) return;
+    visited.add(startId);
     
-    while (queue.length > 0) {
-      const currentId = queue.shift()!;
-      if (visited.has(currentId)) continue; // Skip if already processed
-      visited.add(currentId);
-      
-      const incoming = incomingEdges.get(currentId) || [];
-      incoming.forEach((edge) => {
-        if (!visited.has(edge.source)) {
-          upstreamNodes.add(edge.source); // Source feeds into target
-          queue.push(edge.source);
-        }
-      });
-    }
+    const incoming = incomingEdges.get(startId) || [];
+    incoming.forEach((edge) => {
+      upstreamNodes.add(edge.source); // Source feeds into target
+      findUpstreamNodes(edge.source, visited);
+    });
   }
   
-  // Iterative BFS from center going forwards (following outgoing edges) to find downstream nodes
+  // BFS from center going forwards (following outgoing edges) to find downstream nodes
   // Downstream = nodes that center feeds INTO (data flows from center to them)
-  function findDownstreamNodes(startId: string) {
-    const visited = new Set<string>();
-    const queue: string[] = [startId];
+  function findDownstreamNodes(startId: string, visited: Set<string>) {
+    if (visited.has(startId)) return;
+    visited.add(startId);
     
-    while (queue.length > 0) {
-      const currentId = queue.shift()!;
-      if (visited.has(currentId)) continue; // Skip if already processed
-      visited.add(currentId);
-      
-      const outgoing = outgoingEdges.get(currentId) || [];
-      outgoing.forEach((edge) => {
-        if (!visited.has(edge.target)) {
-          downstreamNodes.add(edge.target); // Target receives data from source
-          queue.push(edge.target);
-        }
-      });
-    }
+    const outgoing = outgoingEdges.get(startId) || [];
+    outgoing.forEach((edge) => {
+      downstreamNodes.add(edge.target); // Target receives data from source
+      findDownstreamNodes(edge.target, visited);
+    });
   }
   
-  findUpstreamNodes(actualCenterAsset.guid);
-  findDownstreamNodes(actualCenterAsset.guid);
+  findUpstreamNodes(actualCenterAsset.guid, new Set());
+  findDownstreamNodes(actualCenterAsset.guid, new Set());
   
   // Mark edges as upstream/downstream based on traversal results
   allEdges.forEach((edge) => {
@@ -295,7 +278,6 @@ export function calculateCoverageMetrics(graph: LineageGraph): LineageCoverageMe
   const withFullLineage = nodes.filter((n) => n.hasUpstream && n.hasDownstream).length;
   const orphaned = nodes.filter((n) => !n.hasUpstream && !n.hasDownstream).length;
   
-  // Prevent division by zero
   const coveragePercentage = totalNodes > 0 
     ? Math.round(((totalNodes - orphaned) / totalNodes) * 100)
     : 0;
@@ -408,26 +390,21 @@ export function findImpactPath(graph: LineageGraph, nodeId: string): string[] {
     outgoingMap.get(edge.source)!.push(edge.target);
   });
   
-  // Use iterative BFS instead of recursion to avoid stack overflow
-  const queue: string[] = [nodeId];
-  visited.add(nodeId);
-  
-  while (queue.length > 0) {
-    const currentId = queue.shift()!;
+  function traverseDownstream(currentId: string) {
+    if (visited.has(currentId)) return;
+    visited.add(currentId);
     
     // Follow all outgoing edges (data flows from source to target)
     const targets = outgoingMap.get(currentId) || [];
     targets.forEach((targetId) => {
-      if (!visited.has(targetId)) {
-        visited.add(targetId);
-        if (!affected.includes(targetId)) {
-          affected.push(targetId);
-        }
-        queue.push(targetId);
+      if (!affected.includes(targetId)) {
+        affected.push(targetId);
       }
+      traverseDownstream(targetId);
     });
   }
   
+  traverseDownstream(nodeId);
   return affected;
 }
 
@@ -447,26 +424,21 @@ export function findRootCausePath(graph: LineageGraph, nodeId: string): string[]
     incomingMap.get(edge.target)!.push(edge.source);
   });
   
-  // Use iterative BFS instead of recursion to avoid stack overflow
-  const queue: string[] = [nodeId];
-  visited.add(nodeId);
-  
-  while (queue.length > 0) {
-    const currentId = queue.shift()!;
+  function traverseUpstream(currentId: string) {
+    if (visited.has(currentId)) return;
+    visited.add(currentId);
     
     // Follow all incoming edges (data flows from source to target, so upstream is reverse)
     const sources = incomingMap.get(currentId) || [];
     sources.forEach((sourceId) => {
-      if (!visited.has(sourceId)) {
-        visited.add(sourceId);
-        if (!path.includes(sourceId)) {
-          path.push(sourceId);
-        }
-        queue.push(sourceId);
+      if (!path.includes(sourceId)) {
+        path.push(sourceId);
       }
+      traverseUpstream(sourceId);
     });
   }
   
+  traverseUpstream(nodeId);
   return path;
 }
 

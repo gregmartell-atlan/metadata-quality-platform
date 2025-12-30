@@ -20,7 +20,6 @@ import { getLineage } from '../../services/atlan/api';
 import { useAssetStore } from '../../stores/assetStore';
 import { scoreAssets } from '../../services/scoringService';
 import type { AtlanAsset } from '../../services/atlan/types';
-import { sanitizeError } from '../../utils/sanitize';
 import type {
   LineageViewConfig,
   LineageGraph,
@@ -89,15 +88,6 @@ export function LineageView() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
-
-  // Cleanup AbortController on unmount
-  useEffect(() => {
-    return () => {
-      if (abortController) {
-        abortController.abort();
-      }
-    };
-  }, [abortController]);
 
   // Get center asset from URL params or selected assets
   useEffect(() => {
@@ -222,8 +212,7 @@ export function LineageView() {
         return;
       }
       console.error('Failed to fetch lineage:', err);
-      const sanitizedError = sanitizeError(err instanceof Error ? err : new Error('Failed to fetch lineage'));
-      setError(sanitizedError);
+      setError(err instanceof Error ? err.message : 'Failed to fetch lineage');
     } finally {
       if (!newAbortController.signal.aborted) {
         setLoading(false);

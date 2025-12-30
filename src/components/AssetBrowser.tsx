@@ -21,7 +21,7 @@ import { useAssetStore } from '../stores/assetStore';
 import type { AtlanAsset } from '../services/atlan/types';
 import { logger } from '../utils/logger';
 import { sanitizeError } from '../utils/sanitize';
-import { GitBranch, ChevronRight, ChevronDown, Upload, Loader2 } from 'lucide-react';
+import { GitBranch, ChevronRight, ChevronDown, Link2, Database, Folder, Table2, GripVertical, Upload, Loader2 } from 'lucide-react';
 import './AssetBrowser.css';
 
 interface TreeNode {
@@ -40,7 +40,7 @@ interface TreeNode {
 
 export function AssetBrowser() {
   const navigate = useNavigate();
-  const { toggleAsset, isSelected, selectedCount, clearAssets, addAsset } = useAssetStore();
+  const { selectedAssets, toggleAsset, isSelected, selectedCount, clearAssets, addAsset } = useAssetStore();
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
   const [connectors, setConnectors] = useState<ConnectorInfo[]>([]);
   const [selectedConnector, setSelectedConnector] = useState<string | null>(null);
@@ -198,7 +198,7 @@ export function AssetBrowser() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionStatus]); // Include connectionStatus to stop checking once connected
-  
+
   // Update ref whenever connectionStatus changes
   useEffect(() => {
     connectionStatusRef.current = connectionStatus;

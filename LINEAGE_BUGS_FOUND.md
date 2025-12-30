@@ -81,9 +81,3 @@
 **Issue:** Quality score fetching happens after lineage fetch but doesn't show loading state.
 **Fix:** Add loading indicator for scoring phase.
 
-
-
-
-
-
-
