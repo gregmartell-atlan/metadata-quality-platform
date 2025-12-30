@@ -1339,9 +1339,11 @@ export async function getLineage(
       ...downstreamResponse.guidEntityMap,
     };
 
-    // Merge relations, avoiding duplicates
-    const relationMap = new Map<string, typeof upstreamResponse.relations[0]>();
-    [...upstreamResponse.relations, ...downstreamResponse.relations].forEach((rel) => {
+    // Merge relations, avoiding duplicates (handle undefined/null relations)
+    const upstreamRelations = upstreamResponse.relations || [];
+    const downstreamRelations = downstreamResponse.relations || [];
+    const relationMap = new Map<string, (typeof upstreamRelations)[0]>();
+    [...upstreamRelations, ...downstreamRelations].forEach((rel) => {
       const key = `${rel.fromEntityId}-${rel.toEntityId}-${rel.relationshipType}`;
       if (!relationMap.has(key)) {
         relationMap.set(key, rel);

@@ -89,18 +89,29 @@ export function LineageView() {
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
 
-  // Get center asset from URL params or selected assets
+  // Initialize center asset from URL params or first available asset (only on mount or context change)
+  // Use functional update to avoid dependency on centerAsset which causes reset loops
   useEffect(() => {
     const guid = searchParams.get('guid');
-    if (guid && contextAssets.length > 0) {
-      const asset = contextAssets.find((a) => a.guid === guid);
-      if (asset && asset.guid !== centerAsset?.guid) {
-        setCenterAsset(asset);
+
+    setCenterAsset((current) => {
+      // If we have a URL guid, try to find and set that asset
+      if (guid && contextAssets.length > 0) {
+        const asset = contextAssets.find((a) => a.guid === guid);
+        if (asset && asset.guid !== current?.guid) {
+          return asset;
+        }
       }
-    } else if (contextAssets.length > 0 && !centerAsset) {
-      setCenterAsset(contextAssets[0]);
-    }
-  }, [searchParams, contextAssets, centerAsset]);
+
+      // Only set first asset if we don't have a current selection AND we have assets
+      if (!current && contextAssets.length > 0) {
+        return contextAssets[0];
+      }
+
+      // Keep current selection
+      return current;
+    });
+  }, [searchParams, contextAssets]);
 
   // Fetch lineage data
   const fetchLineage = useCallback(async () => {
