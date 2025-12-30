@@ -1,12 +1,12 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ErrorBoundary } from './components/shared';
 import { Sidebar } from './components/layout/Sidebar';
-import { PersistentAssetBrowser } from './components/AssetBrowser/PersistentAssetBrowser';
 import { ExecutiveDashboard } from './components/dashboard/ExecutiveDashboard';
 import { PivotBuilder } from './pages/PivotBuilder';
 import { LineageViewPage } from './pages/LineageViewPage';
 import './App.css';
 
+// Note: PersistentAssetBrowser removed - now using header-based AssetBrowserPanel
 
 function App() {
   return (
@@ -14,7 +14,6 @@ function App() {
       <BrowserRouter>
         <div className="app">
           <Sidebar />
-          <PersistentAssetBrowser />
           <ErrorBoundary>
             <Routes>
               <Route path="/" element={<ExecutiveDashboard />} />

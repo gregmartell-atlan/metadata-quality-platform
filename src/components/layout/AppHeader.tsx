@@ -5,12 +5,13 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link2, Link2Off, ChevronDown, BarChart3, X, Download, Loader2, AlertTriangle, Settings, Globe } from 'lucide-react';
+import { Link2, Link2Off, ChevronDown, BarChart3, X, Download, Loader2, AlertTriangle, Globe, FolderOpen } from 'lucide-react';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { getAtlanConfig, getConnectors, testAtlanConnection, configureAtlanApi, getSavedAtlanBaseUrl } from '../../services/atlan/api';
 import { loadAssetsForContext, generateContextLabel } from '../../utils/assetContextLoader';
 import { sanitizeError } from '../../utils/sanitize';
 import { logger } from '../../utils/logger';
+import { AssetBrowserPanel } from './AssetBrowserPanel';
 import type { AtlanAsset } from '../../services/atlan/types';
 import type { AssetContextType, AssetContextFilters } from '../../stores/assetContextStore';
 import './AppHeader.css';
@@ -33,7 +34,6 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
   // Asset context state
   const {
     context,
-    contextAssets,
     isLoading,
     error,
     setContext,
@@ -47,6 +47,7 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
 
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showContextMenu, setShowContextMenu] = useState(false);
+  const [showBrowserPanel, setShowBrowserPanel] = useState(false);
   const [availableConnectors, setAvailableConnectors] = useState<Array<{ name: string; id: string }>>([]);
 
   // Check connection status on mount
@@ -220,6 +221,16 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
             <span>{isConnected ? 'Connected' : 'Connect'}</span>
           </button>
 
+          {/* Browse Assets Button */}
+          <button
+            className={`browse-btn ${showBrowserPanel ? 'active' : ''}`}
+            onClick={() => setShowBrowserPanel(!showBrowserPanel)}
+            title="Browse assets"
+          >
+            <FolderOpen size={16} />
+            <span>Browse</span>
+          </button>
+
           {/* Context Bar */}
           <div
             className={`context-bar ${isDraggingOver ? 'drag-over' : ''} ${context ? 'has-context' : ''}`}
@@ -307,6 +318,12 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
           {children}
         </div>
       </header>
+
+      {/* Asset Browser Panel */}
+      <AssetBrowserPanel
+        isOpen={showBrowserPanel}
+        onClose={() => setShowBrowserPanel(false)}
+      />
 
       {/* Connection Modal */}
       {showConnectModal && (
