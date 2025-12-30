@@ -430,6 +430,13 @@ export function AssetContext() {
             contextType = 'database';
             // Extract connection and database from qualifiedName or use provided data
             // For database, nodeName is the database name
+            logger.info('AssetContext: Processing database drop', {
+              connectorName,
+              parsedConnectionName: parsed.connectionName,
+              nodeName,
+              qualifiedName,
+              fullParsed: parsed
+            });
             if (!connectorName && !parsed.connectionName) {
               throw new Error('Connection name is required for database context');
             }
@@ -440,7 +447,14 @@ export function AssetContext() {
               connectionName: connectorName || parsed.connectionName,
               databaseName: nodeName,
             };
+            logger.info('AssetContext: Calling loadAssetsForContext with filters', {
+              contextType,
+              filters
+            });
             assets = await loadAssetsForContext(contextType, filters);
+            logger.info('AssetContext: loadAssetsForContext returned', {
+              assetCount: assets.length
+            });
           } else if (nodeType === 'schema') {
             contextType = 'schema';
             // For schema, we need connection, database, and schema names

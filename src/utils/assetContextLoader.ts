@@ -238,14 +238,18 @@ export async function loadAssetsForDatabase(
   databaseName: string,
   options?: { assetTypes?: string[]; limit?: number }
 ): Promise<AtlanAsset[]> {
+  logger.info('===> loadAssetsForDatabase CALLED <===', { connectionName, databaseName, options });
+
   const cacheKey = getCacheKey('database', { connectionName, databaseName });
+  logger.info('loadAssetsForDatabase: Checking cache', { cacheKey });
+
   const cached = getCachedAssets(cacheKey);
   if (cached) {
     logger.info('loadAssetsForDatabase: Returning cached assets', { connectionName, databaseName, count: cached.length });
     return cached;
   }
 
-  logger.info('loadAssetsForDatabase: Starting load', { connectionName, databaseName, options });
+  logger.info('loadAssetsForDatabase: No cache hit, starting load', { connectionName, databaseName, options });
   const assets: AtlanAsset[] = [];
 
   try {
@@ -397,10 +401,23 @@ export async function loadAssetsForContext(
       break;
     
     case 'database':
+      logger.info('loadAssetsForContext: Entering database case', {
+        hasConnectionName: !!filters.connectionName,
+        hasDatabaseName: !!filters.databaseName,
+        connectionName: filters.connectionName,
+        databaseName: filters.databaseName
+      });
       if (!filters.connectionName || !filters.databaseName) {
         throw new Error('connectionName and databaseName are required for database context');
       }
+      logger.info('loadAssetsForContext: Calling loadAssetsForDatabase', {
+        connectionName: filters.connectionName,
+        databaseName: filters.databaseName
+      });
       assets = await loadAssetsForDatabase(filters.connectionName, filters.databaseName, options);
+      logger.info('loadAssetsForContext: Returned from loadAssetsForDatabase', {
+        assetCount: assets.length
+      });
       break;
     
     case 'schema':
