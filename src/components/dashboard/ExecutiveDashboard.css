@@ -1,15 +1,23 @@
 .executive-dashboard {
   flex: 1;
-  margin-left: 240px;
-  padding: var(--gap-lg);
+  margin-left: 560px; /* 240px sidebar + 320px asset browser */
+  padding: var(--gap-lg, 24px);
+  min-height: 100vh;
   background: linear-gradient(180deg, var(--bg-primary) 0%, #0d0d0f 100%);
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Adjust when asset browser is collapsed */
+.app:has(.persistent-asset-browser.collapsed) .executive-dashboard {
+  margin-left: 288px; /* 240px sidebar + 48px collapsed asset browser */
 }
 
 .dashboard-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--gap-lg);
+  margin-bottom: var(--gap-lg, 24px);
+  margin-top: var(--gap-md, 16px);
 }
 
 .header-left h1 {

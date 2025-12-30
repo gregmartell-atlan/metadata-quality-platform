@@ -5,7 +5,7 @@
  * Supports drag/drop from AssetBrowser and manual context selection.
  */
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { BarChart3, Settings, Link2, Globe, X, Download, AlertTriangle, Loader2 } from 'lucide-react';
 import { useAssetContextStore } from '../stores/assetContextStore';
 import { useScoresStore } from '../stores/scoresStore';
@@ -20,6 +20,8 @@ import type { AtlanAsset } from '../services/atlan/types';
 import type { AtlanAsset as ScoringAtlanAsset } from '../scoring/contracts';
 import { getConnectors, getDatabases, getSchemas } from '../services/atlan/api';
 import { logger } from '../utils/logger';
+import { sanitizeError } from '../utils/sanitize';
+import { isValidScoringType } from '../utils/typeGuards';
 import './AssetContext.css';
 
 export function AssetContext() {
@@ -49,13 +51,14 @@ export function AssetContext() {
   useEffect(() => {
     logger.info('AssetContext: Context assets changed', {
       assetCount: contextAssets.length,
-      contextType: context,
-      contextLabel: getContextLabel(),
+      contextType: context?.type,
+      contextLabel: context?.label || 'No context set',
       scoringMode
     });
-  }, [contextAssets, context, getContextLabel, scoringMode]);
+  }, [contextAssets.length, context?.type, context?.label, scoringMode]);
 
   // Reload assets when context is restored from persistence but assets are missing
+  const hasReloadedRef = useRef<string | null>(null);
   useEffect(() => {
     const reloadAssetsForContext = async () => {
       // Only reload if we have a context but no assets (e.g., after page refresh)
@@ -63,9 +66,12 @@ export function AssetContext() {
       const hasContext = !!context;
       const hasNoAssets = contextAssets.length === 0;
       const isNotManual = context?.type !== 'manual';
-      const shouldReload = hasContext && hasNoAssets && !isLoading && isNotManual;
+      const contextKey = context ? `${context.type}-${JSON.stringify(context.filters)}` : null;
+      const alreadyReloaded = hasReloadedRef.current === contextKey;
+      const shouldReload = hasContext && hasNoAssets && !isLoading && isNotManual && !alreadyReloaded;
       
       if (shouldReload) {
+        hasReloadedRef.current = contextKey;
         logger.info('AssetContext: Reloading assets for context', {
           contextType: context.type,
           contextLabel: context.label,
@@ -97,7 +103,8 @@ export function AssetContext() {
             contextType: context.type,
             filters: context.filters
           });
-          setError(err instanceof Error ? err.message : 'Failed to reload assets');
+          const sanitizedError = sanitizeError(err instanceof Error ? err : new Error('Failed to reload assets'));
+          setError(sanitizedError);
         } finally {
           setLoading(false);
         }
@@ -105,7 +112,7 @@ export function AssetContext() {
     };
 
     reloadAssetsForContext();
-  }, [context, contextAssets.length, isLoading, setContextAssets, setLoading, setError]);
+  }, [context?.type, context?.filters, contextAssets.length, isLoading, setContextAssets, setLoading, setError]);
 
   // Initialize scoring service when Atlan config is available
   useEffect(() => {
@@ -128,9 +135,14 @@ export function AssetContext() {
     initService();
   }, [scoringMode, setConfigVersion]);
 
+  // Track if calculation is in progress to prevent race conditions
+  const isCalculatingRef = useRef(false);
+
   // Auto-calculate scores when context assets change
   useEffect(() => {
-    if (scoringMode === "config-driven" && contextAssets.length > 0) {
+    // Prevent concurrent calculations and infinite loops
+    if (scoringMode === "config-driven" && contextAssets.length > 0 && !isCalculatingRef.current && !isLoading) {
+      isCalculatingRef.current = true;
       const calculateConfigScores = async () => {
         const startTime = performance.now();
         logger.info('AssetContext: Starting config-driven score calculation', { 
@@ -140,10 +152,12 @@ export function AssetContext() {
         try {
           setLoading(true);
           const transformStart = performance.now();
-          // Transform legacy assets to scoring format
-          const scoringAssets: ScoringAtlanAsset[] = contextAssets.map(asset => ({
-            guid: asset.guid,
-            typeName: asset.typeName as any,
+          // Transform legacy assets to scoring format - filter to valid types
+          const scoringAssets: ScoringAtlanAsset[] = contextAssets
+            .filter(asset => isValidScoringType(asset.typeName))
+            .map(asset => ({
+              guid: asset.guid,
+              typeName: asset.typeName as ScoringAssetType, // Now type-safe
             name: asset.name,
             qualifiedName: asset.qualifiedName,
             connectionName: asset.connectionName,
@@ -230,6 +244,7 @@ export function AssetContext() {
           });
         } finally {
           setLoading(false);
+          isCalculatingRef.current = false;
         }
       };
       
@@ -241,7 +256,7 @@ export function AssetContext() {
       });
       setConfigDrivenScores(null);
     }
-  }, [contextAssets, scoringMode, setLoading]);
+  }, [contextAssets.length, scoringMode, isLoading]);
 
   // Calculate legacy scores when assets change
   const legacyScores = useMemo(() => {
@@ -302,16 +317,19 @@ export function AssetContext() {
     }
   }, [contextAssets, scoringMode]);
 
-  // Update scores store when context assets change
+  // Update scores store when context assets change - use length to prevent unnecessary updates
+  const prevAssetsLengthRef = useRef(0);
   useEffect(() => {
-    if (contextAssets.length > 0) {
+    if (contextAssets.length > 0 && contextAssets.length !== prevAssetsLengthRef.current) {
+      prevAssetsLengthRef.current = contextAssets.length;
       logger.info('AssetContext: Updating scores store', { assetCount: contextAssets.length });
       setAssetsWithScores(contextAssets);
       logger.debug('AssetContext: Scores store updated');
-    } else {
+    } else if (contextAssets.length === 0 && prevAssetsLengthRef.current > 0) {
+      prevAssetsLengthRef.current = 0;
       logger.debug('AssetContext: No assets to update in scores store');
     }
-  }, [contextAssets, setAssetsWithScores]);
+  }, [contextAssets.length, setAssetsWithScores]);
 
   // Load available connectors for selector
   useEffect(() => {
@@ -507,15 +525,16 @@ export function AssetContext() {
         setAllAssets(assets);
         logger.debug('Loaded all assets', { count: assets.length });
       }
-    } catch (err) {
-      logger.error('Failed to load all assets', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load all assets';
-      // Show user-friendly error
-      if (errorMessage.includes('Not configured') || errorMessage.includes('connection')) {
-        setError('Please connect to Atlan first using the connection button in the header.');
-      } else {
-        setError(errorMessage);
-      }
+      } catch (err) {
+        logger.error('Failed to load all assets', err);
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load all assets';
+        // Show user-friendly error
+        if (errorMessage.includes('Not configured') || errorMessage.includes('connection')) {
+          setError('Please connect to Atlan first using the connection button in the header.');
+        } else {
+          const sanitizedError = sanitizeError(err instanceof Error ? err : new Error(errorMessage));
+          setError(sanitizedError);
+        }
     } finally {
       setLoading(false);
     }
@@ -532,7 +551,8 @@ export function AssetContext() {
         setShowSelector(false);
       } catch (err) {
         logger.error('Failed to load connection assets', err);
-        setError(err instanceof Error ? err.message : 'Failed to load connection');
+        const sanitizedError = sanitizeError(err instanceof Error ? err : new Error('Failed to load connection'));
+        setError(sanitizedError);
       } finally {
         setLoading(false);
       }

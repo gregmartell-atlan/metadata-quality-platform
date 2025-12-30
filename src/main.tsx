@@ -6,18 +6,17 @@ import { AssetStoreProvider } from './stores/assetStore'
 import { ScoresStoreProvider } from './stores/scoresStore'
 import { ScoringSettingsProvider } from './stores/scoringSettingsStore'
 import { ErrorBoundary } from './components/shared'
-import { ToastContainer, useToasts } from './components/shared/Toast'
+import { ToastContainer, useToasts, removeToast } from './components/shared/Toast'
 import { validateEnvironment } from './utils/envValidation'
+import { logger } from './utils/logger'
 
 // Validate environment variables on startup
 try {
   validateEnvironment();
 } catch (error) {
-  console.error('Environment validation failed:', error);
+  logger.error('Environment validation failed', error);
   // App will still load but may have issues
 }
-
-import { removeToast } from './components/shared/Toast'
 
 // Toast container component
 function AppWithToasts() {

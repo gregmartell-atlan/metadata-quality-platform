@@ -78,6 +78,12 @@ VITE_PROXY_URL=http://localhost:3002
 
 
 
+<<<<<<< Updated upstream
+
+
+
+=======
+>>>>>>> Stashed changes
 
 
 

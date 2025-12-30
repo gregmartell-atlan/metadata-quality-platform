@@ -1,22 +1,22 @@
 .asset-context {
-  background: var(--bg-secondary, #f8f9fa);
-  border: 2px dashed var(--border-color, #e0e0e0);
+  background: var(--bg-secondary, #111113);
+  border: 2px dashed var(--border-subtle, rgba(255, 255, 255, 0.1));
   border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1.5rem;
+  padding: var(--gap-md, 16px);
+  margin-bottom: var(--gap-lg, 24px);
   transition: all 0.2s;
   position: relative;
 }
 
 .asset-context.has-context {
-  border-color: var(--accent-primary, #0066cc);
+  border-color: var(--accent-primary, #00d4aa);
   border-style: solid;
-  background: var(--bg-primary, #fff);
+  background: var(--bg-card, #141416);
 }
 
 .asset-context.drag-over {
-  border-color: var(--accent-primary, #0066cc);
-  background: var(--bg-hover, #f0f0f0);
+  border-color: var(--accent-primary, #00d4aa);
+  background: var(--bg-hover, #1e1e21);
   border-style: solid;
 }
 
@@ -43,7 +43,7 @@
 .context-text {
   font-weight: 600;
   font-size: 1rem;
-  color: var(--text-primary, #333);
+  color: var(--text-primary, #f4f4f5);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -69,17 +69,18 @@
 
 .context-selector-btn {
   padding: 0.5rem;
-  border: 1px solid var(--border-color, #e0e0e0);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
   border-radius: 4px;
-  background: var(--bg-primary, #fff);
+  background: var(--bg-tertiary, #1a1a1d);
+  color: var(--text-primary, #f4f4f5);
   cursor: pointer;
   transition: all 0.2s;
   font-size: 1rem;
 }
 
 .context-selector-btn:hover {
-  background: var(--bg-hover, #f0f0f0);
-  border-color: var(--accent-primary, #0066cc);
+  background: var(--bg-hover, #1e1e21);
+  border-color: var(--accent-primary, #00d4aa);
 }
 
 .context-selector-dropdown {
@@ -87,10 +88,10 @@
   top: 100%;
   right: 0;
   margin-top: 0.25rem;
-  background: var(--bg-primary, #fff);
-  border: 1px solid var(--border-color, #e0e0e0);
+  background: var(--bg-card, #141416);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
   border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   z-index: 1000;
   min-width: 200px;
   max-height: 300px;

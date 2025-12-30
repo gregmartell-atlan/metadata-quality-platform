@@ -47,9 +47,10 @@ export function AssetBrowser() {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [loadingNodes, setLoadingNodes] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
-
+  
   const isCheckingConnection = React.useRef(false);
   const hasLoadedConnectors = React.useRef(false);
+  const connectionStatusRef = React.useRef(connectionStatus);
   
   const checkConnection = useCallback(async () => {
     if (!isConfigured()) {
@@ -80,12 +81,14 @@ export function AssetBrowser() {
         }
       } else {
         setConnectionStatus('error');
-        setError(result.error || 'Connection failed');
+        const sanitizedError = sanitizeError(new Error(result.error || 'Connection failed'));
+      setError(sanitizedError);
       }
     } catch (err) {
       logger.error('Connection error', err);
       setConnectionStatus('error');
-      setError(err instanceof Error ? err.message : 'Connection failed');
+      const sanitizedError = sanitizeError(err instanceof Error ? err : new Error('Connection failed'));
+      setError(sanitizedError);
     } finally {
       isCheckingConnection.current = false;
     }
@@ -113,7 +116,8 @@ export function AssetBrowser() {
       setTreeData(connectionNodes);
     } catch (err) {
       logger.error('Failed to load connections', err);
-      setError(err instanceof Error ? err.message : 'Failed to load connections');
+      const sanitizedError = sanitizeError(err instanceof Error ? err : new Error('Failed to load connections'));
+      setError(sanitizedError);
     }
   }, []);
 
@@ -143,7 +147,8 @@ export function AssetBrowser() {
       );
     } catch (err) {
       logger.error('Failed to load databases', err, { connector });
-      setError(err instanceof Error ? err.message : 'Failed to load databases');
+      const sanitizedError = sanitizeError(err instanceof Error ? err : new Error('Failed to load databases'));
+      setError(sanitizedError);
     } finally {
       setLoadingNodes((prev) => {
         const next = new Set(prev);
@@ -166,6 +171,9 @@ export function AssetBrowser() {
     // Check immediately
     check();
     
+    // Update ref to avoid stale closure
+    connectionStatusRef.current = connectionStatus;
+    
     // Listen for custom event when AtlanHeader establishes connection
     const handleAtlanConnected = () => {
       logger.debug('Atlan connection established, checking...');
@@ -177,7 +185,7 @@ export function AssetBrowser() {
     // Also check periodically in case connection is established (fallback)
     // But only if we're not already connected or connecting
     const interval = setInterval(() => {
-      if (isConfigured() && connectionStatus === 'disconnected') {
+      if (isConfigured() && connectionStatusRef.current === 'disconnected') {
         logger.debug('Detected configuration, checking connection...');
         check();
       }
@@ -189,6 +197,11 @@ export function AssetBrowser() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionStatus]); // Include connectionStatus to stop checking once connected
+  
+  // Update ref whenever connectionStatus changes
+  useEffect(() => {
+    connectionStatusRef.current = connectionStatus;
+  }, [connectionStatus]);
 
   // Load connections when connected
   useEffect(() => {
@@ -223,7 +236,8 @@ export function AssetBrowser() {
         )
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load schemas');
+      const sanitizedError = sanitizeError(err instanceof Error ? err : new Error('Failed to load schemas'));
+      setError(sanitizedError);
     } finally {
       setLoadingNodes((prev) => {
         const next = new Set(prev);
@@ -275,7 +289,8 @@ export function AssetBrowser() {
         )
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load tables');
+      const sanitizedError = sanitizeError(err instanceof Error ? err : new Error('Failed to load tables'));
+      setError(sanitizedError);
     } finally {
       setLoadingNodes((prev) => {
         const next = new Set(prev);

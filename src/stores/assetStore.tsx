@@ -2,13 +2,14 @@
  * Asset Store
  * 
  * Manages selected assets for scoring across the application
+ * Converted to Zustand for consistency with other stores
  */
 
-import { createContext, useContext, useState, useCallback } from 'react';
-import type { ReactNode } from 'react';
+import { create } from 'zustand';
+import type React from 'react';
 import type { AtlanAsset } from '../services/atlan/types';
 
-interface AssetStoreContextType {
+interface AssetStoreState {
   selectedAssets: AtlanAsset[];
   addAsset: (asset: AtlanAsset) => void;
   removeAsset: (guid: string) => void;
@@ -19,68 +20,54 @@ interface AssetStoreContextType {
   selectedCount: number;
 }
 
-const AssetStoreContext = createContext<AssetStoreContextType | undefined>(undefined);
+export const useAssetStore = create<AssetStoreState>((set, get) => ({
+  selectedAssets: [],
 
-export function AssetStoreProvider({ children }: { children: ReactNode }) {
-  const [selectedAssets, setSelectedAssets] = useState<AtlanAsset[]>([]);
-
-  const addAsset = useCallback((asset: AtlanAsset) => {
-    setSelectedAssets((prev) => {
-      if (prev.some((a) => a.guid === asset.guid)) {
-        return prev;
+  addAsset: (asset) => {
+    set((state) => {
+      if (state.selectedAssets.some((a) => a.guid === asset.guid)) {
+        return state; // Already selected
       }
-      return [...prev, asset];
+      const newAssets = [...state.selectedAssets, asset];
+      return { selectedAssets: newAssets, selectedCount: newAssets.length };
     });
-  }, []);
+  },
 
-  const removeAsset = useCallback((guid: string) => {
-    setSelectedAssets((prev) => prev.filter((a) => a.guid !== guid));
-  }, []);
-
-  const toggleAsset = useCallback((asset: AtlanAsset) => {
-    setSelectedAssets((prev) => {
-      const exists = prev.some((a) => a.guid === asset.guid);
-      if (exists) {
-        return prev.filter((a) => a.guid !== asset.guid);
-      }
-      return [...prev, asset];
+  removeAsset: (guid) => {
+    set((state) => {
+      const newAssets = state.selectedAssets.filter((a) => a.guid !== guid);
+      return { selectedAssets: newAssets, selectedCount: newAssets.length };
     });
-  }, []);
+  },
 
-  const clearAssets = useCallback(() => {
-    setSelectedAssets([]);
-  }, []);
+  toggleAsset: (asset) => {
+    set((state) => {
+      const exists = state.selectedAssets.some((a) => a.guid === asset.guid);
+      const newAssets = exists
+        ? state.selectedAssets.filter((a) => a.guid !== asset.guid)
+        : [...state.selectedAssets, asset];
+      return { selectedAssets: newAssets, selectedCount: newAssets.length };
+    });
+  },
 
-  const setAssets = useCallback((assets: AtlanAsset[]) => {
-    setSelectedAssets(assets);
-  }, []);
+  clearAssets: () => {
+    set({ selectedAssets: [], selectedCount: 0 });
+  },
 
-  const isSelected = useCallback(
-    (guid: string) => {
-      return selectedAssets.some((a) => a.guid === guid);
-    },
-    [selectedAssets]
-  );
+  setAssets: (assets) => {
+    set({ selectedAssets: assets, selectedCount: assets.length });
+  },
 
-  const value: AssetStoreContextType = {
-    selectedAssets,
-    addAsset,
-    removeAsset,
-    toggleAsset,
-    clearAssets,
-    setAssets,
-    isSelected,
-    selectedCount: selectedAssets.length,
-  };
+  isSelected: (guid) => {
+    return get().selectedAssets.some((a) => a.guid === guid);
+  },
 
-  return <AssetStoreContext.Provider value={value}>{children}</AssetStoreContext.Provider>;
-}
+  selectedCount: 0,
+}));
 
-export function useAssetStore() {
-  const context = useContext(AssetStoreContext);
-  if (context === undefined) {
-    throw new Error('useAssetStore must be used within an AssetStoreProvider');
-  }
-  return context;
+// Legacy provider for backward compatibility (deprecated - use useAssetStore directly)
+export function AssetStoreProvider({ children }: { children: React.ReactNode }) {
+  // This is now a no-op wrapper - components should use useAssetStore directly
+  return <>{children}</>;
 }
 

@@ -17,6 +17,7 @@ import { logger } from './logger';
 // Cache for loaded assets to avoid redundant API calls
 const assetCache = new Map<string, { assets: AtlanAsset[]; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const MAX_CACHE_SIZE = 100; // Maximum number of cache entries
 
 function getCacheKey(type: AssetContextType, filters: AssetContextFilters): string {
   return `${type}:${JSON.stringify(filters)}`;
@@ -24,14 +25,63 @@ function getCacheKey(type: AssetContextType, filters: AssetContextFilters): stri
 
 function getCachedAssets(key: string): AtlanAsset[] | null {
   const cached = assetCache.get(key);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+  const now = Date.now();
+  
+  if (cached && now - cached.timestamp < CACHE_TTL) {
     return cached.assets;
   }
+  
+  // Remove expired entry
+  if (cached) {
+    assetCache.delete(key);
+  }
+  
   return null;
 }
 
 function setCachedAssets(key: string, assets: AtlanAsset[]): void {
+  // Enforce cache size limit - remove oldest entries if needed
+  if (assetCache.size >= MAX_CACHE_SIZE) {
+    // Find and remove oldest entry
+    let oldestKey: string | null = null;
+    let oldestTimestamp = Infinity;
+    
+    for (const [k, v] of assetCache.entries()) {
+      if (v.timestamp < oldestTimestamp) {
+        oldestTimestamp = v.timestamp;
+        oldestKey = k;
+      }
+    }
+    
+    if (oldestKey) {
+      assetCache.delete(oldestKey);
+    }
+  }
+  
   assetCache.set(key, { assets, timestamp: Date.now() });
+}
+
+// Periodic cleanup of expired entries
+function cleanupExpiredCache(): void {
+  const now = Date.now();
+  const expiredKeys: string[] = [];
+  
+  for (const [key, value] of assetCache.entries()) {
+    if (now - value.timestamp >= CACHE_TTL) {
+      expiredKeys.push(key);
+    }
+  }
+  
+  expiredKeys.forEach(key => assetCache.delete(key));
+  
+  if (expiredKeys.length > 0) {
+    logger.debug('Cleaned up expired cache entries', { count: expiredKeys.length });
+  }
+}
+
+// Run cleanup every minute
+if (typeof window !== 'undefined') {
+  setInterval(cleanupExpiredCache, 60 * 1000);
 }
 
 /**

@@ -81,7 +81,7 @@ export function RealPivotBuilder(props: RealPivotBuilderProps = {}) {
   const filteredAssets = useMemo(() => {
     if (sourceAssets.length === 0) return [];
     
-    return sourceAssets.filter((asset: AtlanAsset) => {
+    return sourceAssets.filter((asset) => {
       if (hierarchyFilter.connectionName && asset.connectionName !== hierarchyFilter.connectionName) {
         return false;
       }

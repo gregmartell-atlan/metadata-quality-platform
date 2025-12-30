@@ -9,6 +9,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { AtlanAsset } from '../services/atlan/types';
+import { assetContextSync } from '../utils/crossTabSync';
 
 export type AssetContextType = 'all' | 'connection' | 'database' | 'schema' | 'table' | 'manual';
 
@@ -65,39 +66,22 @@ export const useAssetContextStore = create<AssetContextState>()(
       error: null,
 
       setContext: (type, filters, label, assets) => {
-        console.log('[AssetContextStore] setContext called', {
+        const newContext = {
           type,
           filters,
           label,
           assetCount: assets.length,
-          firstAsset: assets[0] ? { guid: assets[0].guid, name: assets[0].name } : null
-        });
-        
-        // Warn if setting non-manual context with empty assets (should be loaded elsewhere)
-        if (type !== 'manual' && assets.length === 0) {
-          console.warn('[AssetContextStore] Setting non-manual context with empty assets. Assets should be loaded via AssetContext component reload effect.', {
-            type,
-            filters,
-            label
-          });
-        }
+          lastUpdated: new Date().toISOString(),
+        };
         
         set({
-          context: {
-            type,
-            filters,
-            label,
-            assetCount: assets.length,
-            lastUpdated: new Date().toISOString(),
-          },
+          context: newContext,
           contextAssets: assets,
           error: null,
         });
-        console.log('[AssetContextStore] Context set, current state:', {
-          contextType: get().context?.type,
-          contextLabel: get().context?.label,
-          contextAssetsCount: get().contextAssets.length
-        });
+        
+        // Broadcast to other tabs
+        assetContextSync.broadcast({ context: newContext, assets }, 'context-updated');
       },
 
       setAllAssets: (assets) => {
@@ -117,16 +101,21 @@ export const useAssetContextStore = create<AssetContextState>()(
       setContextAssets: (assets) => {
         const context = get().context;
         if (context) {
+          const updatedContext = {
+            ...context,
+            assetCount: assets.length,
+            lastUpdated: new Date().toISOString(),
+          };
           set({
-            context: {
-              ...context,
-              assetCount: assets.length,
-              lastUpdated: new Date().toISOString(),
-            },
+            context: updatedContext,
             contextAssets: assets,
           });
+          
+          // Broadcast to other tabs
+          assetContextSync.broadcast({ context: updatedContext, assets }, 'assets-updated');
         } else {
           set({ contextAssets: assets });
+          assetContextSync.broadcast({ assets }, 'assets-updated');
         }
       },
 
@@ -136,6 +125,9 @@ export const useAssetContextStore = create<AssetContextState>()(
           contextAssets: [],
           error: null,
         });
+        
+        // Broadcast to other tabs
+        assetContextSync.broadcast({ context: null, assets: [] }, 'context-cleared');
       },
 
       setLoading: (loading) => {
@@ -148,11 +140,7 @@ export const useAssetContextStore = create<AssetContextState>()(
 
       getContextAssets: () => {
         const assets = get().contextAssets;
-        console.log('[AssetContextStore] getContextAssets called', {
-          assetCount: assets.length,
-          contextType: get().context?.type,
-          contextLabel: get().context?.label
-        });
+        // Removed console.log to prevent performance issues
         return assets;
       },
 
@@ -172,7 +160,30 @@ export const useAssetContextStore = create<AssetContextState>()(
         context: state.context,
         // Don't persist assets - they'll be reloaded based on context
       }),
+      version: 1, // Add version for future migrations
     }
   )
 );
+
+// Subscribe to cross-tab sync after store is created
+if (typeof window !== 'undefined') {
+  useAssetContextStore.subscribe(
+    (state) => state.context,
+    (context) => {
+      // This will be called when context changes, but we don't want to broadcast here
+      // to avoid infinite loops. Broadcasting happens in the actions.
+    }
+  );
+  
+  // Listen for cross-tab updates
+  assetContextSync.subscribe((data: { context?: AssetContext | null; assets?: AtlanAsset[] }) => {
+    const currentState = useAssetContextStore.getState();
+    if (data.context !== undefined && data.context !== currentState.context) {
+      useAssetContextStore.setState({ context: data.context });
+    }
+    if (data.assets !== undefined && data.assets !== currentState.contextAssets) {
+      useAssetContextStore.setState({ contextAssets: data.assets });
+    }
+  });
+}
 

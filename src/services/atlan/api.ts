@@ -7,6 +7,7 @@
 import type { AtlanAsset, AtlanSearchResponse, AtlanLineageResponse } from './types';
 import { apiFetch } from '../../utils/apiClient';
 import { logger } from '../../utils/logger';
+import { deduplicateRequest } from '../../utils/requestDeduplication';
 
 // ============================================
 // CONFIGURATION
@@ -203,20 +204,29 @@ async function atlanFetch<T>(
   const proxyPath = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
   const url = `${PROXY_URL}/proxy/${proxyPath}`;
 
-  // Use enhanced apiFetch with retry logic
-  const response = await apiFetch<T>(url, {
-    ...options,
-    signal,
-    timeout: 30000, // 30 second timeout
-    retries: 3, // Retry up to 3 times
-    retryDelay: 1000, // Start with 1 second delay
-    headers: {
-      'Content-Type': 'application/json',
-      // Pass Atlan URL and API key to proxy via headers
-      'X-Atlan-URL': config.baseUrl,
-      'X-Atlan-API-Key': config.apiKey,
-      ...options.headers,
-    },
+  // Create deduplication key from endpoint and method
+  const method = options.method || 'GET';
+  const dedupeKey = `${method}:${endpoint}`;
+
+  // Use request deduplication to prevent duplicate calls
+  return deduplicateRequest(dedupeKey, async () => {
+    // Use enhanced apiFetch with retry logic
+    const response = await apiFetch<T>(url, {
+      ...options,
+      signal,
+      timeout: 30000, // 30 second timeout
+      retries: 3, // Retry up to 3 times
+      retryDelay: 1000, // Start with 1 second delay
+      headers: {
+        'Content-Type': 'application/json',
+        // Pass Atlan URL and API key to proxy via headers
+        'X-Atlan-URL': config.baseUrl,
+        'X-Atlan-API-Key': config.apiKey,
+        ...options.headers,
+      },
+    });
+    
+    return response;
   });
 
   // Enhanced error message handling

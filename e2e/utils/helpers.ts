@@ -88,6 +88,12 @@ export async function takeScreenshot(page: Page, name: string) {
 
 
 
+<<<<<<< Updated upstream
+
+
+
+=======
+>>>>>>> Stashed changes
 
 
 

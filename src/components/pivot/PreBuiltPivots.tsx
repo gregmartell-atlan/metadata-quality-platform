@@ -672,7 +672,7 @@ export function PreBuiltPivots() {
           title="Owner Accountability: Certification Coverage"
           subtitle="Who is certifying their assets vs. leaving them in draft or unverified state?"
           meta={[
-            { label: '📊', value: `${selectedAssets.length} assets` },
+            { label: '📊', value: `${sourceAssets.length} assets` },
             { label: '👥', value: `${ownerPivot.rows.length} owner groups` },
           ]}
           rows={

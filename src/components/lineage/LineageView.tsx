@@ -89,6 +89,15 @@ export function LineageView() {
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
 
+  // Cleanup AbortController on unmount
+  useEffect(() => {
+    return () => {
+      if (abortController) {
+        abortController.abort();
+      }
+    };
+  }, [abortController]);
+
   // Get center asset from URL params or selected assets
   useEffect(() => {
     const guid = searchParams.get('guid');
@@ -212,7 +221,8 @@ export function LineageView() {
         return;
       }
       console.error('Failed to fetch lineage:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch lineage');
+      const sanitizedError = sanitizeError(err instanceof Error ? err : new Error('Failed to fetch lineage'));
+      setError(sanitizedError);
     } finally {
       if (!newAbortController.signal.aborted) {
         setLoading(false);

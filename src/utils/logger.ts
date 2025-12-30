@@ -58,8 +58,19 @@ class Logger {
 
     // In production, send errors to monitoring service
     if (!this.isDevelopment && level === 'error') {
-      // TODO: Send to error tracking service (Sentry, etc.)
-      // Example: Sentry.captureException(new Error(message), { extra: data });
+      // Import dynamically to avoid circular dependencies
+      import('./monitoring').then(({ errorTracking }) => {
+        if (data && typeof data === 'object' && 'error' in data) {
+          const error = data.error instanceof Error 
+            ? data.error 
+            : new Error(typeof data.error === 'string' ? data.error : message);
+          errorTracking.captureException(error, data);
+        } else {
+          errorTracking.captureMessage(message, 'error', data);
+        }
+      }).catch(() => {
+        // Silently fail if monitoring module not available
+      });
     }
   }
 
@@ -103,10 +114,3 @@ class Logger {
 }
 
 export const logger = new Logger();
-
-
-
-
-
-
-
