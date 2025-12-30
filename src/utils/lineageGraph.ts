@@ -147,9 +147,20 @@ export function buildLineageGraph(
 
   // Build all edges first (don't filter yet)
   const allEdges: LineageEdge[] = [];
+  console.log('[buildLineageGraph] Relations count:', relations.length);
+  console.log('[buildLineageGraph] Nodes count:', nodes.length);
+  console.log('[buildLineageGraph] Node GUIDs:', nodes.map(n => n.guid));
+
   relations.forEach((relation) => {
     const fromNode = nodes.find((n) => n.guid === relation.fromEntityId);
     const toNode = nodes.find((n) => n.guid === relation.toEntityId);
+
+    console.log('[buildLineageGraph] Processing relation:', {
+      fromEntityId: relation.fromEntityId,
+      toEntityId: relation.toEntityId,
+      fromNodeFound: !!fromNode,
+      toNodeFound: !!toNode,
+    });
 
     if (!fromNode || !toNode) return;
 
@@ -265,6 +276,9 @@ export function buildLineageGraph(
   centerNode.hasDownstream = centerDownstreamEdges.length > 0 || downstreamNodes.size > 0;
   centerNode.upstreamCount = centerUpstreamEdges.length;
   centerNode.downstreamCount = centerDownstreamEdges.length;
+
+  console.log('[buildLineageGraph] Final edges count:', edges.length);
+  console.log('[buildLineageGraph] Final edges:', edges.map(e => ({ id: e.id, source: e.source, target: e.target })));
 
   return {
     nodes,

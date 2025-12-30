@@ -339,6 +339,9 @@ export function LineageView() {
       selected: false,
     }));
 
+    console.log('[LineageView] ReactFlow nodes:', rfNodes.length);
+    console.log('[LineageView] ReactFlow edges:', rfEdges.length, rfEdges.map(e => ({ id: e.id, source: e.source, target: e.target })));
+
     return { nodes: rfNodes, edges: rfEdges };
   }, [graph, config, selectedNodeId, highlightedNodeIds]);
 
