@@ -1417,29 +1417,26 @@ export async function getLineage(
   // Helper to normalize entity by flattening attributes to top level
   function normalizeEntity(entity: any): AtlanAsset {
     const attributes = entity.attributes || {};
+    // Spread attributes FIRST, then override with explicit values
+    // This ensures our fallback logic takes precedence over undefined values
     return {
-      // Core fields from top level
+      // Spread raw attributes first (may contain undefined values that would overwrite)
+      ...attributes,
+      // Then override with explicit values and fallbacks (these take precedence)
       guid: entity.guid,
       typeName: entity.typeName,
-      // Flatten attributes to top level, use displayText as fallback for name
-      name: attributes.name || entity.displayText || entity.name || 'Unknown',
+      // Use displayText as reliable fallback for name (always present in Atlan responses)
+      name: attributes.name || entity.displayText || 'Unknown',
       qualifiedName: attributes.qualifiedName || entity.qualifiedName || entity.guid,
       description: attributes.description || attributes.userDescription,
       userDescription: attributes.userDescription,
-      ownerUsers: attributes.ownerUsers,
-      ownerGroups: attributes.ownerGroups,
       certificateStatus: attributes.certificateStatus,
-      classificationNames: attributes.classificationNames,
       assetTags: attributes.atlanTags,
-      meanings: attributes.meanings,
-      __hasLineage: attributes.__hasLineage,
-      // Timestamps
+      // Timestamps from top level of entity
       createTime: entity.createTime,
       updateTime: entity.updateTime,
       createdBy: entity.createdBy,
       updatedBy: entity.updatedBy,
-      // Keep raw attributes for any additional fields
-      ...attributes,
     };
   }
 
