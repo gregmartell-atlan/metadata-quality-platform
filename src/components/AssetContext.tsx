@@ -134,132 +134,106 @@ export function AssetContext() {
 
   // Track if calculation is in progress to prevent race conditions
   const isCalculatingRef = useRef(false);
+  // Track the last scored asset count to prevent redundant calculations
+  const lastScoredCountRef = useRef<number>(0);
 
   // Auto-calculate scores when context assets change
   useEffect(() => {
-    // Prevent concurrent calculations and infinite loops
-    if (scoringMode === "config-driven" && contextAssets.length > 0 && !isCalculatingRef.current && !isLoading) {
-      isCalculatingRef.current = true;
-      const calculateConfigScores = async () => {
-        const startTime = performance.now();
-        logger.info('AssetContext: Starting config-driven score calculation', { 
-          assetCount: contextAssets.length,
-          scoringMode 
-        });
-        try {
-          setLoading(true);
-          const transformStart = performance.now();
-          // Transform legacy assets to scoring format - filter to valid types
-          const scoringAssets: ScoringAtlanAsset[] = contextAssets
-            .filter(asset => isValidScoringType(asset.typeName))
-            .map(asset => {
-              // Normalize ownerUsers/ownerGroups to string arrays for scoring
-              const normalizeOwners = (owners: string[] | Array<{ guid: string; name: string }> | undefined): string[] | null => {
-                if (!owners) return null;
-                if (owners.length === 0) return null;
-                if (typeof owners[0] === 'string') return owners as string[];
-                return (owners as Array<{ guid: string; name: string }>).map(o => o.name);
-              };
-
-              return {
-                guid: asset.guid,
-                typeName: asset.typeName as ScoringAssetType,
-                name: asset.name,
-                qualifiedName: asset.qualifiedName,
-                connectionName: asset.connectionName,
-                description: asset.description,
-                userDescription: asset.userDescription,
-                certificateStatus: asset.certificateStatus,
-                ownerUsers: normalizeOwners(asset.ownerUsers),
-                ownerGroups: normalizeOwners(asset.ownerGroups),
-                domainGUIDs: asset.domainGUIDs,
-                classificationNames: asset.classificationNames,
-                popularityScore: asset.popularityScore,
-                viewScore: asset.viewScore,
-                updateTime: asset.updateTime,
-                __hasLineage: asset.__hasLineage,
-                readme: asset.readme ? { hasReadme: true } : null,
-              };
-            });
-          const transformDuration = performance.now() - transformStart;
-          logger.debug('AssetContext: Asset transformation complete', { 
-            duration: `${transformDuration.toFixed(2)}ms`,
-            transformedCount: scoringAssets.length 
-          });
-
-          // Score assets using the scoring service
-          const scoreStart = performance.now();
-          logger.info('AssetContext: Calling scoreAssets service', { assetCount: scoringAssets.length });
-          const results = await scoreAssets(scoringAssets);
-          const scoreDuration = performance.now() - scoreStart;
-          logger.info('AssetContext: Score calculation complete', { 
-            duration: `${scoreDuration.toFixed(2)}ms`,
-            resultCount: results.size 
-          });
-
-          // Aggregate scores across all assets and profiles
-          const aggStart = performance.now();
-          const agg = { completeness: 0, accuracy: 0, timeliness: 0, consistency: 0, usability: 0 };
-          let count = 0;
-          
-          results.forEach((profileResults, guid) => {
-            profileResults.forEach(result => {
-              if (result.dimensions) {
-                result.dimensions.forEach(dim => {
-                  const score100 = dim.score01 * 100;
-                  if (dim.dimension === "completeness") agg.completeness += score100;
-                  else if (dim.dimension === "accuracy") agg.accuracy += score100;
-                  else if (dim.dimension === "timeliness") agg.timeliness += score100;
-                  else if (dim.dimension === "consistency") agg.consistency += score100;
-                  else if (dim.dimension === "usability") agg.usability += score100;
-                });
-                count++;
-              }
-            });
-          });
-          
-          if (count > 0) {
-            const n = count;
-            const finalScores = {
-              completeness: Math.round(agg.completeness / n),
-              accuracy: Math.round(agg.accuracy / n),
-              timeliness: Math.round(agg.timeliness / n),
-              consistency: Math.round(agg.consistency / n),
-              usability: Math.round(agg.usability / n),
-            };
-            setConfigDrivenScores(finalScores);
-            const aggDuration = performance.now() - aggStart;
-            const totalDuration = performance.now() - startTime;
-            logger.info('AssetContext: Config-driven scores calculated and set', { 
-              scores: finalScores,
-              aggregationDuration: `${aggDuration.toFixed(2)}ms`,
-              totalDuration: `${totalDuration.toFixed(2)}ms`,
-              dimensionCount: count 
-            });
-          } else {
-            logger.warn('AssetContext: No scores to aggregate', { resultCount: results.size });
-          }
-        } catch (e: any) {
-          const totalDuration = performance.now() - startTime;
-          logger.error('Error calculating config-driven scores in AssetContext', e, { 
-            duration: `${totalDuration.toFixed(2)}ms`,
-            assetCount: contextAssets.length 
-          });
-        } finally {
-          setLoading(false);
-          isCalculatingRef.current = false;
-        }
-      };
-      
-      calculateConfigScores();
-    } else {
-      logger.debug('AssetContext: Skipping config-driven scoring', { 
-        scoringMode, 
-        assetCount: contextAssets.length 
-      });
+    // Prevent concurrent calculations and redundant re-calculations
+    if (scoringMode !== "config-driven" || contextAssets.length === 0) {
       setConfigDrivenScores(null);
+      return;
     }
-  }, [contextAssets.length, scoringMode, isLoading]);
+
+    // Skip if already calculating or if we've already scored this exact count
+    if (isCalculatingRef.current || lastScoredCountRef.current === contextAssets.length) {
+      return;
+    }
+
+    isCalculatingRef.current = true;
+    lastScoredCountRef.current = contextAssets.length;
+
+    const calculateConfigScores = async () => {
+      const startTime = performance.now();
+      try {
+        // Transform legacy assets to scoring format - filter to valid types
+        const scoringAssets: ScoringAtlanAsset[] = contextAssets
+          .filter(asset => isValidScoringType(asset.typeName))
+          .map(asset => {
+            const normalizeOwners = (owners: string[] | Array<{ guid: string; name: string }> | undefined): string[] | null => {
+              if (!owners || owners.length === 0) return null;
+              if (typeof owners[0] === 'string') return owners as string[];
+              return (owners as Array<{ guid: string; name: string }>).map(o => o.name);
+            };
+
+            return {
+              guid: asset.guid,
+              typeName: asset.typeName as ScoringAssetType,
+              name: asset.name,
+              qualifiedName: asset.qualifiedName,
+              connectionName: asset.connectionName,
+              description: asset.description,
+              userDescription: asset.userDescription,
+              certificateStatus: asset.certificateStatus,
+              ownerUsers: normalizeOwners(asset.ownerUsers),
+              ownerGroups: normalizeOwners(asset.ownerGroups),
+              domainGUIDs: asset.domainGUIDs,
+              classificationNames: asset.classificationNames,
+              popularityScore: asset.popularityScore,
+              viewScore: asset.viewScore,
+              updateTime: asset.updateTime,
+              __hasLineage: asset.__hasLineage,
+              readme: asset.readme ? { hasReadme: true } : null,
+            };
+          });
+
+        // Score assets using the scoring service
+        const results = await scoreAssets(scoringAssets);
+
+        // Aggregate scores across all assets and profiles
+        const agg = { completeness: 0, accuracy: 0, timeliness: 0, consistency: 0, usability: 0 };
+        let count = 0;
+
+        results.forEach((profileResults) => {
+          profileResults.forEach(result => {
+            if (result.dimensions) {
+              result.dimensions.forEach(dim => {
+                const score100 = dim.score01 * 100;
+                if (dim.dimension === "completeness") agg.completeness += score100;
+                else if (dim.dimension === "accuracy") agg.accuracy += score100;
+                else if (dim.dimension === "timeliness") agg.timeliness += score100;
+                else if (dim.dimension === "consistency") agg.consistency += score100;
+                else if (dim.dimension === "usability") agg.usability += score100;
+              });
+              count++;
+            }
+          });
+        });
+
+        if (count > 0) {
+          const n = count;
+          setConfigDrivenScores({
+            completeness: Math.round(agg.completeness / n),
+            accuracy: Math.round(agg.accuracy / n),
+            timeliness: Math.round(agg.timeliness / n),
+            consistency: Math.round(agg.consistency / n),
+            usability: Math.round(agg.usability / n),
+          });
+          const totalDuration = performance.now() - startTime;
+          logger.info('AssetContext: Scores calculated', {
+            assetCount: contextAssets.length,
+            duration: `${totalDuration.toFixed(2)}ms`
+          });
+        }
+      } catch (e: unknown) {
+        logger.error('Error calculating scores', e);
+      } finally {
+        isCalculatingRef.current = false;
+      }
+    };
+
+    calculateConfigScores();
+  }, [contextAssets, scoringMode]);
 
   // Calculate legacy scores when assets change
   const legacyScores = useMemo(() => {
