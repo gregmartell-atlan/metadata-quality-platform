@@ -58,61 +58,58 @@ export function AssetContext() {
   }, [contextAssets.length, context?.type, context?.label, scoringMode]);
 
   // Reload assets when context is restored from persistence but assets are missing
-  const hasReloadedRef = useRef<string | null>(null);
+  // Track contexts we've already attempted to reload (persists across re-renders)
+  const reloadAttemptsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     const reloadAssetsForContext = async () => {
       // Only reload if we have a context but no assets (e.g., after page refresh)
       // Skip reload for manual context - those assets can't be reloaded
-      const hasContext = !!context;
-      const hasNoAssets = contextAssets.length === 0;
-      const isNotManual = context?.type !== 'manual';
-      const contextKey = context ? `${context.type}-${JSON.stringify(context.filters)}` : null;
-      const alreadyReloaded = hasReloadedRef.current === contextKey;
-      const shouldReload = hasContext && hasNoAssets && !isLoading && isNotManual && !alreadyReloaded;
-      
-      if (shouldReload) {
-        hasReloadedRef.current = contextKey;
-        logger.info('AssetContext: Reloading assets for context', {
-          contextType: context.type,
-          contextLabel: context.label,
-          filters: context.filters,
-          expectedAssetCount: context.assetCount,
-          currentAssetCount: contextAssets.length
-        });
+      if (!context || context.type === 'manual' || isLoading) {
+        return;
+      }
 
-        try {
-          setLoading(true);
-          setError(null);
-          const assets = await loadAssetsForContext(context.type, context.filters);
-          logger.info('AssetContext: Assets reloaded for context', {
-            contextType: context.type,
-            assetCount: assets.length
-          });
-          
-          if (assets.length === 0) {
-            logger.warn('AssetContext: No assets found for context', {
-              contextType: context.type,
-              filters: context.filters
-            });
-            setError('No assets found for this context. The context may have been deleted or changed.');
-          } else {
-            setContextAssets(assets);
-          }
-        } catch (err) {
-          logger.error('AssetContext: Failed to reload assets for context', err, {
-            contextType: context.type,
-            filters: context.filters
-          });
-          const sanitizedError = sanitizeError(err instanceof Error ? err : new Error('Failed to reload assets'));
-          setError(sanitizedError);
-        } finally {
-          setLoading(false);
+      const contextKey = `${context.type}-${JSON.stringify(context.filters)}`;
+
+      // Don't reload if we've already attempted this context
+      if (reloadAttemptsRef.current.has(contextKey)) {
+        return;
+      }
+
+      // Don't reload if we already have assets
+      if (contextAssets.length > 0) {
+        return;
+      }
+
+      // Mark as attempted BEFORE making the request to prevent race conditions
+      reloadAttemptsRef.current.add(contextKey);
+
+      logger.debug('AssetContext: Attempting reload for context', {
+        contextType: context.type,
+        contextLabel: context.label
+      });
+
+      try {
+        setLoading(true);
+        setError(null);
+        const assets = await loadAssetsForContext(context.type, context.filters);
+
+        if (assets.length === 0) {
+          logger.warn('AssetContext: No assets found for context on reload');
+          setError('No assets found for this context.');
+        } else {
+          setContextAssets(assets);
         }
+      } catch (err) {
+        logger.error('AssetContext: Failed to reload assets for context', err);
+        const sanitizedError = sanitizeError(err instanceof Error ? err : new Error('Failed to reload assets'));
+        setError(sanitizedError);
+      } finally {
+        setLoading(false);
       }
     };
 
     reloadAssetsForContext();
-  }, [context?.type, context?.filters, contextAssets.length, isLoading, setContextAssets, setLoading, setError]);
+  }, [context, contextAssets.length, isLoading, setContextAssets, setLoading, setError]);
 
   // Initialize scoring service when Atlan config is available
   useEffect(() => {
@@ -428,15 +425,6 @@ export function AssetContext() {
             assets = await loadAssetsForContext(contextType, filters);
           } else if (nodeType === 'database') {
             contextType = 'database';
-            // Extract connection and database from qualifiedName or use provided data
-            // For database, nodeName is the database name
-            logger.info('AssetContext: Processing database drop', {
-              connectorName,
-              parsedConnectionName: parsed.connectionName,
-              nodeName,
-              qualifiedName,
-              fullParsed: parsed
-            });
             if (!connectorName && !parsed.connectionName) {
               throw new Error('Connection name is required for database context');
             }
@@ -447,14 +435,7 @@ export function AssetContext() {
               connectionName: connectorName || parsed.connectionName,
               databaseName: nodeName,
             };
-            logger.info('AssetContext: Calling loadAssetsForContext with filters', {
-              contextType,
-              filters
-            });
             assets = await loadAssetsForContext(contextType, filters);
-            logger.info('AssetContext: loadAssetsForContext returned', {
-              assetCount: assets.length
-            });
           } else if (nodeType === 'schema') {
             contextType = 'schema';
             // For schema, we need connection, database, and schema names

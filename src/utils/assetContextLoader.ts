@@ -170,34 +170,17 @@ export async function loadAssetsForConnection(
   const cacheKey = getCacheKey('connection', { connectionName });
   const cached = getCachedAssets(cacheKey);
   if (cached) {
-    logger.info('loadAssetsForConnection: Returning cached assets', { connectionName, count: cached.length });
     return cached;
   }
 
-  logger.info('loadAssetsForConnection: Starting load', { connectionName, options });
   const assets: AtlanAsset[] = [];
 
   try {
-    logger.info('loadAssetsForConnection: Fetching databases', { connectionName });
     const databases = await getDatabases(connectionName);
-    logger.info('loadAssetsForConnection: Found databases', {
-      connectionName,
-      count: databases.length,
-      names: databases.map(d => d.name)
-    });
 
     for (const database of databases) {
       try {
-        logger.info('loadAssetsForConnection: Fetching schemas for database', {
-          databaseName: database.name,
-          qualifiedName: database.qualifiedName
-        });
         const schemas = await getSchemas(database.qualifiedName);
-        logger.info('loadAssetsForConnection: Found schemas', {
-          databaseName: database.name,
-          count: schemas.length,
-          schemas: schemas.map(s => s.name)
-        });
 
         for (const schema of schemas) {
           try {
@@ -207,17 +190,13 @@ export async function loadAssetsForConnection(
               assetTypes: options?.assetTypes || ['Table', 'View', 'MaterializedView'],
               size: options?.limit || 200,
             });
-            logger.info('loadAssetsForConnection: Loaded schema assets', {
-              schemaName: schema.name,
-              count: schemaAssets.length
-            });
             assets.push(...schemaAssets);
           } catch (err) {
-            logger.error(`loadAssetsForConnection: Failed to load assets from schema ${schema.name}`, err);
+            logger.error(`loadAssetsForConnection: Failed to load schema ${schema.name}`, err);
           }
         }
       } catch (err) {
-        logger.error(`loadAssetsForConnection: Failed to load schemas from database ${database.name}`, err);
+        logger.error(`loadAssetsForConnection: Failed to load database ${database.name}`, err);
       }
     }
 
@@ -238,79 +217,40 @@ export async function loadAssetsForDatabase(
   databaseName: string,
   options?: { assetTypes?: string[]; limit?: number }
 ): Promise<AtlanAsset[]> {
-  // Direct console.log for debugging in case logger is filtered
-  console.log('[TRACE] loadAssetsForDatabase ENTRY', { connectionName, databaseName, options });
-  logger.info('===> loadAssetsForDatabase CALLED <===', { connectionName, databaseName, options });
+  logger.debug('loadAssetsForDatabase: Starting', { connectionName, databaseName, options });
 
   const cacheKey = getCacheKey('database', { connectionName, databaseName });
-  logger.info('loadAssetsForDatabase: Checking cache', { cacheKey });
 
   const cached = getCachedAssets(cacheKey);
   if (cached) {
-    logger.info('loadAssetsForDatabase: Returning cached assets', { connectionName, databaseName, count: cached.length });
+    logger.debug('loadAssetsForDatabase: Cache hit', { count: cached.length });
     return cached;
   }
 
-  logger.info('loadAssetsForDatabase: No cache hit, starting load', { connectionName, databaseName, options });
   const assets: AtlanAsset[] = [];
 
   try {
-    logger.info('loadAssetsForDatabase: Fetching databases for connection', { connectionName });
     const databases = await getDatabases(connectionName);
-    logger.info('loadAssetsForDatabase: Found databases', {
-      connectionName,
-      count: databases.length,
-      names: databases.map(d => d.name)
-    });
-
     const database = databases.find((db) => db.name === databaseName);
 
     if (!database) {
-      logger.error('loadAssetsForDatabase: Database not found', {
-        databaseName,
-        connectionName,
-        availableDatabases: databases.map(d => d.name)
-      });
       throw new Error(`Database ${databaseName} not found in ${connectionName}`);
     }
 
-    logger.info('loadAssetsForDatabase: Found target database', {
-      databaseName,
-      qualifiedName: database.qualifiedName
-    });
-
-    logger.info('loadAssetsForDatabase: Fetching schemas', { databaseQualifiedName: database.qualifiedName });
     const schemas = await getSchemas(database.qualifiedName);
-    logger.info('loadAssetsForDatabase: Found schemas', {
-      count: schemas.length,
-      schemas: schemas.map(s => ({ name: s.name, qualifiedName: s.qualifiedName, childCount: s.childCount }))
-    });
+    logger.debug('loadAssetsForDatabase: Found schemas', { count: schemas.length });
 
     for (const schema of schemas) {
       try {
-        logger.info('loadAssetsForDatabase: Fetching assets for schema', {
-          schemaName: schema.name,
-          schemaQualifiedName: schema.qualifiedName,
-          connector: connectionName,
-          assetTypes: options?.assetTypes || ['Table', 'View', 'MaterializedView']
-        });
-
         const schemaAssets = await fetchAssetsForModel({
           connector: connectionName,
           schemaQualifiedName: schema.qualifiedName,
           assetTypes: options?.assetTypes || ['Table', 'View', 'MaterializedView'],
           size: options?.limit || 200,
         });
-
-        logger.info('loadAssetsForDatabase: Loaded schema assets', {
-          schemaName: schema.name,
-          assetCount: schemaAssets.length,
-          sampleAssets: schemaAssets.slice(0, 3).map(a => ({ name: a.name, type: a.typeName }))
-        });
-
         assets.push(...schemaAssets);
       } catch (err) {
-        logger.error(`loadAssetsForDatabase: Failed to load assets from schema ${schema.name}`, err);
+        logger.error(`loadAssetsForDatabase: Failed to load schema ${schema.name}`, err);
       }
     }
 
@@ -381,27 +321,10 @@ export async function loadAssetsForContext(
   options?: { assetTypes?: string[]; limit?: number }
 ): Promise<AtlanAsset[]> {
   const startTime = performance.now();
-  logger.info('loadAssetsForContext: Starting asset load', {
-    type,
-    filters,
-    options
-  });
-
-  // Explicitly log the type value and comparison
-  logger.info('loadAssetsForContext: Type check', {
-    type,
-    typeOf: typeof type,
-    isDatabase: type === 'database',
-    isConnection: type === 'connection',
-    isSchema: type === 'schema',
-    isAll: type === 'all'
-  });
+  logger.debug('loadAssetsForContext: Starting', { type, filters });
 
   try {
     let assets: AtlanAsset[];
-
-    console.log('[TRACE] loadAssetsForContext BEFORE SWITCH', { type, filters });
-    logger.info('loadAssetsForContext: Entering switch statement', { type });
 
     switch (type) {
     case 'all':
@@ -416,24 +339,10 @@ export async function loadAssetsForContext(
       break;
     
     case 'database':
-      console.log('[TRACE] loadAssetsForContext: HIT DATABASE CASE', filters);
-      logger.info('loadAssetsForContext: Entering database case', {
-        hasConnectionName: !!filters.connectionName,
-        hasDatabaseName: !!filters.databaseName,
-        connectionName: filters.connectionName,
-        databaseName: filters.databaseName
-      });
       if (!filters.connectionName || !filters.databaseName) {
         throw new Error('connectionName and databaseName are required for database context');
       }
-      logger.info('loadAssetsForContext: Calling loadAssetsForDatabase', {
-        connectionName: filters.connectionName,
-        databaseName: filters.databaseName
-      });
       assets = await loadAssetsForDatabase(filters.connectionName, filters.databaseName, options);
-      logger.info('loadAssetsForContext: Returned from loadAssetsForDatabase', {
-        assetCount: assets.length
-      });
       break;
     
     case 'schema':

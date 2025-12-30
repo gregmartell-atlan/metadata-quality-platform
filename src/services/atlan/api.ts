@@ -952,8 +952,6 @@ export async function fetchAssetsForModel(options?: {
     throw new Error('You must connect to Atlan before fetching assets.');
   }
 
-  logger.info('fetchAssetsForModel: Starting', { options });
-
   const size = options?.size ?? 200;
   const from = options?.from ?? 0;
   const mustFilters: Array<Record<string, unknown>> = [];
@@ -1003,20 +1001,7 @@ export async function fetchAssetsForModel(options?: {
     mustNot: mustNotFilters,
   });
 
-  logger.info('fetchAssetsForModel: Executing search', {
-    mustFilters: JSON.stringify(mustFilters),
-    size,
-    from
-  });
-
   const response = await searchAssets(query, [], size, from);
-
-  logger.info('fetchAssetsForModel: Search complete', {
-    entityCount: response.entities.length,
-    approximateCount: response.approximateCount,
-    hasMore: response.hasMore
-  });
-
   return response.entities;
 }
 
@@ -1194,8 +1179,6 @@ export async function getDatabases(connector: string): Promise<HierarchyItem[]> 
     throw new Error('Atlan API not configured');
   }
 
-  logger.info('getDatabases: Starting search', { connector });
-
   // First, try the standard database types
   const query = {
     dsl: {
@@ -1225,23 +1208,15 @@ export async function getDatabases(connector: string): Promise<HierarchyItem[]> 
 
   const response = await search(query);
 
-  logger.info('getDatabases: Search complete', { connector, entityCount: response?.entities?.length || 0 });
-  
   // If we found databases, return them
   if (response?.entities && response.entities.length > 0) {
-    const databases = response.entities.map((e) => ({
+    return response.entities.map((e) => ({
       guid: e.guid,
       name: (e.attributes.name as string) || e.typeName || e.guid,
       qualifiedName: (e.attributes.qualifiedName as string) || e.guid,
       typeName: e.typeName,
       childCount: e.attributes.schemaCount as number | undefined,
     }));
-    logger.info('getDatabases: Found databases', {
-      connector,
-      count: databases.length,
-      names: databases.map(d => d.name)
-    });
-    return databases;
   }
   
   // If no databases found, try a broader search to see what asset types exist for this connector
@@ -1293,8 +1268,6 @@ export async function getSchemas(databaseQualifiedName: string): Promise<Hierarc
     throw new Error('Atlan API not configured');
   }
 
-  logger.info('getSchemas: Starting search', { databaseQualifiedName });
-
   const response = await search({
     dsl: {
       size: 200,
@@ -1321,17 +1294,11 @@ export async function getSchemas(databaseQualifiedName: string): Promise<Hierarc
     attributes: ['name', 'qualifiedName', 'tableCount', 'viewCount'],
   });
 
-  logger.info('getSchemas: Search complete', {
-    databaseQualifiedName,
-    entityCount: response?.entities?.length || 0
-  });
-
   if (!response?.entities) {
-    logger.warn('getSchemas: No schemas found', { databaseQualifiedName });
     return [];
   }
 
-  const schemas = response.entities.map((e) => {
+  return response.entities.map((e) => {
     const tableCount = (e.attributes.tableCount as number) || 0;
     const viewCount = (e.attributes.viewCount as number) || 0;
     return {
@@ -1342,13 +1309,6 @@ export async function getSchemas(databaseQualifiedName: string): Promise<Hierarc
       childCount: tableCount + viewCount,
     };
   });
-
-  logger.info('getSchemas: Found schemas', {
-    count: schemas.length,
-    names: schemas.map(s => s.name)
-  });
-
-  return schemas;
 }
 
 /**
