@@ -204,9 +204,12 @@ async function atlanFetch<T>(
   const proxyPath = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
   const url = `${PROXY_URL}/proxy/${proxyPath}`;
 
-  // Create deduplication key from endpoint and method
+  // Create deduplication key from endpoint, method, and body (for POST requests)
   const method = options.method || 'GET';
-  const dedupeKey = `${method}:${endpoint}`;
+  const bodyKey = options.body
+    ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)).slice(0, 200)
+    : '';
+  const dedupeKey = `${method}:${endpoint}:${bodyKey}`;
 
   // Use request deduplication to prevent duplicate calls
   return deduplicateRequest(dedupeKey, async () => {
