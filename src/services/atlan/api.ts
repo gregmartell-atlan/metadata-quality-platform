@@ -4,7 +4,7 @@
 // Replicated from atlan-metadata-designer
 // ============================================
 
-import type { AtlanAsset, AtlanSearchResponse, AtlanLineageResponse } from './types';
+import type { AtlanAsset, AtlanSearchResponse, AtlanLineageResponse, AtlanLineageRawResponse } from './types';
 import { apiFetch } from '../../utils/apiClient';
 import { logger } from '../../utils/logger';
 import { deduplicateRequest } from '../../utils/requestDeduplication';
@@ -1382,7 +1382,7 @@ export async function getLineage(
     immediateNeighbours: true,
   };
 
-  const response = await atlanFetch<AtlanLineageResponse>('/api/meta/lineage/list', {
+  const response = await atlanFetch<AtlanLineageRawResponse>('/api/meta/lineage/list', {
     method: 'POST',
     body: JSON.stringify(body),
   });
@@ -1391,5 +1391,39 @@ export async function getLineage(
     throw new Error(response.error || 'Failed to fetch lineage');
   }
 
-  return response.data;
+  // Transform raw API response to internal format
+  const rawData = response.data;
+  const guidEntityMap: Record<string, AtlanAsset> = {};
+  const relations: AtlanLineageResponse['relations'] = [];
+
+  // Build guidEntityMap from entities array
+  for (const entity of rawData.entities || []) {
+    guidEntityMap[entity.guid] = entity;
+
+    // Extract relations from immediateUpstream
+    if (entity.immediateUpstream) {
+      for (const upstream of entity.immediateUpstream) {
+        relations.push({
+          fromEntityId: upstream.guid,
+          toEntityId: entity.guid,
+          relationshipId: `${upstream.guid}-${entity.guid}`,
+          relationshipType: 'lineage',
+        });
+      }
+    }
+
+    // Extract relations from immediateDownstream
+    if (entity.immediateDownstream) {
+      for (const downstream of entity.immediateDownstream) {
+        relations.push({
+          fromEntityId: entity.guid,
+          toEntityId: downstream.guid,
+          relationshipId: `${entity.guid}-${downstream.guid}`,
+          relationshipType: 'lineage',
+        });
+      }
+    }
+  }
+
+  return { guidEntityMap, relations };
 }
