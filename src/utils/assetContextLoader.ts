@@ -238,6 +238,8 @@ export async function loadAssetsForDatabase(
   databaseName: string,
   options?: { assetTypes?: string[]; limit?: number }
 ): Promise<AtlanAsset[]> {
+  // Direct console.log for debugging in case logger is filtered
+  console.log('[TRACE] loadAssetsForDatabase ENTRY', { connectionName, databaseName, options });
   logger.info('===> loadAssetsForDatabase CALLED <===', { connectionName, databaseName, options });
 
   const cacheKey = getCacheKey('database', { connectionName, databaseName });
@@ -379,15 +381,28 @@ export async function loadAssetsForContext(
   options?: { assetTypes?: string[]; limit?: number }
 ): Promise<AtlanAsset[]> {
   const startTime = performance.now();
-  logger.info('loadAssetsForContext: Starting asset load', { 
-    type, 
+  logger.info('loadAssetsForContext: Starting asset load', {
+    type,
     filters,
-    options 
+    options
   });
-  
+
+  // Explicitly log the type value and comparison
+  logger.info('loadAssetsForContext: Type check', {
+    type,
+    typeOf: typeof type,
+    isDatabase: type === 'database',
+    isConnection: type === 'connection',
+    isSchema: type === 'schema',
+    isAll: type === 'all'
+  });
+
   try {
     let assets: AtlanAsset[];
-    
+
+    console.log('[TRACE] loadAssetsForContext BEFORE SWITCH', { type, filters });
+    logger.info('loadAssetsForContext: Entering switch statement', { type });
+
     switch (type) {
     case 'all':
       assets = await loadAllAssets(options);
@@ -401,6 +416,7 @@ export async function loadAssetsForContext(
       break;
     
     case 'database':
+      console.log('[TRACE] loadAssetsForContext: HIT DATABASE CASE', filters);
       logger.info('loadAssetsForContext: Entering database case', {
         hasConnectionName: !!filters.connectionName,
         hasDatabaseName: !!filters.databaseName,
