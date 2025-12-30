@@ -12,6 +12,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Snowflake, Database, Table, BarChart3, Workflow, Building2, Users, Link2, Package, ArrowRight, BarChart, Clock } from 'lucide-react';
 import { useAssetStore } from '../../stores/assetStore';
 import { useAssetContextStore } from '../../stores/assetContextStore';
+import { useScoresStore } from '../../stores/scoresStore';
 import { buildDynamicPivot, pivotDataToTableRows } from '../../utils/dynamicPivotBuilder';
 import { PivotSection } from './PivotSection';
 import { PivotTable } from './PivotTable';
@@ -95,9 +96,20 @@ export function PreBuiltPivots() {
   const contextAssets = useAssetContextStore((state) => state.contextAssets);
   const context = useAssetContextStore((state) => state.context);
   const getAssetCount = useAssetContextStore((state) => state.getAssetCount);
+  const { assetsWithScores } = useScoresStore();
   
   // Use context assets if available, fallback to selectedAssets for backward compatibility
   const sourceAssets = contextAssets.length > 0 ? contextAssets : selectedAssets;
+  
+  // Build scores map from scoresStore for efficient pivot calculations
+  const scoresMap = useMemo(() => {
+    if (assetsWithScores.length === 0) return undefined;
+    const map = new Map<string, { completeness: number; accuracy: number; timeliness: number; consistency: number; usability: number; overall: number }>();
+    assetsWithScores.forEach(({ asset, scores }) => {
+      map.set(asset.guid, scores);
+    });
+    return map;
+  }, [assetsWithScores]);
   
   // Log asset sources for debugging
   useEffect(() => {
@@ -131,7 +143,7 @@ export function PreBuiltPivots() {
       return null;
     }
     
-    const pivot = buildDynamicPivot(sourceAssets, rowDimensions, measures);
+    const pivot = buildDynamicPivot(sourceAssets, rowDimensions, measures, undefined, scoresMap);
     pivot.measureDisplayModes = measureDisplayModes;
     
     const duration = performance.now() - startTime;
@@ -141,7 +153,7 @@ export function PreBuiltPivots() {
     });
     
     return pivot;
-  }, [sourceAssets, rowDimensions, measures, measureDisplayModes]);
+  }, [sourceAssets, rowDimensions, measures, measureDisplayModes, scoresMap]);
 
   const customPivotRows = useMemo(() => {
     if (!customPivot) return [];
@@ -161,7 +173,9 @@ export function PreBuiltPivots() {
     const pivot = buildDynamicPivot(
       sourceAssets,
       ['connection', 'type'],
-      ['assetCount', 'descriptionCoverage', 'ownerCoverage', 'avgCompleteness']
+      ['assetCount', 'descriptionCoverage', 'ownerCoverage', 'avgCompleteness'],
+      undefined,
+      scoresMap
     );
     
     const duration = performance.now() - startTime;
@@ -171,7 +185,7 @@ export function PreBuiltPivots() {
     });
     
     return pivot;
-  }, [sourceAssets]);
+  }, [sourceAssets, scoresMap]);
 
   const completenessRows = useMemo(() => {
     if (!completenessPivot) return [];
@@ -191,7 +205,9 @@ export function PreBuiltPivots() {
     const pivot = buildDynamicPivot(
       sourceAssets,
       ['domain'],
-      ['completeness', 'accuracy', 'timeliness', 'consistency', 'usability', 'overall']
+      ['completeness', 'accuracy', 'timeliness', 'consistency', 'usability', 'overall'],
+      undefined,
+      scoresMap
     );
     
     const duration = performance.now() - startTime;
@@ -201,7 +217,7 @@ export function PreBuiltPivots() {
     });
     
     return pivot;
-  }, [sourceAssets]);
+  }, [sourceAssets, scoresMap]);
 
   const domainRows = useMemo(() => {
     if (!domainPivot) return [];
@@ -248,9 +264,11 @@ export function PreBuiltPivots() {
     return buildDynamicPivot(
       sourceAssets,
       ['ownerGroup'],
-      ['assetCount']
+      ['assetCount'],
+      undefined,
+      scoresMap
     );
-  }, [sourceAssets]);
+  }, [sourceAssets, scoresMap]);
 
   // Calculate certification breakdown per owner group
   const ownerCertRows = useMemo(() => {
@@ -328,7 +346,9 @@ export function PreBuiltPivots() {
     const pivot = buildDynamicPivot(
       sourceAssets,
       ['connection'],
-      ['assetCount', 'hasUpstream', 'hasDownstream', 'fullLineage', 'orphaned']
+      ['assetCount', 'hasUpstream', 'hasDownstream', 'fullLineage', 'orphaned'],
+      undefined,
+      scoresMap
     );
     
     const duration = performance.now() - startTime;
@@ -338,7 +358,7 @@ export function PreBuiltPivots() {
     });
     
     return pivot;
-  }, [sourceAssets]);
+  }, [sourceAssets, scoresMap]);
 
   const lineageRows = useMemo(() => {
     if (!lineagePivot) return [];

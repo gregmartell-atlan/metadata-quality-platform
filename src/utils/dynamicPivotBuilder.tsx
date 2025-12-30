@@ -18,6 +18,7 @@ import {
   formatMeasure,
 } from './pivotMeasures';
 import type { LineageInfo } from '../services/atlan/lineageEnricher';
+import { logger } from './logger';
 
 export interface PivotRow {
   dimensionValues: Record<string, string>; // dimension -> value
@@ -48,12 +49,14 @@ export interface HierarchicalPivotRow extends PivotRow {
  * @param rowDimensions - Dimensions to group by
  * @param measures - Measures to calculate
  * @param lineageMap - Optional map of lineage info by asset GUID (for lineage measures)
+ * @param scoresMap - Optional map of scores by asset GUID (from scoresStore) to avoid recalculation
  */
 export function buildDynamicPivot(
   assets: AtlanAsset[],
   rowDimensions: RowDimension[],
   measures: Measure[],
-  lineageMap?: Map<string, LineageInfo>
+  lineageMap?: Map<string, LineageInfo>,
+  scoresMap?: Map<string, { completeness: number; accuracy: number; timeliness: number; consistency: number; usability: number; overall: number }>
 ): PivotTableData {
   const startTime = performance.now();
   logger.info('buildDynamicPivot: Starting pivot build', { 
@@ -121,7 +124,7 @@ export function buildDynamicPivot(
     const measureStart = performance.now();
     const measureValues: Record<string, number> = {};
     measures.forEach((measure) => {
-      measureValues[measure] = calculateMeasure(measure, groupAssets, lineageMap);
+      measureValues[measure] = calculateMeasure(measure, groupAssets, lineageMap, scoresMap);
     });
     const measureDuration = performance.now() - measureStart;
     if (rows.length < 5 || rows.length % 10 === 0) {

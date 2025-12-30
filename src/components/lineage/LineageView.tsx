@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   ReactFlow,
   Background,
@@ -77,6 +78,7 @@ const DEFAULT_CONFIG: LineageViewConfig = {
 
 export function LineageView() {
   const { selectedAssets } = useAssetStore();
+  const [searchParams] = useSearchParams();
   const [config, setConfig] = useState<LineageViewConfig>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,13 +87,20 @@ export function LineageView() {
   const [centerAsset, setCenterAsset] = useState<AtlanAsset | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
 
-  // Get center asset (first selected or prompt user)
+  // Get center asset from URL params or selected assets
   useEffect(() => {
-    if (selectedAssets.length > 0 && !centerAsset) {
+    const guid = searchParams.get('guid');
+    if (guid && selectedAssets.length > 0) {
+      const asset = selectedAssets.find((a) => a.guid === guid);
+      if (asset && asset.guid !== centerAsset?.guid) {
+        setCenterAsset(asset);
+      }
+    } else if (selectedAssets.length > 0 && !centerAsset) {
       setCenterAsset(selectedAssets[0]);
     }
-  }, [selectedAssets, centerAsset]);
+  }, [searchParams, selectedAssets, centerAsset]);
 
   // Fetch lineage data
   const fetchLineage = useCallback(async () => {
@@ -99,6 +108,13 @@ export function LineageView() {
       setError('Please select an asset to view lineage');
       return;
     }
+
+    // Cancel previous request if still pending
+    if (abortController) {
+      abortController.abort();
+    }
+    const newAbortController = new AbortController();
+    setAbortController(newAbortController);
 
     setLoading(true);
     setError(null);
@@ -111,13 +127,28 @@ export function LineageView() {
         config.depth
       );
 
-      // Fetch quality scores for all assets in lineage
+      // Validate response
+      if (!response) {
+        setError('Invalid response from lineage API');
+        return;
+      }
+      
+      // Note: guidEntityMap might be empty if asset has no lineage, but center asset should still be shown
+      // We'll create the center node manually if needed
+
+      // Fetch quality scores for all assets in lineage (including center asset)
       const allAssets = Object.values(response.guidEntityMap || {});
+      // Ensure center asset is included for scoring
+      const assetsToScore = [...allAssets];
+      if (!allAssets.find(a => a.guid === centerAsset.guid)) {
+        assetsToScore.push(centerAsset);
+      }
+      
       let qualityScoresMap = new Map<string, QualityScores>();
       
       try {
         // Filter to only Table/View assets for scoring (scoring service expects specific types)
-        const scorableAssets = allAssets.filter(
+        const scorableAssets = assetsToScore.filter(
           (a) => a.typeName === 'Table' || a.typeName === 'View' || a.typeName === 'MaterializedView'
         );
         const scores = await scoreAssets(scorableAssets as any);
@@ -168,14 +199,27 @@ export function LineageView() {
         nodes: layoutedNodes,
       };
 
+      // Check if request was aborted
+      if (newAbortController.signal.aborted) {
+        return;
+      }
+
       setGraph(updatedGraph);
       setMetrics(calculateMetrics(updatedGraph));
     } catch (err) {
+      // Don't show error if request was aborted
+      if (newAbortController.signal.aborted) {
+        return;
+      }
       console.error('Failed to fetch lineage:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch lineage');
     } finally {
-      setLoading(false);
+      if (!newAbortController.signal.aborted) {
+        setLoading(false);
+      }
     }
+    // Note: abortController intentionally excluded from deps to avoid recreating callback
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [centerAsset, config.depth, config.direction, config.layout]);
 
   // Fetch lineage when config or center asset changes
@@ -183,51 +227,21 @@ export function LineageView() {
     if (centerAsset) {
       fetchLineage();
     }
-  }, [centerAsset, config.depth, config.direction, config.layout, fetchLineage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [centerAsset, config.depth, config.direction, config.layout]);
 
-  // Handle impact analysis
+  // Handle impact analysis - use separate state for highlights to avoid mutating graph
+  const [highlightedNodeIds, setHighlightedNodeIds] = useState<Set<string>>(new Set());
+  
   useEffect(() => {
     if (config.impactAnalysisMode && selectedNodeId && graph) {
       const affectedIds = findImpactPath(graph, selectedNodeId);
-      
-      // Update node highlight states
-      setGraph((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          nodes: prev.nodes.map((node) => ({
-            ...node,
-            isHighlighted: affectedIds.includes(node.id),
-            highlightReason: affectedIds.includes(node.id) ? 'impact' : undefined,
-          })),
-        };
-      });
+      setHighlightedNodeIds(new Set(affectedIds));
     } else if (config.rootCauseMode && selectedNodeId && graph) {
       const pathIds = findRootCausePath(graph, selectedNodeId);
-      
-      setGraph((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          nodes: prev.nodes.map((node) => ({
-            ...node,
-            isHighlighted: pathIds.includes(node.id),
-            highlightReason: pathIds.includes(node.id) ? 'root-cause' : undefined,
-          })),
-        };
-      });
+      setHighlightedNodeIds(new Set(pathIds));
     } else {
-      setGraph((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          nodes: prev.nodes.map((node) => ({
-            ...node,
-            isHighlighted: false,
-            highlightReason: undefined,
-          })),
-        };
-      });
+      setHighlightedNodeIds(new Set());
     }
   }, [config.impactAnalysisMode, config.rootCauseMode, selectedNodeId, graph]);
 
@@ -294,7 +308,13 @@ export function LineageView() {
       id: node.id,
       type: 'lineageNode',
       position: node.position || { x: 0, y: 0 },
-      data: node as LineageNodeData & Record<string, unknown>,
+      data: {
+        ...node,
+        isHighlighted: highlightedNodeIds.has(node.id),
+        highlightReason: highlightedNodeIds.has(node.id) 
+          ? (config.impactAnalysisMode ? 'impact' : config.rootCauseMode ? 'root-cause' : undefined)
+          : undefined,
+      } as LineageNodeData & Record<string, unknown>,
       selected: node.id === selectedNodeId,
     }));
 
@@ -309,7 +329,7 @@ export function LineageView() {
     }));
 
     return { nodes: rfNodes, edges: rfEdges };
-  }, [graph, config, selectedNodeId]);
+  }, [graph, config, selectedNodeId, highlightedNodeIds]);
 
   // Fit view when graph loads
   useEffect(() => {
@@ -389,6 +409,13 @@ export function LineageView() {
             maxZoom={2}
             defaultViewport={{ x: 0, y: 0, zoom: 1 }}
           >
+            <defs>
+              <linearGradient id="lineage-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="currentColor" stopOpacity="0" />
+                <stop offset="50%" stopColor="currentColor" stopOpacity="0.5" />
+                <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+              </linearGradient>
+            </defs>
             <Background color="#e5e7eb" gap={20} />
             <Controls position="bottom-right" />
             <MiniMap

@@ -75,14 +75,17 @@ export function buildLineageGraph(
   const guidEntityMap = lineageResponse.guidEntityMap || {};
   const relations = lineageResponse.relations || [];
 
+  // Use center asset from response if available (has latest data), otherwise use provided one
+  const actualCenterAsset = guidEntityMap[centerAsset.guid] || centerAsset;
+
   // Add center node
   const centerNode: LineageNode = {
-    id: centerAsset.guid,
-    guid: centerAsset.guid,
-    label: centerAsset.name || centerAsset.qualifiedName || 'Unknown',
-    type: centerAsset.typeName || 'Unknown',
-    entityType: isProcessType(centerAsset.typeName || '') ? 'process' : 'asset',
-    data: centerAsset,
+    id: actualCenterAsset.guid,
+    guid: actualCenterAsset.guid,
+    label: actualCenterAsset.name || actualCenterAsset.qualifiedName || 'Unknown',
+    type: actualCenterAsset.typeName || 'Unknown',
+    entityType: isProcessType(actualCenterAsset.typeName || '') ? 'process' : 'asset',
+    data: actualCenterAsset,
     hasDescription: !!(centerAsset.description || centerAsset.userDescription),
     hasOwner: !!(centerAsset.ownerUsers?.length || centerAsset.ownerGroups?.length),
     hasTags: !!(centerAsset.assetTags?.length || centerAsset.classificationNames?.length),
@@ -103,7 +106,7 @@ export function buildLineageGraph(
 
   // Add all entities from guidEntityMap as nodes
   Object.values(guidEntityMap).forEach((asset) => {
-    if (asset.guid === centerAsset.guid) return; // Skip center node
+    if (asset.guid === actualCenterAsset.guid) return; // Skip center node (already added)
 
     const entityType = isProcessType(asset.typeName || '') ? 'process' : 'asset';
     
@@ -133,62 +136,131 @@ export function buildLineageGraph(
     nodes.push(node);
   });
 
-  // Process relations to build edges and update node lineage flags
+  // Build all edges first (don't filter yet)
+  const allEdges: LineageEdge[] = [];
   relations.forEach((relation) => {
     const fromNode = nodes.find((n) => n.guid === relation.fromEntityId);
     const toNode = nodes.find((n) => n.guid === relation.toEntityId);
 
     if (!fromNode || !toNode) return;
 
-    // Determine if this is upstream (target -> center) or downstream (center -> target)
-    const isUpstream = relation.toEntityId === centerAsset.guid;
-    const isDownstream = relation.fromEntityId === centerAsset.guid;
-
-    // Update node lineage flags
-    if (isUpstream) {
-      fromNode.hasUpstream = true;
-      fromNode.upstreamCount++;
-    }
-    if (isDownstream) {
-      toNode.hasDownstream = true;
-      toNode.downstreamCount++;
-    }
-
-    // Create edge
+    // Create edge - we'll determine upstream/downstream later by traversing graph
     const edge: LineageEdge = {
       id: relation.relationshipId || `${relation.fromEntityId}-${relation.toEntityId}`,
       source: relation.fromEntityId,
       target: relation.toEntityId,
       relationshipType: relation.relationshipType || 'unknown',
       relationshipId: relation.relationshipId,
-      isUpstream: isUpstream,
+      isUpstream: false, // Will be set correctly below
       sourceType: fromNode.type,
       targetType: toNode.type,
     };
+    allEdges.push(edge);
+  });
 
-    // Filter edges based on direction
-    if (direction === 'both') {
-      edges.push(edge);
-    } else if (direction === 'upstream' && isUpstream) {
-      edges.push(edge);
-    } else if (direction === 'downstream' && isDownstream) {
-      edges.push(edge);
+  // Build adjacency maps for traversal
+  const outgoingEdges = new Map<string, LineageEdge[]>();
+  const incomingEdges = new Map<string, LineageEdge[]>();
+  allEdges.forEach((edge) => {
+    if (!outgoingEdges.has(edge.source)) {
+      outgoingEdges.set(edge.source, []);
+    }
+    outgoingEdges.get(edge.source)!.push(edge);
+    
+    if (!incomingEdges.has(edge.target)) {
+      incomingEdges.set(edge.target, []);
+    }
+    incomingEdges.get(edge.target)!.push(edge);
+  });
+
+  // Traverse graph to determine which nodes are upstream/downstream of center
+  const upstreamNodes = new Set<string>();
+  const downstreamNodes = new Set<string>();
+  
+  // BFS from center going backwards (following incoming edges) to find upstream nodes
+  // Upstream = nodes that feed INTO center (data flows from them to center)
+  function findUpstreamNodes(startId: string, visited: Set<string>) {
+    if (visited.has(startId)) return;
+    visited.add(startId);
+    
+    const incoming = incomingEdges.get(startId) || [];
+    incoming.forEach((edge) => {
+      upstreamNodes.add(edge.source); // Source feeds into target
+      findUpstreamNodes(edge.source, visited);
+    });
+  }
+  
+  // BFS from center going forwards (following outgoing edges) to find downstream nodes
+  // Downstream = nodes that center feeds INTO (data flows from center to them)
+  function findDownstreamNodes(startId: string, visited: Set<string>) {
+    if (visited.has(startId)) return;
+    visited.add(startId);
+    
+    const outgoing = outgoingEdges.get(startId) || [];
+    outgoing.forEach((edge) => {
+      downstreamNodes.add(edge.target); // Target receives data from source
+      findDownstreamNodes(edge.target, visited);
+    });
+  }
+  
+  findUpstreamNodes(actualCenterAsset.guid, new Set());
+  findDownstreamNodes(actualCenterAsset.guid, new Set());
+  
+  // Mark edges as upstream/downstream based on traversal results
+  allEdges.forEach((edge) => {
+    // Edge is upstream if target is upstream of center (or is center)
+    const isUpstream = upstreamNodes.has(edge.target) && edge.target !== actualCenterAsset.guid;
+    // Edge is downstream if source is downstream of center (or is center)
+    const isDownstream = downstreamNodes.has(edge.source) && edge.source !== actualCenterAsset.guid;
+    
+    // For edges directly connected to center
+    if (edge.target === actualCenterAsset.guid) {
+      edge.isUpstream = true;
+    } else if (edge.source === actualCenterAsset.guid) {
+      edge.isUpstream = false;
+    } else {
+      // For transitive edges, mark based on which path they're on
+      edge.isUpstream = isUpstream;
     }
   });
 
+  // Update node lineage flags based on traversal
+  nodes.forEach((node) => {
+    if (node.guid === actualCenterAsset.guid) {
+      // Center node flags set below
+      return;
+    }
+    
+    node.hasUpstream = upstreamNodes.has(node.guid);
+    node.hasDownstream = downstreamNodes.has(node.guid);
+    
+    // Count connections
+    node.upstreamCount = (incomingEdges.get(node.guid) || []).length;
+    node.downstreamCount = (outgoingEdges.get(node.guid) || []).length;
+  });
+
+  // Filter edges based on direction
+  if (direction === 'both') {
+    edges.push(...allEdges);
+  } else if (direction === 'upstream') {
+    edges.push(...allEdges.filter((e) => e.isUpstream || e.target === actualCenterAsset.guid));
+  } else if (direction === 'downstream') {
+    edges.push(...allEdges.filter((e) => !e.isUpstream || e.source === actualCenterAsset.guid));
+  }
+
   // Update center node lineage flags based on edges
-  const centerUpstreamEdges = edges.filter((e) => e.target === centerAsset.guid);
-  const centerDownstreamEdges = edges.filter((e) => e.source === centerAsset.guid);
+  const centerUpstreamEdges = edges.filter((e) => e.target === actualCenterAsset.guid);
+  const centerDownstreamEdges = edges.filter((e) => e.source === actualCenterAsset.guid);
   
-  centerNode.hasUpstream = centerUpstreamEdges.length > 0;
-  centerNode.hasDownstream = centerDownstreamEdges.length > 0;
+  centerNode.hasUpstream = centerUpstreamEdges.length > 0 || upstreamNodes.size > 0;
+  centerNode.hasDownstream = centerDownstreamEdges.length > 0 || downstreamNodes.size > 0;
   centerNode.upstreamCount = centerUpstreamEdges.length;
   centerNode.downstreamCount = centerDownstreamEdges.length;
 
   return {
     nodes,
     edges,
-    centerNodeId: centerAsset.guid,
+    centerNodeId: actualCenterAsset.guid,
   };
 }
 
@@ -309,16 +381,26 @@ export function findImpactPath(graph: LineageGraph, nodeId: string): string[] {
   const affected: string[] = [];
   const visited = new Set<string>();
   
+  // Build outgoing edges map for efficient traversal
+  const outgoingMap = new Map<string, string[]>();
+  graph.edges.forEach((edge) => {
+    if (!outgoingMap.has(edge.source)) {
+      outgoingMap.set(edge.source, []);
+    }
+    outgoingMap.get(edge.source)!.push(edge.target);
+  });
+  
   function traverseDownstream(currentId: string) {
     if (visited.has(currentId)) return;
     visited.add(currentId);
     
-    const outgoingEdges = graph.edges.filter((e) => e.source === currentId && !e.isUpstream);
-    outgoingEdges.forEach((edge) => {
-      if (!affected.includes(edge.target)) {
-        affected.push(edge.target);
+    // Follow all outgoing edges (data flows from source to target)
+    const targets = outgoingMap.get(currentId) || [];
+    targets.forEach((targetId) => {
+      if (!affected.includes(targetId)) {
+        affected.push(targetId);
       }
-      traverseDownstream(edge.target);
+      traverseDownstream(targetId);
     });
   }
   
@@ -333,16 +415,26 @@ export function findRootCausePath(graph: LineageGraph, nodeId: string): string[]
   const path: string[] = [];
   const visited = new Set<string>();
   
+  // Build incoming edges map for efficient traversal
+  const incomingMap = new Map<string, string[]>();
+  graph.edges.forEach((edge) => {
+    if (!incomingMap.has(edge.target)) {
+      incomingMap.set(edge.target, []);
+    }
+    incomingMap.get(edge.target)!.push(edge.source);
+  });
+  
   function traverseUpstream(currentId: string) {
     if (visited.has(currentId)) return;
     visited.add(currentId);
     
-    const incomingEdges = graph.edges.filter((e) => e.target === currentId && e.isUpstream);
-    incomingEdges.forEach((edge) => {
-      if (!path.includes(edge.source)) {
-        path.push(edge.source);
+    // Follow all incoming edges (data flows from source to target, so upstream is reverse)
+    const sources = incomingMap.get(currentId) || [];
+    sources.forEach((sourceId) => {
+      if (!path.includes(sourceId)) {
+        path.push(sourceId);
       }
-      traverseUpstream(edge.source);
+      traverseUpstream(sourceId);
     });
   }
   

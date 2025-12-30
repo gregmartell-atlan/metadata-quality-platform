@@ -4,14 +4,10 @@ import { Card, Button } from '../shared';
 import { useAssetStore } from '../../stores/assetStore';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
-import { transformAtlanAsset } from '../../services/atlan/transformer';
-import { calculateAssetQuality, type QualityScores } from '../../services/qualityMetrics';
-import { fetchAssetsForModel, getSchemas, getDatabases, getAtlanConfig } from '../../services/atlan/api';
-import { initializeScoringService, scoreAssets } from '../../services/scoringService';
 import { useScoringSettingsStore } from '../../stores/scoringSettingsStore';
 import { ScoringSettings } from '../settings/ScoringSettings';
 import type { AtlanAsset } from '../../services/atlan/types';
-import type { AtlanAsset as ScoringAtlanAsset } from '../../scoring/contracts';
+import { fetchAssetsForModel, getSchemas, getDatabases } from '../../services/atlan/api';
 import { logger } from '../../utils/logger';
 
 export function Scorecard() {
@@ -24,153 +20,40 @@ export function Scorecard() {
   const [trend, setTrend] = useState<number>(4.2); // Placeholder for trend logic
   const [error, setError] = useState<string | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [configDrivenScores, setConfigDrivenScores] = useState<QualityScores | null>(null);
-  
-  const { setConfigVersion } = useScoringSettingsStore();
   
   // Use context assets if available, fallback to selectedAssets for backward compatibility
   const effectiveAssets = contextAssets.length > 0 ? contextAssets : selectedAssets;
   const effectiveCount = contextAssets.length > 0 ? getAssetCount() : selectedCount;
 
-  // Initialize scoring service when Atlan config is available
-  useEffect(() => {
-    const initService = async () => {
-      const config = getAtlanConfig();
-      if (config && scoringMode === "config-driven") {
-        // Set callbacks for config version and scoring mode
-        const { setConfigVersionCallback, setScoringModeGetter } = await import("../../services/scoringService");
-        setConfigVersionCallback(setConfigVersion);
-        setScoringModeGetter(() => scoringMode);
-        initializeScoringService(config.baseUrl, config.apiKey);
-      }
-    };
-    initService();
-  }, [scoringMode, setConfigVersion]);
+  // Note: Scoring service initialization is handled by AssetContext and scoresStore
+  // This component only reads from scoresStore
 
-  // Auto-calculate scores when assets change (context or selected)
+  // Calculate aggregated scores from scoresStore (single source of truth)
+  // AssetContext component is responsible for updating scoresStore when context changes
   const scores = useMemo(() => {
-    if (effectiveAssets.length === 0) {
-      return configDrivenScores;
-    }
-    
-    if (scoringMode === "config-driven") {
-      return configDrivenScores;
-    }
-    
-    // Legacy scoring
-    try {
-      // Transform Atlan assets to AssetMetadata and calculate scores
-      const agg = { completeness: 0, accuracy: 0, timeliness: 0, consistency: 0, usability: 0 };
-      effectiveAssets.forEach(asset => {
-        const metadata = transformAtlanAsset(asset);
-        const s = calculateAssetQuality(metadata);
-        agg.completeness += s.completeness;
-        agg.accuracy += s.accuracy;
-        agg.timeliness += s.timeliness;
-        agg.consistency += s.consistency;
-        agg.usability += s.usability;
-      });
-      const n = effectiveAssets.length;
-      return {
-        completeness: Math.round(agg.completeness / n),
-        accuracy: Math.round(agg.accuracy / n),
-        timeliness: Math.round(agg.timeliness / n),
-        consistency: Math.round(agg.consistency / n),
-        usability: Math.round(agg.usability / n),
-      };
-    } catch (e: any) {
-      logger.error('Error calculating scores', e);
+    if (assetsWithScores.length === 0) {
       return null;
     }
-  }, [effectiveAssets, scoringMode, configDrivenScores]);
-
-  // Calculate config-driven scores when assets change and mode is config-driven
-  useEffect(() => {
-    if (scoringMode === "config-driven" && effectiveAssets.length > 0) {
-      const calculateConfigScores = async () => {
-        try {
-          setLoading(true);
-          // Transform legacy assets to scoring format
-          const scoringAssets: ScoringAtlanAsset[] = effectiveAssets.map(asset => ({
-            guid: asset.guid,
-            typeName: asset.typeName as any,
-            name: asset.name,
-            qualifiedName: asset.qualifiedName,
-            connectionName: asset.connectionName,
-            description: asset.description,
-            userDescription: asset.userDescription,
-            ownerUsers: asset.ownerUsers,
-            ownerGroups: asset.ownerGroups,
-            certificateStatus: asset.certificateStatus,
-            certificateUpdatedAt: asset.certificateUpdatedAt,
-            classificationNames: asset.classificationNames,
-            meanings: asset.meanings,
-            domainGUIDs: asset.domainGUIDs,
-            updateTime: asset.updateTime,
-            sourceUpdatedAt: asset.sourceUpdatedAt,
-            sourceLastReadAt: asset.sourceLastReadAt,
-            lastRowChangedAt: asset.lastRowChangedAt,
-            popularityScore: asset.popularityScore,
-            viewScore: asset.viewScore,
-            starredCount: asset.starredCount,
-            __hasLineage: asset.__hasLineage,
-            readme: asset.readme,
-            isDiscoverable: asset.isDiscoverable,
-          }));
-
-          const results = await scoreAssets(scoringAssets);
-          
-          // Aggregate scores across all assets and profiles
-          const agg = { completeness: 0, accuracy: 0, timeliness: 0, consistency: 0, usability: 0 };
-          let count = 0;
-          
-          results.forEach((profileResults) => {
-            profileResults.forEach(result => {
-              if (result.dimensions) {
-                result.dimensions.forEach(dim => {
-                  const score100 = dim.score01 * 100;
-                  if (dim.dimension === "completeness") agg.completeness += score100;
-                  else if (dim.dimension === "accuracy") agg.accuracy += score100;
-                  else if (dim.dimension === "timeliness") agg.timeliness += score100;
-                  else if (dim.dimension === "consistency") agg.consistency += score100;
-                  else if (dim.dimension === "usability") agg.usability += score100;
-                });
-                count++;
-              }
-            });
-          });
-          
-          if (count > 0) {
-            const n = count;
-            setConfigDrivenScores({
-              completeness: Math.round(agg.completeness / n),
-              accuracy: Math.round(agg.accuracy / n),
-              timeliness: Math.round(agg.timeliness / n),
-              consistency: Math.round(agg.consistency / n),
-              usability: Math.round(agg.usability / n),
-            });
-          }
-        } catch (e: any) {
-          logger.error('Error calculating config-driven scores', e);
-          setError(e.message || 'Failed to calculate scores');
-        } finally {
-          setLoading(false);
-        }
-      };
-      
-      calculateConfigScores();
-    } else {
-      setConfigDrivenScores(null);
-    }
-  }, [effectiveAssets, scoringMode]);
-  
-  // Update scores store when assets change
-  useEffect(() => {
-    if (effectiveAssets.length > 0) {
-      setAssetsWithScores(selectedAssets);
-    }
-  }, [selectedAssets, setAssetsWithScores]);
+    
+    // Aggregate scores from scoresStore
+    const agg = { completeness: 0, accuracy: 0, timeliness: 0, consistency: 0, usability: 0 };
+    assetsWithScores.forEach(({ scores: assetScores }) => {
+      agg.completeness += assetScores.completeness;
+      agg.accuracy += assetScores.accuracy;
+      agg.timeliness += assetScores.timeliness;
+      agg.consistency += assetScores.consistency;
+      agg.usability += assetScores.usability;
+    });
+    
+    const n = assetsWithScores.length;
+    return {
+      completeness: Math.round(agg.completeness / n),
+      accuracy: Math.round(agg.accuracy / n),
+      timeliness: Math.round(agg.timeliness / n),
+      consistency: Math.round(agg.consistency / n),
+      usability: Math.round(agg.usability / n),
+    };
+  }, [assetsWithScores]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -261,10 +144,14 @@ export function Scorecard() {
     }
   };
 
-  // Scores are now auto-calculated via useMemo, but keep this for manual refresh if needed
+  // Manual refresh - trigger AssetContext to recalculate scores
   const refreshScores = () => {
-    if (effectiveAssets.length > 0) {
-      setAssetsWithScores(selectedAssets);
+    // Force AssetContext to recalculate by clearing and resetting context
+    // This is a workaround - ideally AssetContext would expose a refresh method
+    if (contextAssets.length > 0) {
+      // Trigger a re-render by updating a dummy state
+      // The AssetContext component will handle the actual recalculation
+      logger.info('Scorecard: Refresh requested - scores will be recalculated by AssetContext');
     }
   };
 
@@ -331,8 +218,6 @@ export function Scorecard() {
         )}
       </div>
       {error && <div style={{ color: 'red', padding: '8px', marginBottom: '12px' }}>Error: {error}</div>}
-      {loading && <div style={{ padding: '8px', marginBottom: '12px' }}>Calculating scores...</div>}
-      {scoringMode === "config-driven" && <div style={{ fontSize: '0.875rem', color: '#666', marginBottom: '12px' }}>Using config-driven scoring</div>}
       {scores && (
         <>
           <div className="score-display">

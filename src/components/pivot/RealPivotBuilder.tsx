@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useAssetStore } from '../../stores/assetStore';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { usePivotStore } from '../../stores/pivotStore';
+import { useScoresStore } from '../../stores/scoresStore';
 import type { AtlanAsset } from '../../services/atlan/types';
 import { buildPivotHierarchy } from '../../utils/pivotBuilder';
 import { buildDynamicPivot, pivotDataToTableRows } from '../../utils/dynamicPivotBuilder';
@@ -55,6 +56,7 @@ export function RealPivotBuilder(props: RealPivotBuilderProps = {}) {
   // Subscribe directly to store state to get reactive updates
   const contextAssets = useAssetContextStore((state) => state.contextAssets);
   const { addView, setCurrentView } = usePivotStore();
+  const { assetsWithScores } = useScoresStore();
   const [saving, setSaving] = useState(false);
   const [hierarchyFilter, setHierarchyFilter] = useState<HierarchyFilterType>({
     level: 'connection',
@@ -64,6 +66,16 @@ export function RealPivotBuilder(props: RealPivotBuilderProps = {}) {
 
   // Use context assets if available, fallback to selectedAssets for backward compatibility
   const sourceAssets = contextAssets.length > 0 ? contextAssets : selectedAssets;
+  
+  // Build scores map from scoresStore for efficient pivot calculations
+  const scoresMap = useMemo(() => {
+    if (assetsWithScores.length === 0) return undefined;
+    const map = new Map<string, { completeness: number; accuracy: number; timeliness: number; consistency: number; usability: number; overall: number }>();
+    assetsWithScores.forEach(({ asset, scores }) => {
+      map.set(asset.guid, scores);
+    });
+    return map;
+  }, [assetsWithScores]);
 
   // Filter assets based on hierarchy filter
   const filteredAssets = useMemo(() => {
@@ -98,8 +110,8 @@ export function RealPivotBuilder(props: RealPivotBuilderProps = {}) {
     if (filteredAssets.length === 0 || rowDimensions.length === 0 || measures.length === 0) {
       return null;
     }
-    return buildDynamicPivot(filteredAssets, rowDimensions, measures);
-  }, [filteredAssets, rowDimensions, measures]);
+    return buildDynamicPivot(filteredAssets, rowDimensions, measures, undefined, scoresMap);
+  }, [filteredAssets, rowDimensions, measures, scoresMap]);
 
   // Convert to table rows
   const dynamicTableRows = useMemo(() => {
