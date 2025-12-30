@@ -1051,6 +1051,57 @@ export async function getAsset(guid: string, attributes: string[] = []): Promise
 }
 
 // ============================================
+// CLASSIFICATION TYPE DEFINITIONS
+// ============================================
+
+/**
+ * Classification type definition from Atlan typedefs API
+ */
+export interface ClassificationTypeDef {
+  name: string;
+  displayName?: string;
+  guid?: string;
+  description?: string;
+}
+
+/**
+ * Fetch all classification type definitions from Atlan
+ * Returns a map of type name -> display name for name resolution
+ */
+export async function getClassificationTypeDefs(): Promise<Map<string, string>> {
+  const response = await atlanFetch<{
+    classificationDefs?: ClassificationTypeDef[];
+  }>('/api/meta/types/typedefs?type=classification', {
+    method: 'GET',
+  });
+
+  console.log('[getClassificationTypeDefs] API response status:', response.status, 'error:', response.error || 'none');
+
+  if (response.error || !response.data) {
+    console.warn('Failed to fetch classification type definitions:', response.error || 'No data');
+    return new Map();
+  }
+
+  const result = new Map<string, string>();
+  const classificationDefs = response.data.classificationDefs || [];
+
+  console.log(`[getClassificationTypeDefs] Fetched ${classificationDefs.length} classification definitions`);
+  if (classificationDefs.length > 0) {
+    console.log('[getClassificationTypeDefs] Sample definitions:',
+      classificationDefs.slice(0, 5).map(d => ({ name: d.name, displayName: d.displayName }))
+    );
+  }
+
+  for (const def of classificationDefs) {
+    const typeName = def.name;
+    const displayName = def.displayName || def.name;
+    result.set(typeName, displayName);
+  }
+
+  return result;
+}
+
+// ============================================
 // HIERARCHY FETCHING (for asset browser)
 // ============================================
 
