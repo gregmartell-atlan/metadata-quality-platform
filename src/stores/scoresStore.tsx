@@ -73,6 +73,25 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
 
     // Collect all unique domain GUIDs and tag type names
     const domainGUIDs = [...new Set(assets.flatMap(a => a.domainGUIDs || []).filter(Boolean))];
+
+    // Build initial tag name map from atlanTags displayNames (if available)
+    // This gives us immediate display names without needing API lookups
+    const tagDisplayNamesFromAssets = new Map<string, string>();
+    assets.forEach(a => {
+      if (a.atlanTags) {
+        a.atlanTags.forEach(tag => {
+          if (tag.typeName && tag.displayName) {
+            tagDisplayNamesFromAssets.set(tag.typeName, tag.displayName);
+          }
+        });
+      }
+    });
+    console.log(`[ScoresStore] Found ${tagDisplayNamesFromAssets.size} tag display names directly from atlanTags`);
+    if (tagDisplayNamesFromAssets.size > 0) {
+      console.log('[ScoresStore] Sample atlanTags displayNames:', Object.fromEntries([...tagDisplayNamesFromAssets.entries()].slice(0, 5)));
+    }
+
+    // Collect tag type names that still need resolution
     const tagTypeNames = [...new Set(assets.flatMap(a => {
       const names: string[] = [];
       if (a.classificationNames) names.push(...a.classificationNames);
@@ -97,6 +116,16 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
     } else {
       logger.warn('Failed to fetch tag names, using fallback:', tagResult.reason);
     }
+
+    // Merge tag names: API results take precedence, but use atlanTags displayNames as fallback
+    const mergedTagNameMap = new Map<string, string>(tagDisplayNamesFromAssets);
+    if (tagNameMap) {
+      for (const [typeName, displayName] of tagNameMap.entries()) {
+        mergedTagNameMap.set(typeName, displayName);
+      }
+    }
+    tagNameMap = mergedTagNameMap;
+    console.log(`[ScoresStore] Final merged tag name map size: ${tagNameMap.size}`);
 
     // Update the pivot dimensions cache for consistent name resolution
     setNameCaches(domainNameMap, tagNameMap);

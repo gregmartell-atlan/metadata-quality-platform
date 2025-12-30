@@ -388,7 +388,7 @@ interface AtlanEntity {
     classificationNames?: string[];
     classifications?: string[];
     assetTags?: string[];
-    atlanTags?: Array<{ typeName: string; guid?: string }>;
+    atlanTags?: Array<{ typeName: string; guid?: string; displayName?: string; entityGuid?: string; propagate?: boolean }>;
     domainGUIDs?: string[];
     isDiscoverable?: boolean;
     isEditable?: boolean;
