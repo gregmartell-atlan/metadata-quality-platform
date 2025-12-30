@@ -10,6 +10,7 @@ import type { AtlanAsset } from '../services/atlan/types';
 import type { AssetMetadata, QualityScores } from '../services/qualityMetrics';
 import { transformAtlanAsset } from '../services/atlan/transformer';
 import { fetchDomainNames } from '../services/atlan/domainResolver';
+import { resolveTagNames } from '../services/atlan/tagResolver';
 import { calculateAssetQuality } from '../services/qualityMetrics';
 import { useScoringSettingsStore } from './scoringSettingsStore';
 import { scoreAssets, initializeScoringService, setScoringModeGetter } from '../services/scoringService';
@@ -65,17 +66,39 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
   }, [scoringMode]);
 
   const setAssetsWithScores = useCallback(async (assets: AtlanAsset[]) => {
-    // Pre-fetch domain names for human-readable display
+    // Pre-fetch domain and tag names for human-readable display
     let domainNameMap: Map<string, string> | undefined;
-    try {
-      const domainGUIDs = assets.flatMap(a => a.domainGUIDs || []).filter(Boolean);
-      const uniqueGUIDs = [...new Set(domainGUIDs)];
-      if (uniqueGUIDs.length > 0) {
-        domainNameMap = await fetchDomainNames(uniqueGUIDs);
-      }
-    } catch (error) {
-      logger.warn('Failed to fetch domain names, using fallback:', error);
+    let tagNameMap: Map<string, string> | undefined;
+
+    // Collect all unique domain GUIDs and tag type names
+    const domainGUIDs = [...new Set(assets.flatMap(a => a.domainGUIDs || []).filter(Boolean))];
+    const tagTypeNames = [...new Set(assets.flatMap(a => {
+      const names: string[] = [];
+      if (a.classificationNames) names.push(...a.classificationNames);
+      if (a.atlanTags) names.push(...a.atlanTags.map(t => t.typeName).filter(Boolean));
+      return names;
+    }))];
+
+    // Fetch both in parallel
+    const [domainResult, tagResult] = await Promise.allSettled([
+      domainGUIDs.length > 0 ? fetchDomainNames(domainGUIDs) : Promise.resolve(new Map<string, string>()),
+      tagTypeNames.length > 0 ? resolveTagNames(tagTypeNames) : Promise.resolve(new Map<string, string>()),
+    ]);
+
+    if (domainResult.status === 'fulfilled') {
+      domainNameMap = domainResult.value;
+    } else {
+      logger.warn('Failed to fetch domain names, using fallback:', domainResult.reason);
     }
+
+    if (tagResult.status === 'fulfilled') {
+      tagNameMap = tagResult.value;
+    } else {
+      logger.warn('Failed to fetch tag names, using fallback:', tagResult.reason);
+    }
+
+    // Create name resolution maps object
+    const nameMaps = { domainNameMap, tagNameMap };
 
     if (scoringMode === "config-driven") {
       try {
@@ -117,7 +140,7 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
         
         // Convert ProfileScoreResult[] to QualityScores format
         const withScores: AssetWithScores[] = assets.map((asset) => {
-          const metadata = transformAtlanAsset(asset, domainNameMap);
+          const metadata = transformAtlanAsset(asset, nameMaps);
           const profileResults = results.get(asset.guid) || [];
           
           // Aggregate scores from all profiles
@@ -156,7 +179,7 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
         logger.error('Error calculating config-driven scores', error);
         // Fallback to legacy scoring
         const withScores: AssetWithScores[] = assets.map((asset) => {
-          const metadata = transformAtlanAsset(asset, domainNameMap);
+          const metadata = transformAtlanAsset(asset, nameMaps);
           const scores = calculateAssetQuality(metadata);
           return { asset, metadata, scores };
         });
@@ -165,7 +188,7 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
     } else {
       // Legacy scoring
       const withScores: AssetWithScores[] = assets.map((asset) => {
-        const metadata = transformAtlanAsset(asset, domainNameMap);
+        const metadata = transformAtlanAsset(asset, nameMaps);
         const scores = calculateAssetQuality(metadata);
         return { asset, metadata, scores };
       });

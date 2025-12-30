@@ -38,6 +38,7 @@ export {
   transformAtlanAsset,
   transformAtlanAssets,
   transformAtlanAssetsWithDomains,
+  transformAtlanAssetsWithNames,
   extractHierarchy,
 } from './transformer';
 
@@ -46,4 +47,11 @@ export {
   fetchDomainNames,
   clearDomainCache,
 } from './domainResolver';
+
+export {
+  fetchTagDisplayName,
+  fetchAllTagDisplayNames,
+  resolveTagNames,
+  clearTagCache,
+} from './tagResolver';
 
