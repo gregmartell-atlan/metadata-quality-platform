@@ -11,6 +11,7 @@ import type { AssetMetadata, QualityScores } from '../services/qualityMetrics';
 import { transformAtlanAsset } from '../services/atlan/transformer';
 import { fetchDomainNames } from '../services/atlan/domainResolver';
 import { resolveTagNames } from '../services/atlan/tagResolver';
+import { setNameCaches } from '../utils/pivotDimensions';
 import { calculateAssetQuality } from '../services/qualityMetrics';
 import { useScoringSettingsStore } from './scoringSettingsStore';
 import { scoreAssets, initializeScoringService, setScoringModeGetter } from '../services/scoringService';
@@ -96,6 +97,9 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
     } else {
       logger.warn('Failed to fetch tag names, using fallback:', tagResult.reason);
     }
+
+    // Update the pivot dimensions cache for consistent name resolution
+    setNameCaches(domainNameMap, tagNameMap);
 
     // Create name resolution maps object
     const nameMaps = { domainNameMap, tagNameMap };
