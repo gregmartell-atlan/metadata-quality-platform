@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Settings, Hash, Percent, BarChart3, Zap, ChevronDown, ChevronRight, PanelRightClose, PanelRightOpen } from 'lucide-react';
+import { Settings, Hash, Percent, BarChart3, Zap, ChevronDown, ChevronRight, ChevronLeft } from 'lucide-react';
 import { PivotConfigurator } from './PivotConfigurator';
 import { getMeasureLabel } from '../../utils/pivotMeasures';
 import type { RowDimension, Measure, MeasureDisplayMode } from '../../types/pivot';
@@ -40,40 +40,51 @@ export function PivotConfiguratorFlyout({
   };
 
   return (
-    <div className={`configurator-drawer ${isOpen ? 'open' : 'closed'}`}>
-      {/* Drawer Toggle Tab */}
-      <button
-        className="drawer-toggle"
-        onClick={() => setIsOpen(!isOpen)}
-        title={isOpen ? 'Hide configuration' : 'Show configuration'}
-      >
-        {isOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
-        {!isOpen && (
-          <span className="drawer-toggle-label">
-            <Settings size={14} />
-            Configure
-          </span>
-        )}
-      </button>
+    <div className={`config-flyout ${isOpen ? 'open' : 'collapsed'}`}>
+      {/* Collapsed Tab - visible when closed */}
+      {!isOpen && (
+        <button
+          className="flyout-collapsed-tab"
+          onClick={() => setIsOpen(true)}
+          title="Show configuration"
+        >
+          <ChevronLeft size={14} />
+          <Settings size={16} />
+          <span className="collapsed-label">Configure</span>
+          {(rowDimensions.length > 0 || measures.length > 0) && (
+            <span className="collapsed-badges">
+              {rowDimensions.length > 0 && <span>{rowDimensions.length}D</span>}
+              {measures.length > 0 && <span>{measures.length}M</span>}
+            </span>
+          )}
+        </button>
+      )}
 
-      {/* Drawer Content */}
-      <div className="drawer-content">
-        <div className="drawer-header">
-          <div className="drawer-title">
-            <Settings size={18} />
+      {/* Flyout Panel */}
+      <div className="flyout-panel">
+        <div className="flyout-header">
+          <button
+            className="flyout-collapse-btn"
+            onClick={() => setIsOpen(false)}
+            title="Collapse sidebar"
+          >
+            <ChevronRight size={16} />
+          </button>
+          <div className="flyout-title">
+            <Settings size={16} />
             <span>Configure</span>
           </div>
-          <div className="drawer-badges">
+          <div className="flyout-badges">
             {rowDimensions.length > 0 && (
-              <span className="drawer-badge">{rowDimensions.length}D</span>
+              <span className="flyout-badge">{rowDimensions.length}D</span>
             )}
             {measures.length > 0 && (
-              <span className="drawer-badge">{measures.length}M</span>
+              <span className="flyout-badge">{measures.length}M</span>
             )}
           </div>
         </div>
 
-        <div className="drawer-body">
+        <div className="flyout-body">
           {/* Pivot Configurator (Dimensions & Measures) */}
           <PivotConfigurator
             rowDimensions={rowDimensions}
@@ -85,9 +96,9 @@ export function PivotConfiguratorFlyout({
 
           {/* Measure Display Options */}
           {measures.length > 0 && measureDisplayModes && onMeasureDisplayModesChange && (
-            <div className="drawer-section">
+            <div className="flyout-section">
               <button
-                className="drawer-section-header"
+                className="flyout-section-header"
                 onClick={() => setShowDisplayOptions(!showDisplayOptions)}
               >
                 <span className="section-title">
