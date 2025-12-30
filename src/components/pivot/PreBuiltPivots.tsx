@@ -18,7 +18,6 @@ import { PivotSection } from './PivotSection';
 import { PivotTable } from './PivotTable';
 import { HierarchicalPivotTable } from './HierarchicalPivotTable';
 import { PivotConfiguratorFlyout } from './PivotConfiguratorFlyout';
-import { MeasureDisplayToggle } from './MeasureDisplayToggle';
 import { getDimensionLabel, getDimensionIcon } from '../../utils/pivotDimensions';
 import { getMeasureLabel, formatMeasure, calculateMeasure } from '../../utils/pivotMeasures';
 import { extractDimensionValue } from '../../utils/pivotDimensions';
@@ -482,6 +481,8 @@ export function PreBuiltPivots() {
         measures={measures}
         onRowDimensionsChange={setRowDimensions}
         onMeasuresChange={setMeasures}
+        measureDisplayModes={measureDisplayModes}
+        onMeasureDisplayModesChange={setMeasureDisplayModes}
       />
 
       {/* Custom Pivot View */}
@@ -511,24 +512,6 @@ export function PreBuiltPivots() {
                 </span>
               ))}
             </>
-          }
-          measureControls={
-            <div className="measure-display-controls">
-              {measures.map((measure) => (
-                <div key={measure} className="measure-control-item">
-                  <span className="measure-control-label">{getMeasureLabel(measure)}:</span>
-                  <MeasureDisplayToggle
-                    measure={measure}
-                    mode={measureDisplayModes.get(measure) || 'auto'}
-                    onModeChange={(m, mode) => {
-                      const newModes = new Map(measureDisplayModes);
-                      newModes.set(m, mode);
-                      setMeasureDisplayModes(newModes);
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
           }
           insights={[
             {
