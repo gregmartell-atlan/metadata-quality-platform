@@ -1396,6 +1396,24 @@ export async function getLineage(
   const guidEntityMap: Record<string, AtlanAsset> = {};
   const relations: AtlanLineageResponse['relations'] = [];
 
+  // Helper to infer typeName from qualifiedName
+  function inferTypeFromQualifiedName(qualifiedName: string): string {
+    const qn = qualifiedName.toLowerCase();
+    if (qn.includes('/powerbi/')) return 'PowerBITable';
+    if (qn.includes('/thoughtspot/')) return 'ThoughtspotTable';
+    if (qn.includes('/tableau/')) return 'TableauDatasource';
+    if (qn.includes('/looker/')) return 'LookerView';
+    if (qn.includes('/metabase/')) return 'MetabaseTable';
+    if (qn.includes('/snowflake/')) return 'Table';
+    if (qn.includes('/databricks/')) return 'Table';
+    if (qn.includes('/redshift/')) return 'Table';
+    if (qn.includes('/bigquery/')) return 'Table';
+    if (qn.includes('/postgres/')) return 'Table';
+    if (qn.includes('/mysql/')) return 'Table';
+    if (qn.includes('/sqlserver/')) return 'Table';
+    return 'Asset';
+  }
+
   // Build guidEntityMap from entities array
   for (const entity of rawData.entities || []) {
     guidEntityMap[entity.guid] = entity;
@@ -1403,6 +1421,15 @@ export async function getLineage(
     // Extract relations from immediateUpstream
     if (entity.immediateUpstream) {
       for (const upstream of entity.immediateUpstream) {
+        // Create placeholder entry for referenced asset if not already in map
+        if (!guidEntityMap[upstream.guid]) {
+          guidEntityMap[upstream.guid] = {
+            guid: upstream.guid,
+            name: upstream.name || 'Unknown',
+            qualifiedName: upstream.qualifiedName || upstream.guid,
+            typeName: inferTypeFromQualifiedName(upstream.qualifiedName || ''),
+          };
+        }
         relations.push({
           fromEntityId: upstream.guid,
           toEntityId: entity.guid,
@@ -1415,6 +1442,15 @@ export async function getLineage(
     // Extract relations from immediateDownstream
     if (entity.immediateDownstream) {
       for (const downstream of entity.immediateDownstream) {
+        // Create placeholder entry for referenced asset if not already in map
+        if (!guidEntityMap[downstream.guid]) {
+          guidEntityMap[downstream.guid] = {
+            guid: downstream.guid,
+            name: downstream.name || 'Unknown',
+            qualifiedName: downstream.qualifiedName || downstream.guid,
+            typeName: inferTypeFromQualifiedName(downstream.qualifiedName || ''),
+          };
+        }
         relations.push({
           fromEntityId: entity.guid,
           toEntityId: downstream.guid,
