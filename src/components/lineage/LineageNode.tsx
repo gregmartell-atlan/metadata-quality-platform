@@ -105,14 +105,12 @@ function LineageNodeComponent({ data, selected }: LineageNodeProps) {
 
   return (
     <div className={`lineage-node ${nodeColorClass} ${selected ? 'selected' : ''} ${isCenterNode ? 'center' : ''}`}>
-      {/* Input handles (for upstream connections) */}
-      {hasUpstream && (
-        <Handle
-          type="target"
-          position={Position.Left}
-          className="lineage-handle lineage-handle-input"
-        />
-      )}
+      {/* Input handle (target for incoming edges) - always render for edge connections */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="lineage-handle lineage-handle-input"
+      />
 
       {/* Node content */}
       <div className="lineage-node-content">
@@ -191,14 +189,12 @@ function LineageNodeComponent({ data, selected }: LineageNodeProps) {
         )}
       </div>
 
-      {/* Output handles (for downstream connections) */}
-      {hasDownstream && (
-        <Handle
-          type="source"
-          position={Position.Right}
-          className="lineage-handle lineage-handle-output"
-        />
-      )}
+      {/* Output handle (source for outgoing edges) - always render for edge connections */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="lineage-handle lineage-handle-output"
+      />
     </div>
   );
 }
