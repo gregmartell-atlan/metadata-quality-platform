@@ -4,9 +4,10 @@
  * Combines Atlan connection, asset context, and page navigation into a cohesive header.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link2, Link2Off, ChevronDown, BarChart3, X, Download, Loader2, AlertTriangle, Globe, FolderOpen } from 'lucide-react';
 import { useAssetContextStore } from '../../stores/assetContextStore';
+import { useScoresStore } from '../../stores/scoresStore';
 import { getAtlanConfig, getConnectors, testAtlanConnection, configureAtlanApi, getSavedAtlanBaseUrl } from '../../services/atlan/api';
 import { loadAssetsForContext, generateContextLabel } from '../../utils/assetContextLoader';
 import { sanitizeError } from '../../utils/sanitize';
@@ -34,6 +35,7 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
   // Asset context state
   const {
     context,
+    contextAssets,
     isLoading,
     error,
     setContext,
@@ -44,6 +46,9 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
     getContextLabel,
     getAssetCount,
   } = useAssetContextStore();
+
+  // Scores store for triggering score calculation
+  const { setAssetsWithScores } = useScoresStore();
 
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showContextMenu, setShowContextMenu] = useState(false);
@@ -72,6 +77,18 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
         .catch(err => logger.error('Failed to load connectors', err));
     }
   }, [isConnected]);
+
+  // Trigger score calculation when context assets change
+  const prevAssetsLengthRef = useRef(0);
+  useEffect(() => {
+    if (contextAssets.length > 0 && contextAssets.length !== prevAssetsLengthRef.current) {
+      prevAssetsLengthRef.current = contextAssets.length;
+      logger.info('AppHeader: Triggering score calculation', { assetCount: contextAssets.length });
+      setAssetsWithScores(contextAssets);
+    } else if (contextAssets.length === 0 && prevAssetsLengthRef.current > 0) {
+      prevAssetsLengthRef.current = 0;
+    }
+  }, [contextAssets, setAssetsWithScores]);
 
   // Handle connect form submit
   const handleConnect = async (e: React.FormEvent) => {
