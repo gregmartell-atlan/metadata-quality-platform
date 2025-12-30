@@ -1,19 +1,39 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button, ConfirmModal } from '../components/shared';
+import { AssetContext } from '../components/AssetContext';
 import { DemoPivots } from '../components/pivot/DemoPivots';
 import { RealPivotBuilder } from '../components/pivot/RealPivotBuilder';
 import { PreBuiltPivots } from '../components/pivot/PreBuiltPivots';
 import { useAssetStore } from '../stores/assetStore';
+import { useAssetContextStore } from '../stores/assetContextStore';
 import { usePivotStore } from '../stores/pivotStore';
+import { GitBranch } from 'lucide-react';
 import './PivotBuilder.css';
 
 export function PivotBuilder() {
-  const { selectedAssets, selectedCount } = useAssetStore();
+  const navigate = useNavigate();
+  const { selectedAssets, selectedCount, addAsset } = useAssetStore();
+  // Subscribe directly to store state to get reactive updates
+  const contextAssets = useAssetContextStore((state) => state.contextAssets);
+  const getAssetCount = useAssetContextStore((state) => state.getAssetCount);
   const { views, getCurrentView, setCurrentView, deleteView } = usePivotStore();
   const [showDemo, setShowDemo] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'accountability' | 'domain' | 'lineage' | 'custom'>('all');
   const [deleteViewId, setDeleteViewId] = useState<string | null>(null);
   const currentView = getCurrentView();
+  
+  // Use context assets if available, fallback to selectedAssets for backward compatibility
+  const effectiveAssets = contextAssets.length > 0 ? contextAssets : selectedAssets;
+  const effectiveCount = contextAssets.length > 0 ? getAssetCount() : selectedCount;
+  
+  const handleViewLineage = () => {
+    if (effectiveAssets.length > 0) {
+      const firstAsset = effectiveAssets[0];
+      addAsset(firstAsset);
+      navigate(`/lineage?guid=${firstAsset.guid}`);
+    }
+  };
 
   const handleSaveView = () => {
     // This will be triggered from RealPivotBuilder
@@ -37,12 +57,15 @@ export function PivotBuilder() {
   return (
     <div className="pivot-builder-page">
       <div className="container">
+        {/* Asset Context Header */}
+        <AssetContext />
+        
         <header className="header">
           <div>
             <h1>Pivot Builder</h1>
-            {selectedCount > 0 && (
+            {effectiveCount > 0 && (
               <span style={{ marginLeft: '1rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                {selectedCount} asset{selectedCount !== 1 ? 's' : ''} selected
+                {effectiveCount} asset{effectiveCount !== 1 ? 's' : ''} in context
               </span>
             )}
           </div>
@@ -73,6 +96,16 @@ export function PivotBuilder() {
                   </option>
                 ))}
               </select>
+            )}
+            {effectiveAssets.length > 0 && (
+              <Button
+                variant="secondary"
+                onClick={handleViewLineage}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <GitBranch size={16} />
+                View Lineage
+              </Button>
             )}
             <Button variant="secondary" onClick={() => setShowDemo(!showDemo)}>
               {showDemo ? 'Show Real Data' : 'Show Demo'}
