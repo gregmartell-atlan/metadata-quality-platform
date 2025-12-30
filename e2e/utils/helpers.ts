@@ -85,3 +85,15 @@ export async function takeScreenshot(page: Page, name: string) {
   await page.screenshot({ path: `e2e/screenshots/${name}-${timestamp}.png` });
 }
 
+
+
+
+<<<<<<< Updated upstream
+
+
+
+=======
+>>>>>>> Stashed changes
+
+
+

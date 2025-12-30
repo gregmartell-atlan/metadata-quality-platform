@@ -1,0 +1,51 @@
+.lineage-edge {
+  stroke: #9ca3af;
+  stroke-width: 2;
+  fill: none;
+}
+
+.lineage-edge.selected {
+  stroke-width: 3;
+  stroke: #3b82f6;
+}
+
+.lineage-edge-upstream {
+  stroke: #f59e0b;
+}
+
+.lineage-edge-downstream {
+  stroke: #10b981;
+}
+
+.lineage-edge-process {
+  stroke: #8b5cf6;
+  stroke-dasharray: 5, 5;
+}
+
+.lineage-edge-animated {
+  stroke-dasharray: 10, 5;
+  animation: flow 2s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes flow {
+  0% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: 15;
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+

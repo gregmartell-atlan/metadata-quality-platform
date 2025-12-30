@@ -1,8 +1,14 @@
 .pivot-builder-page {
   flex: 1;
-  margin-left: 240px;
+  margin-left: 560px; /* 240px sidebar + 320px asset browser */
   padding: var(--gap-lg);
   background: var(--bg-primary);
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Adjust for collapsed asset browser */
+.app:has(.persistent-asset-browser.collapsed) .pivot-builder-page {
+  margin-left: 288px; /* 240px sidebar + 48px collapsed asset browser */
 }
 
 .container {
@@ -70,4 +76,3 @@
 .pivot-placeholder p {
   margin-bottom: var(--gap-sm);
 }
-

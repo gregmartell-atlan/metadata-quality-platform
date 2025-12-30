@@ -1,0 +1,260 @@
+.lineage-node {
+  position: relative;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px 12px;
+  min-width: 150px;
+  max-width: 200px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.lineage-node:hover {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.lineage-node.selected {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.lineage-node.center {
+  border-color: #3b82f6;
+  border-width: 3px;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Color coding by quality */
+.lineage-node.node-quality-high {
+  border-color: #10b981;
+}
+
+.lineage-node.node-quality-medium {
+  border-color: #f59e0b;
+}
+
+.lineage-node.node-quality-low {
+  border-color: #ef4444;
+}
+
+/* Color coding by lineage */
+.lineage-node.node-lineage-full {
+  border-color: #10b981;
+}
+
+.lineage-node.node-lineage-partial {
+  border-color: #f59e0b;
+}
+
+.lineage-node.node-lineage-orphaned {
+  border-color: #9ca3af;
+  opacity: 0.7;
+}
+
+/* Process nodes */
+.lineage-node.node-process {
+  border-color: #8b5cf6;
+  background: #faf5ff;
+}
+
+/* Highlight states */
+.lineage-node.node-highlight-impact {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  animation: pulse-impact 2s ease-in-out infinite;
+}
+
+.lineage-node.node-highlight-root-cause {
+  background: #fee2e2;
+  border-color: #ef4444;
+  animation: pulse-root-cause 2s ease-in-out infinite;
+}
+
+.lineage-node.node-highlight-quality {
+  background: #fef2f2;
+  border-color: #dc2626;
+}
+
+@keyframes pulse-impact {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+}
+
+@keyframes pulse-root-cause {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+}
+
+.lineage-node-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lineage-node-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.lineage-node-icon-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.lineage-node-icon {
+  flex-shrink: 0;
+  color: #6b7280;
+}
+
+.lineage-node-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #f3f4f6;
+  color: #374151;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
+}
+
+.lineage-node-badge-process {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+
+.lineage-node-quality {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.lineage-node-quality.high {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.lineage-node-quality.medium {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.lineage-node-quality.low {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.lineage-node-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+
+.lineage-node-badges {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.lineage-node-badge-small {
+  display: flex;
+  align-items: center;
+  color: #6b7280;
+  font-size: 10px;
+}
+
+.lineage-node-badge-stale {
+  color: #f59e0b;
+}
+
+.lineage-node-lineage-info {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.lineage-node-lineage-badge {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.lineage-node-lineage-badge.upstream {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.lineage-node-lineage-badge.downstream {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.lineage-node-expand {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #3b82f6;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  z-index: 10;
+}
+
+.lineage-node-expand:hover {
+  background: #2563eb;
+  transform: scale(1.1);
+}
+
+.lineage-handle {
+  width: 8px;
+  height: 8px;
+  background: #3b82f6;
+  border: 2px solid white;
+}
+
+.lineage-handle-input {
+  background: #f59e0b;
+}
+
+.lineage-handle-output {
+  background: #10b981;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+

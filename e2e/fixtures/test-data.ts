@@ -71,3 +71,15 @@ export const scoreThresholds = {
   critical: { max: 19, color: 'var(--score-critical)' },
 };
 
+
+
+
+<<<<<<< Updated upstream
+
+
+
+=======
+>>>>>>> Stashed changes
+
+
+

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import './Toast.css';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -17,6 +17,8 @@ interface ToastProps {
 
 export function ToastComponent({ toast, onRemove }: ToastProps) {
   const [isVisible, setIsVisible] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const removeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Trigger animation
@@ -24,17 +26,39 @@ export function ToastComponent({ toast, onRemove }: ToastProps) {
 
     // Auto-remove after duration
     const duration = toast.duration ?? 3000;
-    const timer = setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       setIsVisible(false);
-      setTimeout(() => onRemove(toast.id), 300); // Wait for animation
+      removeTimeoutRef.current = setTimeout(() => {
+        onRemove(toast.id);
+        removeTimeoutRef.current = null;
+      }, 300); // Wait for animation
+      timeoutRef.current = null;
     }, duration);
 
-    return () => clearTimeout(timer);
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      if (removeTimeoutRef.current) {
+        clearTimeout(removeTimeoutRef.current);
+        removeTimeoutRef.current = null;
+      }
+    };
   }, [toast, onRemove]);
 
   const handleClose = () => {
     setIsVisible(false);
-    setTimeout(() => onRemove(toast.id), 300);
+    // Clear any pending auto-remove timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    // Schedule manual remove
+    removeTimeoutRef.current = setTimeout(() => {
+      onRemove(toast.id);
+      removeTimeoutRef.current = null;
+    }, 300);
   };
 
   return (
@@ -112,4 +136,9 @@ export function useToasts() {
 
   return currentToasts;
 }
+
+
+
+
+
 

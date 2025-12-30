@@ -43,4 +43,3 @@ export function weightedAverage01(items: { score01: number; weight: number }[]):
   const num = items.reduce((s, i) => s + i.score01 * i.weight, 0);
   return clamp01(num / denom);
 }
-

@@ -75,3 +75,15 @@ VITE_PROXY_URL=http://localhost:3002
 3. Check network tab for failed requests
 4. Restart both servers (proxy and dev)
 
+
+
+
+<<<<<<< Updated upstream
+
+
+
+=======
+>>>>>>> Stashed changes
+
+
+

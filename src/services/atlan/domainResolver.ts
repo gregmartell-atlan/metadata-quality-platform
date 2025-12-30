@@ -99,4 +99,3 @@ export async function fetchDomainNames(guids: string[]): Promise<Map<string, str
 export function clearDomainCache(): void {
   cache.clear();
 }
-

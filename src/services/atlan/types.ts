@@ -169,4 +169,3 @@ export interface AtlanConfig {
   apiKey: string;
   apiToken: string;
 }
-

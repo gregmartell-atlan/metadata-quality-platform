@@ -10,8 +10,8 @@
 
 .campaign-item {
   background: var(--bg-tertiary);
-  border-radius: 8px;
-  padding: var(--gap-md);
+  border-radius: 6px;
+  padding: 0.75rem 0.875rem;
   border: 1px solid var(--border-subtle);
   transition: border-color 0.2s;
 }
@@ -29,22 +29,25 @@
 
 .campaign-name {
   font-weight: 600;
-  font-size: 14px;
-  margin-bottom: 2px;
+  font-size: 0.8rem;
+  margin-bottom: 0.125rem;
+  line-height: 1.3;
 }
 
 .campaign-type {
-  font-size: 11px;
+  font-size: 0.7rem;
   color: var(--text-muted);
+  line-height: 1.3;
 }
 
 .campaign-status {
-  font-size: 10px;
+  font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  padding: 3px 8px;
+  padding: 0.125rem 0.5rem;
   border-radius: 4px;
+  line-height: 1.4;
 }
 
 .campaign-status.active {
@@ -75,8 +78,9 @@
 .campaign-stats {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--text-muted);
+  line-height: 1.3;
 }
 
 .campaign-stat span {

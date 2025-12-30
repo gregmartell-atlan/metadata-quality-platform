@@ -7,6 +7,7 @@
 import type { AtlanAsset, AtlanSearchResponse, AtlanLineageResponse } from './types';
 import { apiFetch } from '../../utils/apiClient';
 import { logger } from '../../utils/logger';
+import { deduplicateRequest } from '../../utils/requestDeduplication';
 
 // ============================================
 // CONFIGURATION
@@ -203,20 +204,29 @@ async function atlanFetch<T>(
   const proxyPath = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
   const url = `${PROXY_URL}/proxy/${proxyPath}`;
 
-  // Use enhanced apiFetch with retry logic
-  const response = await apiFetch<T>(url, {
-    ...options,
-    signal,
-    timeout: 30000, // 30 second timeout
-    retries: 3, // Retry up to 3 times
-    retryDelay: 1000, // Start with 1 second delay
-    headers: {
-      'Content-Type': 'application/json',
-      // Pass Atlan URL and API key to proxy via headers
-      'X-Atlan-URL': config.baseUrl,
-      'X-Atlan-API-Key': config.apiKey,
-      ...options.headers,
-    },
+  // Create deduplication key from endpoint and method
+  const method = options.method || 'GET';
+  const dedupeKey = `${method}:${endpoint}`;
+
+  // Use request deduplication to prevent duplicate calls
+  return deduplicateRequest(dedupeKey, async () => {
+    // Use enhanced apiFetch with retry logic
+    const response = await apiFetch<T>(url, {
+      ...options,
+      signal,
+      timeout: 30000, // 30 second timeout
+      retries: 3, // Retry up to 3 times
+      retryDelay: 1000, // Start with 1 second delay
+      headers: {
+        'Content-Type': 'application/json',
+        // Pass Atlan URL and API key to proxy via headers
+        'X-Atlan-URL': config.baseUrl,
+        'X-Atlan-API-Key': config.apiKey,
+        ...options.headers,
+      },
+    });
+    
+    return response;
   });
 
   // Enhanced error message handling
@@ -1313,10 +1323,44 @@ export async function getLineage(
   direction: 'upstream' | 'downstream' | 'both' = 'both',
   depth: number = 3
 ): Promise<AtlanLineageResponse> {
+  // Atlan API only accepts "INPUT" (upstream) or "OUTPUT" (downstream), not "BOTH"
+  // For "both", we need to make two separate calls and merge the results
+  if (direction === 'both') {
+    const [upstreamResponse, downstreamResponse] = await Promise.all([
+      getLineage(guid, 'upstream', depth),
+      getLineage(guid, 'downstream', depth),
+    ]);
+
+    // Merge the results
+    const mergedGuidEntityMap = {
+      ...upstreamResponse.guidEntityMap,
+      ...downstreamResponse.guidEntityMap,
+    };
+
+    // Merge relations, avoiding duplicates
+    const relationMap = new Map<string, typeof upstreamResponse.relations[0]>();
+    [...upstreamResponse.relations, ...downstreamResponse.relations].forEach((rel) => {
+      const key = `${rel.fromEntityId}-${rel.toEntityId}-${rel.relationshipType}`;
+      if (!relationMap.has(key)) {
+        relationMap.set(key, rel);
+      }
+    });
+
+    return {
+      guidEntityMap: mergedGuidEntityMap,
+      relations: Array.from(relationMap.values()),
+    };
+  }
+
+  // For single direction, map to Atlan API values
+  // "upstream" -> "INPUT" (assets that feed into this asset)
+  // "downstream" -> "OUTPUT" (assets that this asset feeds into)
+  const apiDirection = direction === 'upstream' ? 'INPUT' : 'OUTPUT';
+
   const body = {
     guid,
     depth,
-    direction: direction === 'both' ? 'BOTH' : direction.toUpperCase(),
+    direction: apiDirection,
     from: 0,
     size: 50,
     attributes: [

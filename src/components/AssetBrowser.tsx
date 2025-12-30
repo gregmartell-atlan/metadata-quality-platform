@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card } from './shared';
 import {
   getConnectors,
@@ -15,11 +16,11 @@ import {
   isConfigured,
   testConnection,
   type ConnectorInfo,
-  type HierarchyItem,
 } from '../services/atlan/api';
 import { useAssetStore } from '../stores/assetStore';
 import type { AtlanAsset } from '../services/atlan/types';
 import { logger } from '../utils/logger';
+import { GitBranch, ChevronRight, ChevronDown, Link2, Database, Folder, Table2, GripVertical, Upload, Loader2 } from 'lucide-react';
 import './AssetBrowser.css';
 
 interface TreeNode {
@@ -37,7 +38,8 @@ interface TreeNode {
 }
 
 export function AssetBrowser() {
-  const { selectedAssets, toggleAsset, isSelected, selectedCount, clearAssets } = useAssetStore();
+  const navigate = useNavigate();
+  const { selectedAssets, toggleAsset, isSelected, selectedCount, clearAssets, addAsset } = useAssetStore();
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
   const [connectors, setConnectors] = useState<ConnectorInfo[]>([]);
   const [selectedConnector, setSelectedConnector] = useState<string | null>(null);
@@ -45,9 +47,10 @@ export function AssetBrowser() {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [loadingNodes, setLoadingNodes] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
-
+  
   const isCheckingConnection = React.useRef(false);
   const hasLoadedConnectors = React.useRef(false);
+  const connectionStatusRef = React.useRef(connectionStatus);
   
   const checkConnection = useCallback(async () => {
     if (!isConfigured()) {
@@ -78,20 +81,48 @@ export function AssetBrowser() {
         }
       } else {
         setConnectionStatus('error');
-        setError(result.error || 'Connection failed');
+        const sanitizedError = sanitizeError(new Error(result.error || 'Connection failed'));
+      setError(sanitizedError);
       }
     } catch (err) {
       logger.error('Connection error', err);
       setConnectionStatus('error');
-      setError(err instanceof Error ? err.message : 'Connection failed');
+      const sanitizedError = sanitizeError(err instanceof Error ? err : new Error('Connection failed'));
+      setError(sanitizedError);
     } finally {
       isCheckingConnection.current = false;
     }
   }, []);
 
-  const loadDatabases = useCallback(async (connector: string) => {
-    const nodeId = `connector-${connector}`;
-    setLoadingNodes((prev) => new Set(prev).add(nodeId));
+  // Load connections as top-level nodes
+  const loadConnections = useCallback(async () => {
+    setError(null);
+    try {
+      logger.debug('Loading connections');
+      const connectorList = await getConnectors();
+      logger.debug('Loaded connectors', { count: connectorList.length });
+      
+      const connectionNodes: TreeNode[] = connectorList.map((connector) => ({
+        id: `connector-${connector.name}`,
+        name: connector.name,
+        qualifiedName: connector.name,
+        type: 'connector',
+        connectorName: connector.name,
+        children: [],
+        isLoaded: false,
+        childCount: connector.assetCount,
+      }));
+
+      setTreeData(connectionNodes);
+    } catch (err) {
+      logger.error('Failed to load connections', err);
+      const sanitizedError = sanitizeError(err instanceof Error ? err : new Error('Failed to load connections'));
+      setError(sanitizedError);
+    }
+  }, []);
+
+  const loadDatabases = useCallback(async (connector: string, parentNodeId: string) => {
+    setLoadingNodes((prev) => new Set(prev).add(parentNodeId));
     setError(null);
 
     try {
@@ -109,14 +140,19 @@ export function AssetBrowser() {
         childCount: db.childCount,
       }));
 
-      setTreeData(dbNodes);
+      setTreeData((prev) =>
+        prev.map((node) =>
+          node.id === parentNodeId ? { ...node, children: dbNodes, isLoaded: true } : node
+        )
+      );
     } catch (err) {
       logger.error('Failed to load databases', err, { connector });
-      setError(err instanceof Error ? err.message : 'Failed to load databases');
+      const sanitizedError = sanitizeError(err instanceof Error ? err : new Error('Failed to load databases'));
+      setError(sanitizedError);
     } finally {
       setLoadingNodes((prev) => {
         const next = new Set(prev);
-        next.delete(nodeId);
+        next.delete(parentNodeId);
         return next;
       });
     }
@@ -135,6 +171,9 @@ export function AssetBrowser() {
     // Check immediately
     check();
     
+    // Update ref to avoid stale closure
+    connectionStatusRef.current = connectionStatus;
+    
     // Listen for custom event when AtlanHeader establishes connection
     const handleAtlanConnected = () => {
       logger.debug('Atlan connection established, checking...');
@@ -146,7 +185,7 @@ export function AssetBrowser() {
     // Also check periodically in case connection is established (fallback)
     // But only if we're not already connected or connecting
     const interval = setInterval(() => {
-      if (isConfigured() && connectionStatus === 'disconnected') {
+      if (isConfigured() && connectionStatusRef.current === 'disconnected') {
         logger.debug('Detected configuration, checking connection...');
         check();
       }
@@ -158,21 +197,19 @@ export function AssetBrowser() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionStatus]); // Include connectionStatus to stop checking once connected
-
-  // Load databases when connector changes (but only once per connector)
-  const lastLoadedConnector = React.useRef<string | null>(null);
-  const isLoadingDatabases = React.useRef(false);
   
+  // Update ref whenever connectionStatus changes
   useEffect(() => {
-    if (connectionStatus === 'connected' && selectedConnector && selectedConnector !== lastLoadedConnector.current && !isLoadingDatabases.current) {
-      lastLoadedConnector.current = selectedConnector;
-      isLoadingDatabases.current = true;
-      loadDatabases(selectedConnector).finally(() => {
-        isLoadingDatabases.current = false;
-      });
+    connectionStatusRef.current = connectionStatus;
+  }, [connectionStatus]);
+
+  // Load connections when connected
+  useEffect(() => {
+    if (connectionStatus === 'connected' && connectors.length > 0 && treeData.length === 0) {
+      loadConnections();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connectionStatus, selectedConnector]); // loadDatabases is stable, no need to include
+  }, [connectionStatus, connectors.length]);
 
   const loadSchemas = useCallback(async (dbNode: TreeNode) => {
     if (dbNode.isLoaded || !dbNode.qualifiedName) return;
@@ -199,7 +236,8 @@ export function AssetBrowser() {
         )
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load schemas');
+      const sanitizedError = sanitizeError(err instanceof Error ? err : new Error('Failed to load schemas'));
+      setError(sanitizedError);
     } finally {
       setLoadingNodes((prev) => {
         const next = new Set(prev);
@@ -251,7 +289,8 @@ export function AssetBrowser() {
         )
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load tables');
+      const sanitizedError = sanitizeError(err instanceof Error ? err : new Error('Failed to load tables'));
+      setError(sanitizedError);
     } finally {
       setLoadingNodes((prev) => {
         const next = new Set(prev);
@@ -276,7 +315,9 @@ export function AssetBrowser() {
           } else {
             next.add(node.id);
             // Load children when expanding
-            if (node.type === 'database' && !node.isLoaded) {
+            if (node.type === 'connector' && !node.isLoaded) {
+              loadDatabases(node.connectorName || node.name, node.id);
+            } else if (node.type === 'database' && !node.isLoaded) {
               loadSchemas(node);
             } else if (node.type === 'schema' && !node.isLoaded && parent) {
               loadTables(parent, node);
@@ -286,7 +327,7 @@ export function AssetBrowser() {
         });
       }
     },
-    [expandedNodes, toggleAsset, loadSchemas, loadTables]
+    [expandedNodes, toggleAsset, loadDatabases, loadSchemas, loadTables]
   );
 
   // Collect all tables recursively from a node (synchronous - only from loaded tree)
@@ -325,10 +366,20 @@ export function AssetBrowser() {
       assets = collectAllTables(node);
     } else if (node.type === 'connector') {
       // All tables in all databases for this connector (from loaded tree)
-      for (const dbNode of treeData) {
-        if (dbNode.connectorName === node.name || dbNode.connectorName === selectedConnector) {
-          assets.push(...collectAllTables(dbNode));
+      // Find this connector node and collect all its children
+      const findNode = (nodes: TreeNode[], id: string): TreeNode | null => {
+        for (const n of nodes) {
+          if (n.id === id) return n;
+          if (n.children) {
+            const found = findNode(n.children, id);
+            if (found) return found;
+          }
         }
+        return null;
+      };
+      const connectorNode = findNode(treeData, node.id);
+      if (connectorNode) {
+        assets.push(...collectAllTables(connectorNode));
       }
     }
     
@@ -391,7 +442,7 @@ export function AssetBrowser() {
         >
           {node.type !== 'table' && (
             <span className="tree-toggle" onClick={(e) => { e.stopPropagation(); toggleNode(node, parent); }}>
-              {isExpanded ? '▼' : '▶'}
+              {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             </span>
           )}
           {node.type === 'table' && (
@@ -415,18 +466,35 @@ export function AssetBrowser() {
             </>
           )}
           <span className="tree-icon">
+            {node.type === 'connector' && '🔗'}
             {node.type === 'database' && '🗄️'}
             {node.type === 'schema' && '📁'}
             {node.type === 'table' && '📊'}
-            {node.type === 'connector' && '🔌'}
           </span>
           <span className="tree-name" title={node.qualifiedName}>{node.name}</span>
           {node.childCount !== undefined && node.childCount > 0 && (
             <span className="tree-count">{node.childCount}</span>
           )}
-          {isLoading && <span className="tree-loading">⏳</span>}
+          {node.type === 'table' && node.asset && (
+            <button
+              className="tree-lineage-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (node.asset) {
+                  addAsset(node.asset);
+                  navigate(`/lineage?guid=${node.asset.guid}`);
+                }
+              }}
+              title="View Lineage"
+            >
+              <GitBranch size={12} />
+            </button>
+          )}
+          {isLoading && <Loader2 size={14} className="tree-loading spinning" />}
           {isDraggable && node.type !== 'table' && (
-            <span className="drag-hint" title={`Drag to select all tables under ${node.name}`}>📤</span>
+            <span className="drag-hint" title={`Drag to select all tables under ${node.name}`}>
+              <Upload size={14} />
+            </span>
           )}
         </div>
         {isExpanded && node.children && node.children.length > 0 && (
@@ -458,13 +526,15 @@ export function AssetBrowser() {
         {connectionStatus === 'connected' && connectors.length > 0 ? (
           <>
             <div className="browser-controls">
-              <label htmlFor="connector-select" className="control-label">Connection:</label>
+              <label htmlFor="connector-select" className="control-label">Filter by Connection:</label>
               <select
                 id="connector-select"
                 value={selectedConnector || ''}
-                onChange={(e) => setSelectedConnector(e.target.value)}
+                onChange={(e) => setSelectedConnector(e.target.value || null)}
                 className="connector-select"
+                draggable={false}
               >
+                <option value="">All Connections</option>
                 {connectors.map((connector) => (
                   <option key={connector.id} value={connector.name}>
                     {connector.name} ({connector.assetCount.toLocaleString()} assets)
@@ -513,13 +583,15 @@ export function AssetBrowser() {
         {connectionStatus === 'connected' && treeData.length === 0 && !loadingNodes.size && (
           <div className="tree-empty">
             <div className="empty-icon">📂</div>
-            <p>No databases found for this connector</p>
-            <p className="empty-hint">Try selecting a different connector or check your Atlan permissions.</p>
+            <p>No connections found</p>
+            <p className="empty-hint">Check your Atlan permissions or try refreshing.</p>
           </div>
         )}
         {treeData.length > 0 && (
           <div className="tree-list">
-            {treeData.map((node) => renderTreeNode(node))}
+            {treeData
+              .filter((node) => !selectedConnector || node.connectorName === selectedConnector || node.name === selectedConnector)
+              .map((node) => renderTreeNode(node))}
           </div>
         )}
       </div>

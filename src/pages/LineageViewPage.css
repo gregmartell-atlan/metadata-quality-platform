@@ -1,0 +1,15 @@
+.lineage-view-page {
+  flex: 1;
+  margin-left: 560px; /* 240px sidebar + 320px asset browser */
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Adjust for collapsed asset browser */
+.app:has(.persistent-asset-browser.collapsed) .lineage-view-page {
+  margin-left: 288px; /* 240px sidebar + 48px collapsed asset browser */
+}
+
