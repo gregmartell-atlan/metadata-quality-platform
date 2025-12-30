@@ -5,8 +5,12 @@
  */
 
 import { getAtlanConfig } from './api';
+import { apiFetch } from '../../utils/apiClient';
 
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+// Proxy server URL (must match api.ts)
+const PROXY_URL = import.meta.env.VITE_PROXY_URL || 'http://localhost:3002';
 
 interface CacheEntry {
   displayName: string;
@@ -36,6 +40,7 @@ function setCachedTagName(typeName: string, displayName: string): void {
 
 /**
  * Fetch classification type definition to get display name
+ * Routes through the proxy to avoid CORS issues
  */
 export async function fetchTagDisplayName(typeName: string): Promise<string> {
   // Check cache first
@@ -51,24 +56,25 @@ export async function fetchTagDisplayName(typeName: string): Promise<string> {
   }
 
   try {
-    // Fetch classification type definition
-    const response = await fetch(`${config.baseUrl}/api/meta/types/typedefs?type=classification`, {
+    // Fetch classification type definition through proxy
+    const proxyUrl = `${PROXY_URL}/proxy/api/meta/types/typedefs?type=classification`;
+    const response = await apiFetch<{ classificationDefs?: Array<{ name: string; displayName?: string }> }>(proxyUrl, {
+      method: 'GET',
       headers: {
-        'Authorization': `Bearer ${config.apiKey}`,
         'Content-Type': 'application/json',
+        'X-Atlan-URL': config.baseUrl,
+        'X-Atlan-API-Key': config.apiKey,
       },
     });
 
-    if (!response.ok) {
-      console.warn(`Failed to fetch classification types: ${response.status}`);
+    if (response.error || !response.data) {
+      console.warn(`Failed to fetch classification types: ${response.error || 'No data'}`);
       setCachedTagName(typeName, typeName);
       return typeName;
     }
 
-    const data = await response.json();
-
     // Find the classification type definition
-    const classificationDefs = data.classificationDefs || [];
+    const classificationDefs = response.data.classificationDefs || [];
     for (const def of classificationDefs) {
       if (def.name === typeName) {
         const displayName = def.displayName || def.name;
@@ -89,6 +95,7 @@ export async function fetchTagDisplayName(typeName: string): Promise<string> {
 
 /**
  * Batch fetch all classification type definitions and cache them
+ * Routes through the proxy to avoid CORS issues
  */
 export async function fetchAllTagDisplayNames(): Promise<Map<string, string>> {
   const config = getAtlanConfig();
@@ -97,22 +104,25 @@ export async function fetchAllTagDisplayNames(): Promise<Map<string, string>> {
   }
 
   try {
-    const response = await fetch(`${config.baseUrl}/api/meta/types/typedefs?type=classification`, {
+    // Fetch through proxy to avoid CORS
+    const proxyUrl = `${PROXY_URL}/proxy/api/meta/types/typedefs?type=classification`;
+    const response = await apiFetch<{ classificationDefs?: Array<{ name: string; displayName?: string }> }>(proxyUrl, {
+      method: 'GET',
       headers: {
-        'Authorization': `Bearer ${config.apiKey}`,
         'Content-Type': 'application/json',
+        'X-Atlan-URL': config.baseUrl,
+        'X-Atlan-API-Key': config.apiKey,
       },
     });
 
-    if (!response.ok) {
-      console.warn(`Failed to fetch classification types: ${response.status}`);
+    if (response.error || !response.data) {
+      console.warn(`Failed to fetch classification types: ${response.error || 'No data'}`);
       return new Map();
     }
 
-    const data = await response.json();
     const result = new Map<string, string>();
 
-    const classificationDefs = data.classificationDefs || [];
+    const classificationDefs = response.data.classificationDefs || [];
     for (const def of classificationDefs) {
       const typeName = def.name;
       const displayName = def.displayName || def.name;
