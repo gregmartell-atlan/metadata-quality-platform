@@ -177,6 +177,20 @@ export function AssetCommandCenter({
     );
   };
 
+  // Show loading state if no assets yet
+  if (allAssets.length === 0) {
+    return (
+      <div className="asset-command-center">
+        <div className="loading-state">
+          <Database size={48} />
+          <h3>Load Assets First</h3>
+          <p>Switch to <strong>Tree view</strong> and expand connections/databases/schemas to load assets.</p>
+          <p className="hint">Once assets are loaded, switch back to Quick view for instant search.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="asset-command-center">
       {/* Search Command Bar */}

@@ -501,8 +501,9 @@
   letter-spacing: 0.02em;
 }
 
-/* ===== EMPTY STATE ===== */
-.empty-state {
+/* ===== EMPTY & LOADING STATES ===== */
+.empty-state,
+.loading-state {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -510,11 +511,39 @@
   padding: 60px 20px;
   color: var(--text-muted);
   text-align: center;
+  min-height: 400px;
 }
 
-.empty-state svg {
-  margin-bottom: 16px;
+.empty-state svg,
+.loading-state svg {
+  margin-bottom: 20px;
   opacity: 0.3;
+}
+
+.loading-state h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.loading-state p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  max-width: 400px;
+  line-height: 1.6;
+}
+
+.loading-state .hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.loading-state strong {
+  color: var(--accent-primary);
+  font-weight: 700;
 }
 
 .empty-state p {

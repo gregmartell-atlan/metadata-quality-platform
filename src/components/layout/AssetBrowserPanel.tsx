@@ -18,7 +18,7 @@ interface AssetBrowserPanelProps {
 
 export function AssetBrowserPanel({ isOpen, onClose }: AssetBrowserPanelProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState<'tree' | 'command'>('command'); // Default to command center
+  const [viewMode, setViewMode] = useState<'tree' | 'command'>('tree'); // Start with tree to load assets
   const [loadedAssets, setLoadedAssets] = useState<any[]>([]);
   const { toggleAsset, isSelected } = useAssetStore();
 
@@ -60,7 +60,26 @@ export function AssetBrowserPanel({ isOpen, onClose }: AssetBrowserPanelProps) {
         </div>
 
         <div className="asset-panel-content">
-          {viewMode === 'command' ? (
+          {/* Always render AssetBrowser to load assets, but hide when in command mode */}
+          <div style={{ display: viewMode === 'tree' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
+            <div className="asset-panel-search">
+              <Search size={16} color="#666" />
+              <input
+                type="text"
+                placeholder="Search assets..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                autoFocus={viewMode === 'tree'}
+              />
+            </div>
+            <AssetBrowser
+              searchFilter={searchTerm}
+              onAssetsLoaded={setLoadedAssets}
+            />
+          </div>
+
+          {/* Command Center View */}
+          {viewMode === 'command' && (
             <AssetCommandCenter
               allAssets={loadedAssets}
               onAssetSelect={toggleAsset}
@@ -75,23 +94,6 @@ export function AssetBrowserPanel({ isOpen, onClose }: AssetBrowserPanelProps) {
               }}
               isSelected={isSelected}
             />
-          ) : (
-            <>
-              <div className="asset-panel-search">
-                <Search size={16} color="#666" />
-                <input
-                  type="text"
-                  placeholder="Search assets..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  autoFocus
-                />
-              </div>
-              <AssetBrowser
-                searchFilter={searchTerm}
-                onAssetsLoaded={setLoadedAssets}
-              />
-            </>
           )}
         </div>
       </div>
