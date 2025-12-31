@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link2, Link2Off, ChevronDown, BarChart3, X, Download, Loader2, AlertTriangle, Globe, FolderOpen } from 'lucide-react';
+import { Link2, Link2Off, ChevronDown, BarChart3, X, Download, Loader2, AlertTriangle, Globe, FolderOpen, Settings } from 'lucide-react';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
 import { getAtlanConfig, getConnectors, testAtlanConnection, configureAtlanApi, getSavedAtlanBaseUrl } from '../../services/atlan/api';
@@ -13,6 +13,7 @@ import { loadAssetsForContext, generateContextLabel } from '../../utils/assetCon
 import { sanitizeError } from '../../utils/sanitize';
 import { logger } from '../../utils/logger';
 import { AssetBrowserPanel } from './AssetBrowserPanel';
+import { GlobalSettingsDrawer } from './GlobalSettingsDrawer';
 import type { AtlanAsset } from '../../services/atlan/types';
 import type { AssetContextType, AssetContextFilters } from '../../stores/assetContextStore';
 import './AppHeader.css';
@@ -53,6 +54,7 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [showBrowserPanel, setShowBrowserPanel] = useState(false);
+  const [showSettingsDrawer, setShowSettingsDrawer] = useState(false);
   const [availableConnectors, setAvailableConnectors] = useState<Array<{ name: string; id: string }>>([]);
 
   // Check connection status on mount
@@ -332,6 +334,13 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
 
         {/* Right: Page Actions */}
         <div className="app-header-right">
+          <button
+            className={`settings-btn ${showSettingsDrawer ? 'active' : ''}`}
+            onClick={() => setShowSettingsDrawer(!showSettingsDrawer)}
+            title="Global settings"
+          >
+            <Settings size={16} />
+          </button>
           {children}
         </div>
       </header>
@@ -340,6 +349,12 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
       <AssetBrowserPanel
         isOpen={showBrowserPanel}
         onClose={() => setShowBrowserPanel(false)}
+      />
+
+      {/* Global Settings Drawer */}
+      <GlobalSettingsDrawer
+        isOpen={showSettingsDrawer}
+        onClose={() => setShowSettingsDrawer(false)}
       />
 
       {/* Connection Modal */}

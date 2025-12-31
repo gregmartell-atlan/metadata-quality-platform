@@ -77,6 +77,34 @@
   color: var(--accent-secondary, #fbbf24);
 }
 
+/* Settings Button */
+.settings-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: var(--bg-tertiary, #1a1a1d);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+  color: var(--text-muted, #888);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.settings-btn:hover {
+  background: var(--bg-hover, #1e1e21);
+  border-color: var(--accent-primary, #00d4aa);
+  color: var(--text-primary, #fff);
+}
+
+.settings-btn.active {
+  background: rgba(0, 212, 170, 0.1);
+  border-color: var(--accent-primary, #00d4aa);
+  color: var(--accent-primary, #00d4aa);
+}
+
 /* Context Bar */
 .context-bar {
   display: flex;
