@@ -50,9 +50,10 @@ interface TreeNode {
 
 interface AssetBrowserProps {
   searchFilter?: string;
+  onAssetsLoaded?: (assets: AtlanAsset[]) => void;
 }
 
-export function AssetBrowser({ searchFilter = '' }: AssetBrowserProps) {
+export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowserProps) {
   const navigate = useNavigate();
   const { toggleAsset, isSelected, selectedCount, clearAssets, addAsset } = useAssetStore();
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
@@ -87,7 +88,14 @@ export function AssetBrowser({ searchFilter = '' }: AssetBrowserProps) {
     collectTables(treeData);
     return tables;
   }, [treeData]);
-  
+
+  // Notify parent when assets are loaded
+  useEffect(() => {
+    if (onAssetsLoaded && allTableAssets.length > 0) {
+      onAssetsLoaded(allTableAssets);
+    }
+  }, [allTableAssets, onAssetsLoaded]);
+
   const checkConnection = useCallback(async () => {
     if (!isConfigured()) {
       setConnectionStatus('disconnected');
