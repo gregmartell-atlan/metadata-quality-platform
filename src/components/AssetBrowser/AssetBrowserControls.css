@@ -1,0 +1,118 @@
+/**
+ * Asset Browser Controls Styles
+ */
+
+.asset-browser-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background-color: var(--bg-secondary, #f9fafb);
+  border: 1px solid var(--border-subtle, #e5e7eb);
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.control-icon {
+  color: var(--text-tertiary, #9ca3af);
+  flex-shrink: 0;
+}
+
+.sort-select {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-primary, #111827);
+  background-color: var(--bg-primary, #ffffff);
+  border: 1px solid var(--border-subtle, #e5e7eb);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.sort-select:hover {
+  border-color: var(--accent-primary, #00d4aa);
+}
+
+.sort-select:focus {
+  outline: none;
+  border-color: var(--accent-primary, #00d4aa);
+  box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.1);
+}
+
+.filter-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary, #6b7280);
+  background-color: var(--bg-primary, #ffffff);
+  border: 1px solid var(--border-subtle, #e5e7eb);
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.filter-toggle:hover {
+  border-color: var(--accent-primary, #00d4aa);
+  background-color: rgba(0, 212, 170, 0.03);
+}
+
+.filter-toggle input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--accent-primary, #00d4aa);
+  margin: 0;
+}
+
+.filter-toggle input[type="checkbox"]:checked + span {
+  color: var(--accent-primary, #00d4aa);
+  font-weight: 600;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .asset-browser-controls {
+    background-color: var(--bg-secondary, #1f2937);
+    border-color: var(--border-subtle, #374151);
+  }
+
+  .sort-select {
+    background-color: var(--bg-primary, #111827);
+    border-color: var(--border-subtle, #374151);
+    color: var(--text-primary, #f3f4f6);
+  }
+
+  .filter-toggle {
+    background-color: var(--bg-primary, #111827);
+    border-color: var(--border-subtle, #374151);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .asset-browser-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .control-group {
+    width: 100%;
+  }
+
+  .filter-toggle {
+    justify-content: center;
+  }
+}

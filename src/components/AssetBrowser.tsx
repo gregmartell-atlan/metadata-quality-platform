@@ -5,7 +5,7 @@
  * Shows hierarchy: Connections → Databases → Schemas → Tables
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from './shared';
 import {
@@ -21,7 +21,17 @@ import { useAssetStore } from '../stores/assetStore';
 import type { AtlanAsset } from '../services/atlan/types';
 import { logger } from '../utils/logger';
 import { sanitizeError } from '../utils/sanitize';
-import { GitBranch, ChevronRight, ChevronDown, Link2, Database, Folder, Table2, GripVertical, Upload, Loader2 } from 'lucide-react';
+import { GitBranch, ChevronRight, ChevronDown, Link2, Database, Folder, Table2, GripVertical, Upload, Loader2, Flame, Star } from 'lucide-react';
+import { PopularAssetsSection } from './AssetBrowser/PopularAssetsSection';
+import { AssetBrowserControls, type SortOption } from './AssetBrowser/AssetBrowserControls';
+import {
+  calculatePopularityScore,
+  isHotAsset,
+  isWarmAsset,
+  formatQueryCount,
+  formatLastAccessed,
+  getPopularityDisplay,
+} from '../utils/popularityScore';
 import './AssetBrowser.css';
 
 interface TreeNode {
@@ -52,10 +62,31 @@ export function AssetBrowser({ searchFilter = '' }: AssetBrowserProps) {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [loadingNodes, setLoadingNodes] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
-  
+
+  // Popularity features
+  const [sortBy, setSortBy] = useState<SortOption>('name');
+  const [showPopularOnly, setShowPopularOnly] = useState(false);
+
   const isCheckingConnection = React.useRef(false);
   const hasLoadedConnectors = React.useRef(false);
   const connectionStatusRef = React.useRef(connectionStatus);
+
+  // Collect all table assets from tree for PopularAssetsSection
+  const allTableAssets = useMemo(() => {
+    const tables: AtlanAsset[] = [];
+    const collectTables = (nodes: TreeNode[]) => {
+      for (const node of nodes) {
+        if (node.type === 'table' && node.asset) {
+          tables.push(node.asset);
+        }
+        if (node.children) {
+          collectTables(node.children);
+        }
+      }
+    };
+    collectTables(treeData);
+    return tables;
+  }, [treeData]);
   
   const checkConnection = useCallback(async () => {
     if (!isConfigured()) {
@@ -235,10 +266,19 @@ export function AssetBrowser({ searchFilter = '' }: AssetBrowserProps) {
         childCount: schema.childCount,
       }));
 
+      // Recursively update the database node within the tree
       setTreeData((prev) =>
-        prev.map((db) =>
-          db.id === dbNode.id ? { ...db, children: schemaNodes, isLoaded: true } : db
-        )
+        prev.map((connector) => {
+          if (connector.children) {
+            return {
+              ...connector,
+              children: connector.children.map((db) =>
+                db.id === dbNode.id ? { ...db, children: schemaNodes, isLoaded: true } : db
+              ),
+            };
+          }
+          return connector;
+        })
       );
     } catch (err) {
       const sanitizedError = sanitizeError(err instanceof Error ? err : new Error('Failed to load schemas'));
@@ -279,19 +319,28 @@ export function AssetBrowser({ searchFilter = '' }: AssetBrowserProps) {
           asset,
         }));
 
+      // Recursively update the schema node within the database within the connection
       setTreeData((prev) =>
-        prev.map((db) =>
-          db.id === dbNode.id
-            ? {
-                ...db,
-                children: db.children?.map((schema) =>
-                  schema.id === schemaNode.id
-                    ? { ...schema, children: tableNodes, isLoaded: true }
-                    : schema
-                ),
-              }
-            : db
-        )
+        prev.map((connector) => {
+          if (connector.children) {
+            return {
+              ...connector,
+              children: connector.children.map((db) =>
+                db.id === dbNode.id
+                  ? {
+                      ...db,
+                      children: db.children?.map((schema) =>
+                        schema.id === schemaNode.id
+                          ? { ...schema, children: tableNodes, isLoaded: true }
+                          : schema
+                      ),
+                    }
+                  : db
+              ),
+            };
+          }
+          return connector;
+        })
       );
     } catch (err) {
       const sanitizedError = sanitizeError(err instanceof Error ? err : new Error('Failed to load tables'));
@@ -419,6 +468,43 @@ export function AssetBrowser({ searchFilter = '' }: AssetBrowserProps) {
     target.classList.remove('dragging');
   };
 
+  // Helper to sort tree nodes
+  const sortNodes = useCallback((nodes: TreeNode[]): TreeNode[] => {
+    return [...nodes].sort((a, b) => {
+      if (sortBy === 'name') {
+        return a.name.localeCompare(b.name);
+      } else if (sortBy === 'popularity' && a.asset && b.asset) {
+        return calculatePopularityScore(b.asset) - calculatePopularityScore(a.asset);
+      } else if (sortBy === 'recent' && a.asset && b.asset) {
+        const aTime = a.asset.sourceLastReadAt ?? 0;
+        const bTime = b.asset.sourceLastReadAt ?? 0;
+        return bTime - aTime;
+      }
+      return 0;
+    });
+  }, [sortBy]);
+
+  // Helper to filter nodes by popularity
+  const filterNodesByPopularity = useCallback((nodes: TreeNode[]): TreeNode[] => {
+    if (!showPopularOnly) return nodes;
+    return nodes.filter((node) => {
+      if (node.type === 'table' && node.asset) {
+        return isHotAsset(node.asset) || isWarmAsset(node.asset);
+      }
+      // For non-table nodes, check if they have popular children
+      if (node.children) {
+        const hasPopularChildren = node.children.some((child) => {
+          if (child.type === 'table' && child.asset) {
+            return isHotAsset(child.asset) || isWarmAsset(child.asset);
+          }
+          return false;
+        });
+        return hasPopularChildren;
+      }
+      return true; // Keep connectors, databases, schemas by default
+    });
+  }, [showPopularOnly]);
+
   const renderTreeNode = (node: TreeNode, level: number = 0, parent?: TreeNode) => {
     const isExpanded = expandedNodes.has(node.id);
     const isLoading = loadingNodes.has(node.id);
@@ -476,7 +562,32 @@ export function AssetBrowser({ searchFilter = '' }: AssetBrowserProps) {
             {node.type === 'schema' && '📁'}
             {node.type === 'table' && '📊'}
           </span>
-          <span className="tree-name" title={node.qualifiedName}>{node.name}</span>
+          <span
+            className={`tree-name ${
+              node.type === 'table' && node.asset && isHotAsset(node.asset)
+                ? 'popular-hot'
+                : node.type === 'table' && node.asset && isWarmAsset(node.asset)
+                ? 'popular-warm'
+                : ''
+            }`}
+            title={
+              node.type === 'table' && node.asset
+                ? `${node.qualifiedName}\n\n📊 Popularity: ${getPopularityDisplay(node.asset)}/10\n${formatQueryCount(node.asset.sourceReadCount)} queries${node.asset.sourceReadUserCount ? ` by ${node.asset.sourceReadUserCount} users` : ''}\nLast accessed: ${formatLastAccessed(node.asset.sourceLastReadAt)}`
+                : node.qualifiedName
+            }
+          >
+            {node.name}
+          </span>
+          {node.type === 'table' && node.asset && isHotAsset(node.asset) && (
+            <span className="popularity-badge hot" title="Highly popular asset">
+              <Flame size={12} /> Hot
+            </span>
+          )}
+          {node.type === 'table' && node.asset && isWarmAsset(node.asset) && (
+            <span className="popularity-badge warm" title="Popular asset">
+              <Star size={12} />
+            </span>
+          )}
           {node.childCount !== undefined && node.childCount > 0 && (
             <span className="tree-count">{node.childCount}</span>
           )}
@@ -504,7 +615,9 @@ export function AssetBrowser({ searchFilter = '' }: AssetBrowserProps) {
         </div>
         {isExpanded && node.children && node.children.length > 0 && (
           <div className="tree-children">
-            {node.children.map((child) => renderTreeNode(child, level + 1, node))}
+            {sortNodes(filterNodesByPopularity(node.children)).map((child) =>
+              renderTreeNode(child, level + 1, node)
+            )}
           </div>
         )}
       </div>
@@ -568,6 +681,15 @@ export function AssetBrowser({ searchFilter = '' }: AssetBrowserProps) {
         </div>
       )}
 
+      {connectionStatus === 'connected' && treeData.length > 0 && (
+        <AssetBrowserControls
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          showPopularOnly={showPopularOnly}
+          onShowPopularOnlyChange={setShowPopularOnly}
+        />
+      )}
+
       <div className="tree-container">
         {connectionStatus === 'disconnected' && (
           <div className="tree-empty">
@@ -594,9 +716,24 @@ export function AssetBrowser({ searchFilter = '' }: AssetBrowserProps) {
         )}
         {treeData.length > 0 && (
           <div className="tree-list">
-            {treeData
-              .filter((node) => !selectedConnector || node.connectorName === selectedConnector || node.name === selectedConnector)
-              .filter((node) => {
+            <PopularAssetsSection
+              assets={allTableAssets}
+              onAssetClick={(asset) => toggleAsset(asset)}
+              onAssetDragStart={(e, asset) => {
+                e.dataTransfer.effectAllowed = 'copy';
+                e.dataTransfer.setData('application/json', JSON.stringify({
+                  type: 'atlan-assets',
+                  assets: [asset],
+                  nodeType: 'table',
+                  nodeName: asset.name
+                }));
+              }}
+              selectedConnector={selectedConnector}
+            />
+            {sortNodes(filterNodesByPopularity(
+              treeData
+                .filter((node) => !selectedConnector || node.connectorName === selectedConnector || node.name === selectedConnector)
+                .filter((node) => {
                 if (!searchFilter) return true;
                 const term = searchFilter.toLowerCase();
                 // Check if this node or any of its children match
@@ -607,7 +744,7 @@ export function AssetBrowser({ searchFilter = '' }: AssetBrowserProps) {
                 };
                 return matchesNode(node);
               })
-              .map((node) => renderTreeNode(node))}
+            )).map((node) => renderTreeNode(node))}
           </div>
         )}
       </div>
