@@ -595,17 +595,29 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
                 : node.type === 'table' && node.asset && isWarmAsset(node.asset)
                 ? 'popular-warm'
                 : ''
-            } ${node.type === 'table' ? 'clickable' : ''}`}
+            } clickable`}
             onClick={(e) => {
+              e.stopPropagation();
+              // Open inspector for any node type that has metadata
               if (node.type === 'table' && node.asset) {
-                e.stopPropagation();
                 openInspector(node.asset);
+              } else if (node.type === 'connector' || node.type === 'database' || node.type === 'schema') {
+                // For non-table nodes, we need to create a minimal asset object
+                // These don't have full asset data loaded, but have basic info
+                const partialAsset: any = {
+                  guid: node.id,
+                  name: node.name,
+                  qualifiedName: node.qualifiedName,
+                  typeName: node.type === 'connector' ? 'Connection' : node.type === 'database' ? 'Database' : 'Schema',
+                  connectionName: node.connectorName,
+                };
+                openInspector(partialAsset as AtlanAsset);
               }
             }}
             title={
               node.type === 'table' && node.asset
                 ? `Click to view details\n\n${node.qualifiedName}\n📊 Popularity: ${getPopularityDisplay(node.asset)}/10\n${formatQueryCount(node.asset.sourceReadCount)} queries${node.asset.sourceReadUserCount ? ` by ${node.asset.sourceReadUserCount} users` : ''}\nLast accessed: ${formatLastAccessed(node.asset.sourceLastReadAt)}`
-                : node.qualifiedName
+                : `Click to view details\n\n${node.qualifiedName}`
             }
           >
             {node.name}
