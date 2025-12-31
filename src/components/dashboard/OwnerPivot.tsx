@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '../shared';
 import { ScoreBadge } from '../shared';
 import { useScoresStore } from '../../stores/scoresStore';
+import { useUIPreferences } from '../../stores/uiPreferencesStore';
 import './OwnerPivot.css';
 
 type RowDimension = 'owner' | 'tag' | 'certification' | 'classification' | 'assetType' | 'schema' | 'connection';
@@ -9,8 +10,20 @@ type ColumnDimension = 'completeness' | 'accuracy' | 'timeliness' | 'consistency
 
 export function OwnerPivot() {
   const { byOwner, byTag, byCertification, byClassification, byAssetType, bySchema, byConnection, groupBy } = useScoresStore();
-  const [rowDimension, setRowDimension] = useState<RowDimension>('owner');
-  const [columnDimension, setColumnDimension] = useState<ColumnDimension>('completeness');
+  const { dashboardOwnerPivotDimension, dashboardOwnerPivotColumn, setDashboardOwnerPivotDimension, setDashboardOwnerPivotColumn } = useUIPreferences();
+  const [rowDimension, setRowDimension] = useState<RowDimension>(
+    (dashboardOwnerPivotDimension === 'owner' ? 'owner' : dashboardOwnerPivotDimension) as RowDimension
+  );
+  const [columnDimension, setColumnDimension] = useState<ColumnDimension>(dashboardOwnerPivotColumn as ColumnDimension);
+
+  // Sync with global preferences
+  useEffect(() => {
+    setRowDimension((dashboardOwnerPivotDimension === 'ownerGroup' ? 'owner' : dashboardOwnerPivotDimension) as RowDimension);
+  }, [dashboardOwnerPivotDimension]);
+
+  useEffect(() => {
+    setColumnDimension(dashboardOwnerPivotColumn as ColumnDimension);
+  }, [dashboardOwnerPivotColumn]);
   
   // Get the appropriate map based on row dimension
   const getRowMap = () => {
@@ -99,7 +112,11 @@ export function OwnerPivot() {
           <div className="pivot-shelf-items">
             <select
               value={rowDimension}
-              onChange={(e) => setRowDimension(e.target.value as RowDimension)}
+              onChange={(e) => {
+                const newDimension = e.target.value as RowDimension;
+                setRowDimension(newDimension);
+                setDashboardOwnerPivotDimension(newDimension === 'owner' ? 'ownerGroup' : newDimension);
+              }}
               className="pivot-select"
               style={{
                 padding: '4px 8px',
@@ -125,7 +142,11 @@ export function OwnerPivot() {
           <div className="pivot-shelf-items">
             <select
               value={columnDimension}
-              onChange={(e) => setColumnDimension(e.target.value as ColumnDimension)}
+              onChange={(e) => {
+                const newColumn = e.target.value as ColumnDimension;
+                setColumnDimension(newColumn);
+                setDashboardOwnerPivotColumn(newColumn);
+              }}
               className="pivot-select"
               style={{
                 padding: '4px 8px',
