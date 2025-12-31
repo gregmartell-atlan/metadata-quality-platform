@@ -64,7 +64,28 @@ export function OverviewSection({ asset }: OverviewSectionProps) {
               {asset.certificateStatus}
             </span>
           )}
+          {asset.isAIGenerated && (
+            <span className="inspector-badge ai-generated">
+              AI Generated
+            </span>
+          )}
         </div>
+
+        {/* Asset Flags */}
+        {(asset.isDiscoverable !== undefined || asset.isEditable !== undefined) && (
+          <div className="asset-flags">
+            {asset.isDiscoverable !== undefined && (
+              <span className={`flag-badge ${asset.isDiscoverable ? 'enabled' : 'disabled'}`}>
+                {asset.isDiscoverable ? '✓' : '✗'} Discoverable
+              </span>
+            )}
+            {asset.isEditable !== undefined && (
+              <span className={`flag-badge ${asset.isEditable ? 'enabled' : 'disabled'}`}>
+                {asset.isEditable ? '✓' : '✗'} Editable
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Qualified Name with Copy */}
         <div className="qualified-name-row">
@@ -165,8 +186,77 @@ export function OverviewSection({ asset }: OverviewSectionProps) {
               <div className="stat-value">{formatDate(asset.lastProfiledAt)}</div>
             </div>
           )}
+
+          {/* Asset-specific counts */}
+          {asset.schemaCount !== undefined && (
+            <div className="stat-item">
+              <div className="stat-label">Schemas</div>
+              <div className="stat-value">{asset.schemaCount}</div>
+            </div>
+          )}
+
+          {asset.tableCount !== undefined && (
+            <div className="stat-item">
+              <div className="stat-label">Tables</div>
+              <div className="stat-value">{asset.tableCount}</div>
+            </div>
+          )}
+
+          {asset.viewCount !== undefined && (
+            <div className="stat-item">
+              <div className="stat-label">Views</div>
+              <div className="stat-value">{asset.viewCount}</div>
+            </div>
+          )}
+
+          {asset.queryCount !== undefined && asset.queryCount > 0 && (
+            <div className="stat-item">
+              <div className="stat-label">Query Count</div>
+              <div className="stat-value">{asset.queryCount.toLocaleString()}</div>
+            </div>
+          )}
+
+          {asset.queryUserCount !== undefined && asset.queryUserCount > 0 && (
+            <div className="stat-item">
+              <div className="stat-label">Query Users</div>
+              <div className="stat-value">{asset.queryUserCount}</div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Audit Info */}
+      {(asset.createdBy || asset.updatedBy) && (
+        <div className="inspector-section">
+          <div className="section-title">Created & Modified</div>
+          <div className="stats-grid">
+            {asset.createdBy && (
+              <div className="stat-item">
+                <div className="stat-label">Created By</div>
+                <div className="stat-value">{asset.createdBy}</div>
+              </div>
+            )}
+            {asset.createTime && (
+              <div className="stat-item">
+                <div className="stat-label">Created On</div>
+                <div className="stat-value">{formatDate(asset.createTime)}</div>
+              </div>
+            )}
+            {asset.updatedBy && (
+              <div className="stat-item">
+                <div className="stat-label">Updated By</div>
+                <div className="stat-value">{asset.updatedBy}</div>
+              </div>
+            )}
+            {asset.updateTime && (
+              <div className="stat-item">
+                <div className="stat-label">Updated On</div>
+                <div className="stat-value">{formatDate(asset.updateTime)}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
