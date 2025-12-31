@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react';
-import { Settings, ChevronRight, ChevronLeft, X } from 'lucide-react';
+import { Settings, ChevronRight, ChevronLeft, ChevronDown, X } from 'lucide-react';
 import { useUIPreferences, type CertificationStatus } from '../../stores/uiPreferencesStore';
 import './GlobalSettingsDrawer.css';
 
@@ -118,7 +118,7 @@ export function GlobalSettingsDrawer({ isOpen, onClose }: GlobalSettingsDrawerPr
                 onClick={() => toggleSection('display')}
               >
                 <span className="section-icon">
-                  {expandedSections.has('display') ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                  {expandedSections.has('display') ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 </span>
                 <span>Display Settings</span>
               </button>
@@ -205,7 +205,7 @@ export function GlobalSettingsDrawer({ isOpen, onClose }: GlobalSettingsDrawerPr
                 onClick={() => toggleSection('global-filters')}
               >
                 <span className="section-icon">
-                  {expandedSections.has('global-filters') ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                  {expandedSections.has('global-filters') ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 </span>
                 <span>Global Filters</span>
               </button>
@@ -274,7 +274,7 @@ export function GlobalSettingsDrawer({ isOpen, onClose }: GlobalSettingsDrawerPr
                 onClick={() => toggleSection('dashboard')}
               >
                 <span className="section-icon">
-                  {expandedSections.has('dashboard') ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                  {expandedSections.has('dashboard') ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 </span>
                 <span>Dashboard Defaults</span>
               </button>
