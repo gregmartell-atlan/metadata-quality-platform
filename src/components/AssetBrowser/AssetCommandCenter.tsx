@@ -8,6 +8,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Search, Flame, Clock, Pin, ChevronDown, ChevronRight, Database, Folder, Table2, Star, TrendingUp } from 'lucide-react';
 import type { AtlanAsset } from '../../services/atlan/types';
+import { useAssetInspectorStore } from '../../stores/assetInspectorStore';
 import {
   calculatePopularityScore,
   isHotAsset,
@@ -30,6 +31,7 @@ export function AssetCommandCenter({
   onAssetDragStart,
   isSelected,
 }: AssetCommandCenterProps) {
+  const { openInspector } = useAssetInspectorStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [pinnedAssets, setPinnedAssets] = useState<Set<string>>(
     new Set(JSON.parse(localStorage.getItem('pinnedAssets') || '[]'))
@@ -125,8 +127,9 @@ export function AssetCommandCenter({
       localStorage.setItem('recentAssets', JSON.stringify(next));
       return next;
     });
-    onAssetSelect(asset);
-  }, [onAssetSelect]);
+    // Open inspector instead of selecting
+    openInspector(asset);
+  }, [openInspector]);
 
   const AssetCard = ({ asset, variant = 'default' }: { asset: AtlanAsset; variant?: 'hot' | 'default' }) => {
     const score = getPopularityDisplay(asset);

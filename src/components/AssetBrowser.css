@@ -119,6 +119,27 @@
   color: var(--text-primary, #fff);
 }
 
+.analyze-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--accent-primary, #00d4aa);
+  color: var(--bg-primary, #0a0a0b);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.analyze-btn:hover {
+  background: #00b894;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 212, 170, 0.3);
+}
+
 .browser-error {
   display: flex;
   align-items: center;
@@ -328,6 +349,16 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.tree-name.clickable {
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.tree-name.clickable:hover {
+  color: var(--accent-primary);
+  text-decoration: underline;
 }
 
 .tree-count {

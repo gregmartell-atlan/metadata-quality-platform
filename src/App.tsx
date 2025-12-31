@@ -5,6 +5,7 @@ import { Sidebar } from './components/layout/Sidebar';
 import { ExecutiveDashboard } from './components/dashboard/ExecutiveDashboard';
 import { PivotBuilder } from './pages/PivotBuilder';
 import { LineageViewPage } from './pages/LineageViewPage';
+import { AssetInspectorModal } from './components/AssetInspector/AssetInspectorModal';
 import { useUIPreferences } from './stores/uiPreferencesStore';
 import './App.css';
 
@@ -45,6 +46,9 @@ function App() {
               <Route path="/accountability" element={<div className="page-placeholder">Accountability</div>} />
             </Routes>
           </ErrorBoundary>
+
+          {/* Global Modals */}
+          <AssetInspectorModal />
         </div>
       </BrowserRouter>
     </ErrorBoundary>

@@ -18,12 +18,14 @@ import {
   type ConnectorInfo,
 } from '../services/atlan/api';
 import { useAssetStore } from '../stores/assetStore';
+import { useAssetContextStore } from '../stores/assetContextStore';
 import type { AtlanAsset } from '../services/atlan/types';
 import { logger } from '../utils/logger';
 import { sanitizeError } from '../utils/sanitize';
-import { GitBranch, ChevronRight, ChevronDown, Link2, Database, Folder, Table2, GripVertical, Upload, Loader2, Flame, Star } from 'lucide-react';
+import { GitBranch, ChevronRight, ChevronDown, Link2, Database, Folder, Table2, GripVertical, Upload, Loader2, Flame, Star, Info, BarChart3 } from 'lucide-react';
 import { PopularAssetsSection } from './AssetBrowser/PopularAssetsSection';
 import { AssetBrowserControls, type SortOption } from './AssetBrowser/AssetBrowserControls';
+import { useAssetInspectorStore } from '../stores/assetInspectorStore';
 import {
   calculatePopularityScore,
   isHotAsset,
@@ -55,7 +57,9 @@ interface AssetBrowserProps {
 
 export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowserProps) {
   const navigate = useNavigate();
-  const { toggleAsset, isSelected, selectedCount, clearAssets, addAsset } = useAssetStore();
+  const { toggleAsset, isSelected, selectedCount, clearAssets, addAsset, selectedAssets } = useAssetStore();
+  const { setContext } = useAssetContextStore();
+  const { openInspector } = useAssetInspectorStore();
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
   const [connectors, setConnectors] = useState<ConnectorInfo[]>([]);
   const [selectedConnector, setSelectedConnector] = useState<string | null>(null);
@@ -392,6 +396,20 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
     [expandedNodes, toggleAsset, loadDatabases, loadSchemas, loadTables]
   );
 
+  // Handler for "Analyze Selected" button
+  const handleAnalyzeSelected = useCallback(() => {
+    if (selectedCount === 0) return;
+
+    setContext(
+      'manual',
+      {},
+      `${selectedCount} selected asset${selectedCount !== 1 ? 's' : ''}`,
+      selectedAssets
+    );
+
+    navigate('/pivot');
+  }, [selectedCount, selectedAssets, setContext, navigate]);
+
   // Collect all tables recursively from a node (synchronous - only from loaded tree)
   const collectAllTables = useCallback((node: TreeNode): AtlanAsset[] => {
     const tables: AtlanAsset[] = [];
@@ -577,10 +595,16 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
                 : node.type === 'table' && node.asset && isWarmAsset(node.asset)
                 ? 'popular-warm'
                 : ''
-            }`}
+            } ${node.type === 'table' ? 'clickable' : ''}`}
+            onClick={(e) => {
+              if (node.type === 'table' && node.asset) {
+                e.stopPropagation();
+                openInspector(node.asset);
+              }
+            }}
             title={
               node.type === 'table' && node.asset
-                ? `${node.qualifiedName}\n\n📊 Popularity: ${getPopularityDisplay(node.asset)}/10\n${formatQueryCount(node.asset.sourceReadCount)} queries${node.asset.sourceReadUserCount ? ` by ${node.asset.sourceReadUserCount} users` : ''}\nLast accessed: ${formatLastAccessed(node.asset.sourceLastReadAt)}`
+                ? `Click to view details\n\n${node.qualifiedName}\n📊 Popularity: ${getPopularityDisplay(node.asset)}/10\n${formatQueryCount(node.asset.sourceReadCount)} queries${node.asset.sourceReadUserCount ? ` by ${node.asset.sourceReadUserCount} users` : ''}\nLast accessed: ${formatLastAccessed(node.asset.sourceLastReadAt)}`
                 : node.qualifiedName
             }
           >
@@ -673,9 +697,15 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
                 <strong>{selectedCount}</strong> asset{selectedCount !== 1 ? 's' : ''} selected
               </span>
               {selectedCount > 0 && (
-                <button onClick={clearAssets} className="clear-btn" title="Clear all selections">
-                  Clear All
-                </button>
+                <>
+                  <button onClick={handleAnalyzeSelected} className="analyze-btn" title="Analyze selected assets in Pivot Builder">
+                    <BarChart3 size={14} />
+                    Analyze Selected
+                  </button>
+                  <button onClick={clearAssets} className="clear-btn" title="Clear all selections">
+                    Clear All
+                  </button>
+                </>
               )}
             </div>
           </>
