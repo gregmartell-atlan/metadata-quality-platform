@@ -80,16 +80,17 @@ export function GlobalSettingsDrawer({ isOpen, onClose }: GlobalSettingsDrawerPr
   return (
     <div className={`global-settings-drawer ${isOpen ? 'open' : 'collapsed'}`}>
       {/* Collapsed Tab */}
-      <button
-        className="drawer-collapsed-tab"
-        onClick={onClose}
-        title="Show global settings"
-        style={{ display: isOpen ? 'none' : 'flex' }}
-      >
-        <ChevronLeft size={14} />
-        <Settings size={16} />
-        <span className="collapsed-label">Settings</span>
-      </button>
+      {!isOpen && (
+        <button
+          className="drawer-collapsed-tab"
+          onClick={onClose}
+          title="Show global settings"
+        >
+          <ChevronLeft size={14} />
+          <Settings size={16} />
+          <span className="collapsed-label">Settings</span>
+        </button>
+      )}
 
       {/* Drawer Panel */}
       {isOpen && (

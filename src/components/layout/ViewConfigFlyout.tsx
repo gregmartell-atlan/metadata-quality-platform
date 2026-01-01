@@ -61,16 +61,17 @@ export function ViewConfigFlyout({
   return (
     <div className={`view-config-flyout ${isOpen ? 'open' : 'collapsed'}`}>
       {/* Collapsed Tab */}
-      <button
-        className="flyout-collapsed-tab"
-        onClick={onToggle}
-        title={getTitle()}
-        style={{ display: isOpen ? 'none' : 'flex' }}
-      >
-        <ChevronLeft size={14} />
-        <Sliders size={16} />
-        <span className="collapsed-label">Configure</span>
-      </button>
+      {!isOpen && (
+        <button
+          className="flyout-collapsed-tab"
+          onClick={onToggle}
+          title={getTitle()}
+        >
+          <ChevronLeft size={14} />
+          <Sliders size={16} />
+          <span className="collapsed-label">Configure</span>
+        </button>
+      )}
 
       {/* Flyout Panel */}
       {isOpen && (
