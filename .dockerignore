@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+ENV/
+.venv/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Development files
+.git/
+.github/
+.vscode/
+.idea/
+*.log
+*.md
+!README.md
+
+# Test files
+test-results/
+playwright-report/
+coverage/
+.coverage
+htmlcov/
+e2e/
+
+# Environment files (should be provided by K8s secrets)
+.env
+.env.*
+*.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Atlan metadata designer subdirectory builds
+atlan-metadata-designer/new-build/
+atlan-metadata-designer/Archive.zip
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Plan files
+.claude/
