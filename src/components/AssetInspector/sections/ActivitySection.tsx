@@ -77,6 +77,13 @@ export function ActivitySection({ asset }: ActivitySectionProps) {
             <div className="stat-value">{formatLastAccessed(asset.sourceLastReadAt)}</div>
           </div>
 
+          {asset.queryCountUpdatedAt && asset.queryCountUpdatedAt > 0 && (
+            <div className="stat-item">
+              <div className="stat-label">Query Stats Updated</div>
+              <div className="stat-value">{formatLastAccessed(asset.queryCountUpdatedAt)}</div>
+            </div>
+          )}
+
           {asset.viewScore !== undefined && asset.viewScore > 0 && (
             <div className="stat-item">
               <div className="stat-label">View Score</div>

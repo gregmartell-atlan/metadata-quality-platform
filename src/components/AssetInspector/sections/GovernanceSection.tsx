@@ -4,7 +4,7 @@
  * Shows governance metadata: description, owners, certifications, tags, terms
  */
 
-import { Shield, Users, Tag, BookOpen, Award, FileText } from 'lucide-react';
+import { Shield, Users, Tag, BookOpen, Award, FileText, Globe } from 'lucide-react';
 import type { AtlanAsset } from '../../../services/atlan/types';
 
 interface GovernanceSectionProps {
@@ -123,18 +123,18 @@ export function GovernanceSection({ asset }: GovernanceSectionProps) {
         </div>
       )}
 
-      {/* Tags */}
-      {asset.atlanTags && asset.atlanTags.length > 0 && (
+      {/* Domains */}
+      {asset.domainGUIDs && asset.domainGUIDs.length > 0 && (
         <div className="inspector-section">
           <div className="section-title">
-            <Tag size={14} />
-            Tags
+            <Globe size={14} />
+            Domains
           </div>
           <div className="section-content">
-            <div className="tag-list">
-              {asset.atlanTags.map((tag, i) => (
-                <span key={i} className="tag-badge">
-                  {tag.typeName || tag.displayName || 'Unknown Tag'}
+            <div className="domain-list">
+              {asset.domainGUIDs.map((guid, i) => (
+                <span key={i} className="domain-badge">
+                  {guid}
                 </span>
               ))}
             </div>
@@ -142,7 +142,45 @@ export function GovernanceSection({ asset }: GovernanceSectionProps) {
         </div>
       )}
 
-      {/* Glossary Terms */}
+      {/* Tags with Propagation Details */}
+      {asset.atlanTags && asset.atlanTags.length > 0 && (
+        <div className="inspector-section">
+          <div className="section-title">
+            <Tag size={14} />
+            Tags
+          </div>
+          <div className="section-content">
+            <div className="tags-detailed">
+              {asset.atlanTags.map((tag, i) => (
+                <div key={i} className="tag-detail-card">
+                  <div className="tag-name">
+                    {tag.typeName || tag.displayName || 'Unknown Tag'}
+                  </div>
+                  <div className="tag-props">
+                    {tag.propagate !== undefined && (
+                      <span className={`tag-prop ${tag.propagate ? 'enabled' : 'disabled'}`}>
+                        {tag.propagate ? '✓' : '✗'} Propagate
+                      </span>
+                    )}
+                    {tag.restrictPropagationThroughLineage && (
+                      <span className="tag-prop restricted">
+                        Lineage Restricted
+                      </span>
+                    )}
+                    {tag.restrictPropagationThroughHierarchy && (
+                      <span className="tag-prop restricted">
+                        Hierarchy Restricted
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Glossary Terms with Confidence */}
       {asset.meanings && asset.meanings.length > 0 && (
         <div className="inspector-section">
           <div className="section-title">
@@ -150,11 +188,18 @@ export function GovernanceSection({ asset }: GovernanceSectionProps) {
             Glossary Terms
           </div>
           <div className="section-content">
-            <div className="term-list">
+            <div className="terms-detailed">
               {asset.meanings.map((term, i) => (
-                <span key={i} className="term-badge">
-                  {term.displayText || term.termGuid}
-                </span>
+                <div key={i} className="term-detail-card">
+                  <span className="term-badge">
+                    {term.displayText || term.termGuid}
+                  </span>
+                  {term.confidence !== undefined && (
+                    <span className="term-confidence">
+                      Confidence: {term.confidence}%
+                    </span>
+                  )}
+                </div>
               ))}
             </div>
           </div>

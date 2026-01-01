@@ -23,16 +23,132 @@ export function MetadataSection({ asset }: MetadataSectionProps) {
     });
   };
 
+  const isConnection = asset.typeName === 'Connection';
+  const isDatabase = asset.typeName === 'Database';
+  const isSchema = asset.typeName === 'Schema';
+  const isTable = ['Table', 'View', 'MaterializedView'].includes(asset.typeName);
+
   return (
     <div className="metadata-section">
-      {/* Table Properties */}
-      <div className="inspector-section">
-        <div className="section-title">
-          <Database size={14} />
-          Table Properties
+      {/* Connection Properties */}
+      {isConnection && (
+        <div className="inspector-section">
+          <div className="section-title">
+            <Database size={14} />
+            Connection Properties
+          </div>
+          <div className="section-content">
+            <div className="metadata-list">
+              <div className="metadata-item">
+                <div className="metadata-item-label">Type</div>
+                <div className="metadata-item-value">{asset.typeName}</div>
+              </div>
+
+              {asset.connectorName && (
+                <div className="metadata-item">
+                  <div className="metadata-item-label">Connector</div>
+                  <div className="metadata-item-value">{asset.connectorName}</div>
+                </div>
+              )}
+
+              {asset.allowQuery !== undefined && (
+                <div className="metadata-item">
+                  <div className="metadata-item-label">Allow Query</div>
+                  <div className="metadata-item-value">{asset.allowQuery ? 'Yes' : 'No'}</div>
+                </div>
+              )}
+
+              {asset.hasPopularityInsights !== undefined && (
+                <div className="metadata-item">
+                  <div className="metadata-item-label">Popularity Insights</div>
+                  <div className="metadata-item-value">{asset.hasPopularityInsights ? 'Enabled' : 'Disabled'}</div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="section-content">
-          <div className="metadata-list">
+      )}
+
+      {/* Database Properties */}
+      {isDatabase && (
+        <div className="inspector-section">
+          <div className="section-title">
+            <Database size={14} />
+            Database Properties
+          </div>
+          <div className="section-content">
+            <div className="metadata-list">
+              <div className="metadata-item">
+                <div className="metadata-item-label">Type</div>
+                <div className="metadata-item-value">{asset.typeName}</div>
+              </div>
+
+              {asset.connectionName && (
+                <div className="metadata-item">
+                  <div className="metadata-item-label">Connection</div>
+                  <div className="metadata-item-value">{asset.connectionName}</div>
+                </div>
+              )}
+
+              {asset.schemaCount !== undefined && (
+                <div className="metadata-item">
+                  <div className="metadata-item-label">Schema Count</div>
+                  <div className="metadata-item-value">{asset.schemaCount}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Schema Properties */}
+      {isSchema && (
+        <div className="inspector-section">
+          <div className="section-title">
+            <Database size={14} />
+            Schema Properties
+          </div>
+          <div className="section-content">
+            <div className="metadata-list">
+              <div className="metadata-item">
+                <div className="metadata-item-label">Type</div>
+                <div className="metadata-item-value">{asset.typeName}</div>
+              </div>
+
+              {asset.databaseName && (
+                <div className="metadata-item">
+                  <div className="metadata-item-label">Database</div>
+                  <div className="metadata-item-value">{asset.databaseName}</div>
+                </div>
+              )}
+
+              {asset.tableCount !== undefined && (
+                <div className="metadata-item">
+                  <div className="metadata-item-label">Table Count</div>
+                  <div className="metadata-item-value">{asset.tableCount}</div>
+                </div>
+              )}
+
+              {asset.viewCount !== undefined && (
+                <div className="metadata-item">
+                  <div className="metadata-item-label">View Count</div>
+                  <div className="metadata-item-value">{asset.viewCount}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Table Properties */}
+      {isTable && (
+        <div className="inspector-section">
+          <div className="section-title">
+            <Database size={14} />
+            Table Properties
+          </div>
+          <div className="section-content">
+            <div className="metadata-list">
             <div className="metadata-item">
               <div className="metadata-item-label">Type</div>
               <div className="metadata-item-value">{asset.typeName}</div>
