@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Link2, Link2Off, ChevronDown, BarChart3, X, Download, Loader2, AlertTriangle, Globe, FolderOpen, Settings } from 'lucide-react';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
@@ -25,6 +26,8 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
+  const location = useLocation();
+
   // Atlan connection state
   const [isConnected, setIsConnected] = useState(false);
   const [showConnectModal, setShowConnectModal] = useState(false);
@@ -334,13 +337,16 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
 
         {/* Right: Page Actions */}
         <div className="app-header-right">
-          <button
-            className={`settings-btn ${showSettingsDrawer ? 'active' : ''}`}
-            onClick={() => setShowSettingsDrawer(!showSettingsDrawer)}
-            title="Global settings"
-          >
-            <Settings size={16} />
-          </button>
+          {/* Settings button - only show on non-pivot pages */}
+          {!location.pathname.includes('/pivot') && (
+            <button
+              className={`settings-btn ${showSettingsDrawer ? 'active' : ''}`}
+              onClick={() => setShowSettingsDrawer(!showSettingsDrawer)}
+              title="Global settings"
+            >
+              <Settings size={16} />
+            </button>
+          )}
           {children}
         </div>
       </header>
