@@ -29,6 +29,10 @@ export interface UIPreferences {
   dashboardHeatmapDimension: string; // 'domain' | 'owner' | 'schema' | etc.
   dashboardOwnerPivotDimension: string; // 'ownerGroup' | 'tag' | 'certificationStatus' | etc.
   dashboardOwnerPivotColumn: string; // 'completeness' | 'accuracy' | etc.
+
+  // Pivot Builder Configuration
+  pivotDefaultRowDimensions: string[]; // Default dimensions for pivot rows
+  pivotDefaultMeasures: string[]; // Default measures to show
 }
 
 interface UIPreferencesActions {
@@ -50,6 +54,10 @@ interface UIPreferencesActions {
   setDashboardHeatmapDimension: (dimension: string) => void;
   setDashboardOwnerPivotDimension: (dimension: string) => void;
   setDashboardOwnerPivotColumn: (column: string) => void;
+
+  // Pivot Configuration
+  setPivotDefaultRowDimensions: (dimensions: string[]) => void;
+  setPivotDefaultMeasures: (measures: string[]) => void;
 
   // Reset
   resetToDefaults: () => void;
@@ -74,6 +82,10 @@ const defaultPreferences: UIPreferences = {
   dashboardHeatmapDimension: 'domain',
   dashboardOwnerPivotDimension: 'ownerGroup',
   dashboardOwnerPivotColumn: 'completeness',
+
+  // Pivot
+  pivotDefaultRowDimensions: ['connection', 'database'],
+  pivotDefaultMeasures: ['assetCount', 'overallScore'],
 };
 
 export const useUIPreferences = create<UIPreferences & UIPreferencesActions>()(
@@ -99,6 +111,10 @@ export const useUIPreferences = create<UIPreferences & UIPreferencesActions>()(
       setDashboardHeatmapDimension: (dashboardHeatmapDimension) => set({ dashboardHeatmapDimension }),
       setDashboardOwnerPivotDimension: (dashboardOwnerPivotDimension) => set({ dashboardOwnerPivotDimension }),
       setDashboardOwnerPivotColumn: (dashboardOwnerPivotColumn) => set({ dashboardOwnerPivotColumn }),
+
+      // Pivot actions
+      setPivotDefaultRowDimensions: (pivotDefaultRowDimensions) => set({ pivotDefaultRowDimensions }),
+      setPivotDefaultMeasures: (pivotDefaultMeasures) => set({ pivotDefaultMeasures }),
 
       // Reset
       resetToDefaults: () => set(defaultPreferences),
