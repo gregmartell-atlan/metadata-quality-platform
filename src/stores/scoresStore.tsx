@@ -9,6 +9,9 @@ import type { ReactNode } from 'react';
 import type { AtlanAsset } from '../services/atlan/types';
 import type { AssetMetadata, QualityScores } from '../services/qualityMetrics';
 import { transformAtlanAsset } from '../services/atlan/transformer';
+import { fetchDomainNames } from '../services/atlan/domainResolver';
+import { resolveTagNames } from '../services/atlan/tagResolver';
+import { setNameCaches } from '../utils/pivotDimensions';
 import { calculateAssetQuality } from '../services/qualityMetrics';
 import { useScoringSettingsStore } from './scoringSettingsStore';
 import { scoreAssets, initializeScoringService, setScoringModeGetter } from '../services/scoringService';
@@ -64,6 +67,72 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
   }, [scoringMode]);
 
   const setAssetsWithScores = useCallback(async (assets: AtlanAsset[]) => {
+    // Pre-fetch domain and tag names for human-readable display
+    let domainNameMap: Map<string, string> | undefined;
+    let tagNameMap: Map<string, string> | undefined;
+
+    // Collect all unique domain GUIDs and tag type names
+    const domainGUIDs = [...new Set(assets.flatMap(a => a.domainGUIDs || []).filter(Boolean))];
+
+    // Build initial tag name map from atlanTags displayNames (if available)
+    // This gives us immediate display names without needing API lookups
+    const tagDisplayNamesFromAssets = new Map<string, string>();
+    assets.forEach(a => {
+      if (a.atlanTags) {
+        a.atlanTags.forEach(tag => {
+          if (tag.typeName && tag.displayName) {
+            tagDisplayNamesFromAssets.set(tag.typeName, tag.displayName);
+          }
+        });
+      }
+    });
+    console.log(`[ScoresStore] Found ${tagDisplayNamesFromAssets.size} tag display names directly from atlanTags`);
+    if (tagDisplayNamesFromAssets.size > 0) {
+      console.log('[ScoresStore] Sample atlanTags displayNames:', Object.fromEntries([...tagDisplayNamesFromAssets.entries()].slice(0, 5)));
+    }
+
+    // Collect tag type names that still need resolution
+    const tagTypeNames = [...new Set(assets.flatMap(a => {
+      const names: string[] = [];
+      if (a.classificationNames) names.push(...a.classificationNames);
+      if (a.atlanTags) names.push(...a.atlanTags.map(t => t.typeName).filter(Boolean));
+      return names;
+    }))];
+
+    // Fetch both in parallel
+    const [domainResult, tagResult] = await Promise.allSettled([
+      domainGUIDs.length > 0 ? fetchDomainNames(domainGUIDs) : Promise.resolve(new Map<string, string>()),
+      tagTypeNames.length > 0 ? resolveTagNames(tagTypeNames) : Promise.resolve(new Map<string, string>()),
+    ]);
+
+    if (domainResult.status === 'fulfilled') {
+      domainNameMap = domainResult.value;
+    } else {
+      logger.warn('Failed to fetch domain names, using fallback:', domainResult.reason);
+    }
+
+    if (tagResult.status === 'fulfilled') {
+      tagNameMap = tagResult.value;
+    } else {
+      logger.warn('Failed to fetch tag names, using fallback:', tagResult.reason);
+    }
+
+    // Merge tag names: API results take precedence, but use atlanTags displayNames as fallback
+    const mergedTagNameMap = new Map<string, string>(tagDisplayNamesFromAssets);
+    if (tagNameMap) {
+      for (const [typeName, displayName] of tagNameMap.entries()) {
+        mergedTagNameMap.set(typeName, displayName);
+      }
+    }
+    tagNameMap = mergedTagNameMap;
+    console.log(`[ScoresStore] Final merged tag name map size: ${tagNameMap.size}`);
+
+    // Update the pivot dimensions cache for consistent name resolution
+    setNameCaches(domainNameMap, tagNameMap);
+
+    // Create name resolution maps object
+    const nameMaps = { domainNameMap, tagNameMap };
+
     if (scoringMode === "config-driven") {
       try {
         // Transform to scoring format
@@ -104,7 +173,7 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
         
         // Convert ProfileScoreResult[] to QualityScores format
         const withScores: AssetWithScores[] = assets.map((asset) => {
-          const metadata = transformAtlanAsset(asset);
+          const metadata = transformAtlanAsset(asset, nameMaps);
           const profileResults = results.get(asset.guid) || [];
           
           // Aggregate scores from all profiles
@@ -143,7 +212,7 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
         logger.error('Error calculating config-driven scores', error);
         // Fallback to legacy scoring
         const withScores: AssetWithScores[] = assets.map((asset) => {
-          const metadata = transformAtlanAsset(asset);
+          const metadata = transformAtlanAsset(asset, nameMaps);
           const scores = calculateAssetQuality(metadata);
           return { asset, metadata, scores };
         });
@@ -152,7 +221,7 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
     } else {
       // Legacy scoring
       const withScores: AssetWithScores[] = assets.map((asset) => {
-        const metadata = transformAtlanAsset(asset);
+        const metadata = transformAtlanAsset(asset, nameMaps);
         const scores = calculateAssetQuality(metadata);
         return { asset, metadata, scores };
       });

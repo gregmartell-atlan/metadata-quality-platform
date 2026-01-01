@@ -1,13 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '../shared';
 import { useScoresStore } from '../../stores/scoresStore';
+import { useUIPreferences } from '../../stores/uiPreferencesStore';
 import './Heatmap.css';
 
 type PivotDimension = 'domain' | 'owner' | 'schema' | 'connection' | 'tag' | 'certification' | 'classification' | 'assetType';
 
 export function Heatmap() {
   const { byDomain, byOwner, bySchema, byConnection, byTag, byCertification, byClassification, byAssetType, groupBy, assetsWithScores } = useScoresStore();
-  const [pivotDimension, setPivotDimension] = useState<PivotDimension>('domain');
+  const { dashboardHeatmapDimension, setDashboardHeatmapDimension } = useUIPreferences();
+  const [pivotDimension, setPivotDimension] = useState<PivotDimension>(dashboardHeatmapDimension as PivotDimension);
+
+  // Sync with global preference
+  useEffect(() => {
+    setPivotDimension(dashboardHeatmapDimension as PivotDimension);
+  }, [dashboardHeatmapDimension]);
   
   // Get the appropriate map based on pivot dimension
   const getPivotMap = () => {
@@ -111,7 +118,11 @@ export function Heatmap() {
         <label style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Pivot by:</label>
         <select
           value={pivotDimension}
-          onChange={(e) => setPivotDimension(e.target.value as PivotDimension)}
+          onChange={(e) => {
+            const newDimension = e.target.value as PivotDimension;
+            setPivotDimension(newDimension);
+            setDashboardHeatmapDimension(newDimension);
+          }}
           style={{
             padding: '4px 8px',
             background: 'var(--bg-secondary)',

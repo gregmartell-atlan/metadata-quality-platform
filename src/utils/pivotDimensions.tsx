@@ -5,17 +5,35 @@
  */
 
 import React from 'react';
-import { Link2, Database, Folder, Package, User, Users, Building2, CheckCircle2, BarChart3 } from 'lucide-react';
+import { Link2, Database, Folder, Package, User, Users, Building2, CheckCircle2, BarChart3, Tag } from 'lucide-react';
 import type { AtlanAsset } from '../services/atlan/types';
 
 // Domain name cache (will be populated by domain resolver)
 let domainNameCache: Map<string, string> = new Map();
+
+// Tag name cache (will be populated by tag resolver)
+let tagNameCache: Map<string, string> = new Map();
 
 /**
  * Set domain name cache (called from components that fetch domain names)
  */
 export function setDomainNameCache(cache: Map<string, string>): void {
   domainNameCache = cache;
+}
+
+/**
+ * Set tag name cache (called from components that fetch tag names)
+ */
+export function setTagNameCache(cache: Map<string, string>): void {
+  tagNameCache = cache;
+}
+
+/**
+ * Set both name caches at once
+ */
+export function setNameCaches(domainCache?: Map<string, string>, tagCache?: Map<string, string>): void {
+  if (domainCache) domainNameCache = domainCache;
+  if (tagCache) tagNameCache = tagCache;
 }
 
 export function extractConnection(asset: AtlanAsset): string {
@@ -140,6 +158,36 @@ export function extractCertificationStatus(asset: AtlanAsset): string {
 }
 
 /**
+ * Extract tags from asset with resolved display names
+ */
+export function extractTags(asset: AtlanAsset): string[] {
+  const rawTags: string[] = [];
+
+  // Collect all tag type names
+  if (asset.classificationNames && asset.classificationNames.length > 0) {
+    rawTags.push(...asset.classificationNames);
+  }
+  if (asset.atlanTags && asset.atlanTags.length > 0) {
+    asset.atlanTags.forEach(tag => {
+      if (tag.typeName && !rawTags.includes(tag.typeName)) {
+        rawTags.push(tag.typeName);
+      }
+    });
+  }
+
+  // Resolve to display names using cache
+  return rawTags.map(tag => tagNameCache.get(tag) || tag);
+}
+
+/**
+ * Extract first tag from asset (for single-value dimension)
+ */
+export function extractTag(asset: AtlanAsset): string {
+  const tags = extractTags(asset);
+  return tags.length > 0 ? tags[0] : 'No Tags';
+}
+
+/**
  * Extract dimension value from asset
  */
 export function extractDimensionValue(
@@ -161,6 +209,9 @@ export function extractDimensionValue(
       return extractOwnerGroup(asset);
     case 'domain':
       return extractDomain(asset);
+    case 'tag':
+    case 'classification':
+      return extractTag(asset);
     case 'certificationStatus':
       return extractCertificationStatus(asset);
     default:
@@ -180,6 +231,8 @@ export function getDimensionLabel(dimension: string): string {
     owner: 'Owner',
     ownerGroup: 'Owner Group',
     domain: 'Domain',
+    tag: 'Tag',
+    classification: 'Classification',
     certificationStatus: 'Certification Status',
   };
   return labels[dimension] || dimension;
@@ -197,6 +250,8 @@ export function getDimensionIcon(dimension: string): React.ReactNode {
     owner: <User size={14} />,
     ownerGroup: <Users size={14} />,
     domain: <Building2 size={14} />,
+    tag: <Tag size={14} />,
+    classification: <Tag size={14} />,
     certificationStatus: <CheckCircle2 size={14} />,
   };
   return icons[dimension] || <BarChart3 size={14} />;

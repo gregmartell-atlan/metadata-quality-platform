@@ -1,0 +1,310 @@
+/**
+ * Global Settings Drawer Styles
+ * Right-edge flyout for cross-cutting configuration
+ */
+
+.global-settings-drawer {
+  position: fixed;
+  right: 0;
+  top: 56px; /* Below header */
+  bottom: 0;
+  z-index: 99;
+  pointer-events: none;
+}
+
+.global-settings-drawer.open {
+  pointer-events: all;
+}
+
+/* Collapsed Tab (shows when drawer is closed) */
+.drawer-collapsed-tab {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 8px;
+  background: var(--bg-secondary, #1f2937);
+  border: 1px solid var(--border-subtle, #374151);
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  pointer-events: all;
+  z-index: 99;
+}
+
+.drawer-collapsed-tab:hover {
+  background: var(--bg-hover, #374151);
+  padding-right: 12px;
+}
+
+.drawer-collapsed-tab .collapsed-label {
+  writing-mode: vertical-rl;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #9ca3af);
+  letter-spacing: 0.05em;
+}
+
+/* Drawer Panel (shows when open) */
+.drawer-panel {
+  position: fixed;
+  right: 0;
+  top: 56px;
+  bottom: 0;
+  width: 360px;
+  background: var(--bg-primary, #111827);
+  border-left: 1px solid var(--border-subtle, #374151);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.25s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-subtle, #374151);
+  background: var(--bg-secondary, #1f2937);
+}
+
+.drawer-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-secondary, #9ca3af);
+  transition: all 0.15s;
+}
+
+.drawer-close-btn:hover {
+  background: var(--bg-hover, #374151);
+  color: var(--text-primary, #f3f4f6);
+}
+
+.drawer-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #f3f4f6);
+  flex: 1;
+}
+
+.drawer-reset-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--border-subtle, #374151);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary, #9ca3af);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.drawer-reset-btn:hover {
+  background: var(--bg-hover, #374151);
+  border-color: var(--accent-primary, #00d4aa);
+  color: var(--accent-primary, #00d4aa);
+}
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Settings Sections */
+.settings-section {
+  border-bottom: 1px solid var(--border-subtle, #374151);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 16px;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #f3f4f6);
+  cursor: pointer;
+  transition: background 0.15s;
+  text-align: left;
+}
+
+.section-header:hover {
+  background: var(--bg-hover, #1f2937);
+}
+
+.section-icon {
+  display: flex;
+  align-items: center;
+  color: var(--text-tertiary, #6b7280);
+}
+
+.section-content {
+  padding: 16px;
+  background: var(--bg-secondary, #1f2937);
+}
+
+.section-hint {
+  font-size: 12px;
+  color: var(--text-tertiary, #6b7280);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+/* Setting Groups */
+.setting-group {
+  margin-bottom: 20px;
+}
+
+.setting-group:last-child {
+  margin-bottom: 0;
+}
+
+.setting-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary, #9ca3af);
+  margin-bottom: 8px;
+}
+
+.setting-hint {
+  font-size: 11px;
+  color: var(--text-tertiary, #6b7280);
+  margin-top: 6px;
+  font-style: italic;
+}
+
+/* Radio Groups */
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-primary, #111827);
+  border: 1px solid var(--border-subtle, #374151);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.radio-option:hover {
+  border-color: var(--accent-primary, #00d4aa);
+  background: rgba(0, 212, 170, 0.05);
+}
+
+.radio-option input[type="radio"] {
+  cursor: pointer;
+  accent-color: var(--accent-primary, #00d4aa);
+}
+
+.radio-option input[type="radio"]:checked + span {
+  color: var(--accent-primary, #00d4aa);
+  font-weight: 600;
+}
+
+/* Checkbox Groups */
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.checkbox-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-primary, #111827);
+  border: 1px solid var(--border-subtle, #374151);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 13px;
+  color: var(--text-primary, #f3f4f6);
+}
+
+.checkbox-option:hover {
+  border-color: var(--accent-primary, #00d4aa);
+  background: rgba(0, 212, 170, 0.05);
+}
+
+.checkbox-option input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--accent-primary, #00d4aa);
+}
+
+.checkbox-option input[type="checkbox"]:checked + span {
+  color: var(--accent-primary, #00d4aa);
+  font-weight: 600;
+}
+
+/* Select Inputs */
+.setting-select {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-primary, #f3f4f6);
+  background: var(--bg-primary, #111827);
+  border: 1px solid var(--border-subtle, #374151);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.setting-select:hover {
+  border-color: var(--accent-primary, #00d4aa);
+}
+
+.setting-select:focus {
+  outline: none;
+  border-color: var(--accent-primary, #00d4aa);
+  box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.1);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .drawer-panel {
+    width: 100%;
+  }
+}

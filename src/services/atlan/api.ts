@@ -388,7 +388,7 @@ interface AtlanEntity {
     classificationNames?: string[];
     classifications?: string[];
     assetTags?: string[];
-    atlanTags?: Array<{ typeName: string; guid?: string }>;
+    atlanTags?: Array<{ typeName: string; guid?: string; displayName?: string; entityGuid?: string; propagate?: boolean }>;
     domainGUIDs?: string[];
     isDiscoverable?: boolean;
     isEditable?: boolean;
@@ -812,6 +812,18 @@ export async function searchAssets(
       classificationNames: entity.attributes.classificationNames,
       classifications: entity.attributes.classifications,
       assetTags: entity.attributes.assetTags,
+      atlanTags: entity.classifications?.map((tag: any) => ({
+        typeName: tag.typeName,
+        guid: tag.guid,
+        entityGuid: tag.entityGuid,
+        entityStatus: tag.entityStatus,
+        propagate: tag.propagate,
+        removePropagationsOnEntityDelete: tag.removePropagationsOnEntityDelete,
+        restrictPropagationThroughLineage: tag.restrictPropagationThroughLineage,
+        restrictPropagationThroughHierarchy: tag.restrictPropagationThroughHierarchy,
+        tagAttachments: tag.tagAttachments,
+        attributes: tag.attributes,
+      })),
       // Glossary & Domains
       meanings: entity.attributes.meanings,
       assignedTerms: entity.attributes.assignedTerms,
@@ -1013,25 +1025,92 @@ export async function fetchAssetsForModel(options?: {
 
 /**
  * Get a single asset by GUID
+ * Note: Atlan's Atlas API returns { entity: {...} } not { entities: [...] }
  */
 export async function getAsset(guid: string, attributes: string[] = []): Promise<AtlanAsset | null> {
-  const response = await atlanFetch<{ entities?: AtlanEntity[] }>(`/api/meta/entity/guid/${guid}`, {
+  // Build attributes query param if specified
+  const attrParam = attributes.length > 0 ? `?attr=${attributes.join(',')}` : '';
+
+  const response = await atlanFetch<{
+    entity?: AtlanEntity;
+    entities?: AtlanEntity[]; // Some endpoints might still use plural
+  }>(`/api/meta/entity/guid/${guid}${attrParam}`, {
     method: 'GET',
   });
 
-  if (response.error || !response.data?.entities || response.data.entities.length === 0) {
+  if (response.error) {
+    console.warn(`getAsset error for ${guid}:`, response.error);
     return null;
   }
 
-  const entity = response.data.entities[0];
+  // Handle both singular (entity) and plural (entities) response formats
+  const entity = response.data?.entity || response.data?.entities?.[0];
+
+  if (!entity) {
+    console.warn(`getAsset: No entity found for ${guid}`);
+    return null;
+  }
+
   // Transform to AtlanAsset format (similar to searchAssets)
   return {
     guid: entity.guid,
     typeName: entity.typeName,
-    name: entity.attributes.name || '',
-    qualifiedName: entity.attributes.qualifiedName || '',
-    // ... map other attributes
+    name: entity.attributes?.name || entity.attributes?.displayName || '',
+    qualifiedName: entity.attributes?.qualifiedName || '',
+    description: entity.attributes?.description,
+    // ... map other attributes as needed
   } as AtlanAsset;
+}
+
+// ============================================
+// CLASSIFICATION TYPE DEFINITIONS
+// ============================================
+
+/**
+ * Classification type definition from Atlan typedefs API
+ */
+export interface ClassificationTypeDef {
+  name: string;
+  displayName?: string;
+  guid?: string;
+  description?: string;
+}
+
+/**
+ * Fetch all classification type definitions from Atlan
+ * Returns a map of type name -> display name for name resolution
+ */
+export async function getClassificationTypeDefs(): Promise<Map<string, string>> {
+  const response = await atlanFetch<{
+    classificationDefs?: ClassificationTypeDef[];
+  }>('/api/meta/types/typedefs?type=classification', {
+    method: 'GET',
+  });
+
+  console.log('[getClassificationTypeDefs] API response status:', response.status, 'error:', response.error || 'none');
+
+  if (response.error || !response.data) {
+    console.warn('Failed to fetch classification type definitions:', response.error || 'No data');
+    return new Map();
+  }
+
+  const result = new Map<string, string>();
+  const classificationDefs = response.data.classificationDefs || [];
+
+  console.log(`[getClassificationTypeDefs] Fetched ${classificationDefs.length} classification definitions`);
+  if (classificationDefs.length > 0) {
+    console.log('[getClassificationTypeDefs] Sample definitions:',
+      classificationDefs.slice(0, 5).map(d => ({ name: d.name, displayName: d.displayName }))
+    );
+  }
+
+  for (const def of classificationDefs) {
+    const typeName = def.name;
+    const displayName = def.displayName || def.name;
+    result.set(typeName, displayName);
+  }
+
+  return result;
 }
 
 // ============================================
@@ -1044,6 +1123,7 @@ export interface HierarchyItem {
   qualifiedName: string;
   typeName: string;
   childCount?: number;
+  fullEntity?: any; // Full Atlan entity with all metadata
 }
 
 export interface ConnectorInfo {
@@ -1209,7 +1289,20 @@ export async function getDatabases(connector: string): Promise<HierarchyItem[]> 
         },
       },
     },
-    attributes: ['name', 'qualifiedName', 'schemaCount', 'connectorName', '__typeName'],
+    attributes: [
+      'name', 'qualifiedName', 'schemaCount', 'connectorName', '__typeName',
+      // Governance metadata
+      'description', 'userDescription',
+      'ownerUsers', 'ownerGroups',
+      'certificateStatus', 'certificateStatusMessage', 'certificateUpdatedAt', 'certificateUpdatedBy',
+      'classificationNames',
+      'atlanTags',
+      'meanings', 'assignedTerms', 'domainGUIDs',
+      // Technical
+      'createTime', 'updateTime', 'createdBy', 'updatedBy',
+      'isDiscoverable', 'isEditable', 'isAIGenerated',
+    ],
+    relationAttributes: ['classifications'],
   };
 
   const response = await search(query);
@@ -1222,6 +1315,7 @@ export async function getDatabases(connector: string): Promise<HierarchyItem[]> 
       qualifiedName: (e.attributes.qualifiedName as string) || e.guid,
       typeName: e.typeName,
       childCount: e.attributes.schemaCount as number | undefined,
+      fullEntity: e, // Store full entity for inspector
     }));
   }
   
@@ -1297,7 +1391,20 @@ export async function getSchemas(databaseQualifiedName: string): Promise<Hierarc
         },
       },
     },
-    attributes: ['name', 'qualifiedName', 'tableCount', 'viewCount'],
+    attributes: [
+      'name', 'qualifiedName', 'tableCount', 'viewCount',
+      // Governance metadata
+      'description', 'userDescription',
+      'ownerUsers', 'ownerGroups',
+      'certificateStatus', 'certificateStatusMessage', 'certificateUpdatedAt', 'certificateUpdatedBy',
+      'classificationNames',
+      'atlanTags',
+      'meanings', 'assignedTerms', 'domainGUIDs',
+      // Technical
+      'createTime', 'updateTime', 'createdBy', 'updatedBy',
+      'isDiscoverable', 'isEditable', 'isAIGenerated',
+    ],
+    relationAttributes: ['classifications'],
   });
 
   if (!response?.entities) {
@@ -1309,6 +1416,7 @@ export async function getSchemas(databaseQualifiedName: string): Promise<Hierarc
     const viewCount = (e.attributes.viewCount as number) || 0;
     return {
       guid: e.guid,
+      fullEntity: e, // Store full entity for inspector
       name: (e.attributes.name as string) || e.typeName || e.guid,
       qualifiedName: (e.attributes.qualifiedName as string) || e.guid,
       typeName: e.typeName,

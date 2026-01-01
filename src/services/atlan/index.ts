@@ -37,6 +37,21 @@ export type { ConnectorInfo, HierarchyItem } from './api';
 export {
   transformAtlanAsset,
   transformAtlanAssets,
+  transformAtlanAssetsWithDomains,
+  transformAtlanAssetsWithNames,
   extractHierarchy,
 } from './transformer';
+
+export {
+  fetchDomainName,
+  fetchDomainNames,
+  clearDomainCache,
+} from './domainResolver';
+
+export {
+  fetchTagDisplayName,
+  fetchAllTagDisplayNames,
+  resolveTagNames,
+  clearTagCache,
+} from './tagResolver';
 

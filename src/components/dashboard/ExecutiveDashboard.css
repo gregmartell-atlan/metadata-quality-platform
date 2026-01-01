@@ -2,25 +2,15 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  margin-left: 560px; /* 240px sidebar + 320px asset browser */
+  margin-left: 240px; /* Sidebar only - asset browser now in header */
   min-height: 100vh;
   background: linear-gradient(180deg, var(--bg-primary) 0%, #0d0d0f 100%);
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Adjust when asset browser is collapsed */
-.app:has(.persistent-asset-browser.collapsed) .executive-dashboard {
-  margin-left: 288px; /* 240px sidebar + 48px collapsed asset browser */
-}
-
 /* Adjust when sidebar is collapsed */
 .app:has(.sidebar.collapsed) .executive-dashboard {
-  margin-left: 384px; /* 64px collapsed sidebar + 320px asset browser */
-}
-
-/* Adjust when both sidebar and asset browser are collapsed */
-.app:has(.sidebar.collapsed):has(.persistent-asset-browser.collapsed) .executive-dashboard {
-  margin-left: 112px; /* 64px collapsed sidebar + 48px collapsed asset browser */
+  margin-left: 64px;
 }
 
 .filter-btn.active {
@@ -35,22 +25,69 @@
   gap: var(--gap-md);
   padding: var(--gap-lg, 24px);
   flex: 1;
+  align-content: start;
 }
 
-/* Scorecard */
-.scorecard {
+/* Scorecard - Health Score */
+.scorecard-v2 {
   grid-column: span 3;
+  grid-row: span 2;
 }
 
+/* Stats Row */
+.stats-row {
+  grid-column: span 9;
+}
+
+/* Heatmap */
+.heatmap-card {
+  grid-column: span 9;
+}
+
+/* Campaigns */
+.campaign-card {
+  grid-column: span 4;
+}
+
+/* Owner Pivot */
+.owner-pivot {
+  grid-column: span 12;
+}
+
+/* Trend Chart */
+.trend-card {
+  grid-column: span 4;
+}
+
+/* Tasks */
+.tasks-card {
+  grid-column: span 4;
+}
+
+/* Accountability */
+.accountability-card {
+  grid-column: span 4;
+}
+
+/* Responsive breakpoints */
 @media (max-width: 1400px) {
+  .scorecard-v2 {
+    grid-column: span 4;
+    grid-row: span 1;
+  }
+  .stats-row {
+    grid-column: span 8;
+  }
   .heatmap-card {
     grid-column: span 12;
   }
   .campaign-card {
     grid-column: span 6;
   }
-  .stats-row {
-    grid-column: span 12;
+  .trend-card,
+  .tasks-card,
+  .accountability-card {
+    grid-column: span 6;
   }
 }
 
@@ -58,7 +95,17 @@
   .executive-dashboard {
     margin-left: 0;
   }
+  .scorecard-v2 {
+    grid-column: span 12;
+  }
   .stats-row {
+    grid-column: span 12;
     grid-template-columns: repeat(2, 1fr);
+  }
+  .campaign-card,
+  .trend-card,
+  .tasks-card,
+  .accountability-card {
+    grid-column: span 12;
   }
 }

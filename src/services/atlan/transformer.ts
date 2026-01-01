@@ -1,12 +1,14 @@
 /**
  * Atlan Asset Transformer
- * 
+ *
  * Transforms Atlan assets to the internal AssetMetadata format
  * used by the quality metrics calculation system
  */
 
 import type { AtlanAsset } from './types';
 import type { AssetMetadata } from '../qualityMetrics';
+import { fetchDomainNames } from './domainResolver';
+import { resolveTagNames } from './tagResolver';
 
 /**
  * Extract owner string from ownerUsers/ownerGroups arrays
@@ -35,29 +37,92 @@ function extractOwnerGroup(asset: AtlanAsset): string | undefined {
 }
 
 /**
- * Extract tags from various Atlan tag fields
+ * Extract tags from various Atlan tag fields (simple string array)
+ * Uses tag name map to resolve internal type names to human-readable display names
  */
-function extractTags(asset: AtlanAsset): string[] {
-  const tags: string[] = [];
-  
+function extractTags(asset: AtlanAsset, tagNameMap?: Map<string, string>): string[] {
+  const rawTags: string[] = [];
+
   if (asset.classificationNames && asset.classificationNames.length > 0) {
-    tags.push(...asset.classificationNames);
+    rawTags.push(...asset.classificationNames);
   }
-  
+
   if (asset.assetTags && asset.assetTags.length > 0) {
-    tags.push(...asset.assetTags);
+    rawTags.push(...asset.assetTags);
   }
-  
-  return [...new Set(tags)]; // Remove duplicates
+
+  // Also include tag names from atlanTags (full tag objects)
+  if (asset.atlanTags && asset.atlanTags.length > 0) {
+    asset.atlanTags.forEach(tag => {
+      if (tag.typeName && !rawTags.includes(tag.typeName)) {
+        rawTags.push(tag.typeName);
+      }
+    });
+  }
+
+  // Remove duplicates
+  const uniqueTags = [...new Set(rawTags)];
+
+  // Resolve to display names if tag name map is provided
+  if (tagNameMap) {
+    return uniqueTags.map(tag => tagNameMap.get(tag) || tag);
+  }
+
+  return uniqueTags;
 }
 
 /**
- * Extract domain name from domainGUIDs (simplified - in production, would fetch domain names)
+ * Extract enriched tag information including propagation settings
+ * Uses tag name map to resolve internal type names to human-readable display names
  */
-function extractDomain(asset: AtlanAsset): string | undefined {
-  // In production, you'd fetch domain names from domainGUIDs
-  // For now, return undefined or use a mapping
-  return undefined;
+function extractEnrichedTags(asset: AtlanAsset, tagNameMap?: Map<string, string>): Array<{
+  name: string;
+  guid?: string;
+  isDirect: boolean;          // true if directly assigned, false if propagated
+  propagates: boolean;        // whether this tag propagates to children
+  propagatesToLineage: boolean;
+  propagatesToHierarchy: boolean;
+}> {
+  if (!asset.atlanTags || asset.atlanTags.length === 0) {
+    // Fall back to simple tag names
+    return extractTags(asset, tagNameMap).map(name => ({
+      name,
+      isDirect: true,  // Assume direct if we don't have propagation info
+      propagates: false,
+      propagatesToLineage: false,
+      propagatesToHierarchy: false,
+    }));
+  }
+
+  return asset.atlanTags.map(tag => ({
+    name: tagNameMap?.get(tag.typeName) || tag.typeName,
+    guid: tag.guid,
+    isDirect: tag.propagate !== undefined ? !tag.propagate : true, // If propagate is false, it's likely direct
+    propagates: tag.propagate ?? false,
+    propagatesToLineage: tag.propagate === true && !tag.restrictPropagationThroughLineage,
+    propagatesToHierarchy: tag.propagate === true && !tag.restrictPropagationThroughHierarchy,
+  }));
+}
+
+/**
+ * Extract domain name from domainGUIDs using pre-fetched domain name map
+ */
+function extractDomain(asset: AtlanAsset, domainNameMap?: Map<string, string>): string | undefined {
+  if (!asset.domainGUIDs || asset.domainGUIDs.length === 0) {
+    return undefined;
+  }
+
+  // If we have a pre-fetched domain name map, use it
+  if (domainNameMap) {
+    const firstGuid = asset.domainGUIDs[0];
+    const domainName = domainNameMap.get(firstGuid);
+    if (domainName) {
+      return domainName;
+    }
+  }
+
+  // Fallback: return truncated GUID for visibility
+  return `Domain ${asset.domainGUIDs[0].slice(0, 8)}`;
 }
 
 /**
@@ -94,9 +159,32 @@ function daysSince(timestamp?: number): number | undefined {
 }
 
 /**
- * Transform Atlan asset to AssetMetadata
+ * Name resolution maps for human-readable display
  */
-export function transformAtlanAsset(asset: AtlanAsset): AssetMetadata {
+interface NameResolutionMaps {
+  domainNameMap?: Map<string, string>;
+  tagNameMap?: Map<string, string>;
+}
+
+/**
+ * Transform Atlan asset to AssetMetadata
+ * @param asset - The Atlan asset to transform
+ * @param nameMaps - Optional pre-fetched maps for domain and tag name resolution
+ */
+export function transformAtlanAsset(asset: AtlanAsset, nameMaps?: NameResolutionMaps | Map<string, string>): AssetMetadata {
+  // Handle both old signature (just domainNameMap) and new signature (nameMaps object)
+  let domainNameMap: Map<string, string> | undefined;
+  let tagNameMap: Map<string, string> | undefined;
+
+  if (nameMaps instanceof Map) {
+    // Old signature: just domain name map
+    domainNameMap = nameMaps;
+  } else if (nameMaps) {
+    // New signature: name resolution maps object
+    domainNameMap = nameMaps.domainNameMap;
+    tagNameMap = nameMaps.tagNameMap;
+  }
+
   // Prefer userDescription over description (user-provided wins in UI)
   const description = asset.userDescription || asset.description;
   const descriptionLength = description?.length || 0;
@@ -105,11 +193,12 @@ export function transformAtlanAsset(asset: AtlanAsset): AssetMetadata {
   const owner = extractOwner(asset);
   const ownerGroup = extractOwnerGroup(asset);
 
-  // Extract tags
-  const tags = extractTags(asset);
+  // Extract tags (simple array and enriched with propagation info)
+  const tags = extractTags(asset, tagNameMap);
+  const enrichedTags = extractEnrichedTags(asset, tagNameMap);
 
-  // Extract domain
-  const domain = extractDomain(asset);
+  // Extract domain (using pre-fetched domain names if available)
+  const domain = extractDomain(asset, domainNameMap);
 
   // Timeliness calculations
   const lastUpdated = timestampToDate(asset.updateTime);
@@ -138,11 +227,11 @@ export function transformAtlanAsset(asset: AtlanAsset): AssetMetadata {
   // Consistency factors
   // Extract naming convention from qualifiedName pattern
   const namingConvention = asset.qualifiedName?.split('/').pop() || asset.name;
-  
+
   // For tables, extract hierarchy information
   let databaseName: string | undefined;
   let schemaName: string | undefined;
-  
+
   if (asset.typeName === 'Table' || asset.typeName === 'Schema' || asset.typeName === 'Database') {
     const tableAsset = asset as any;
     databaseName = tableAsset.databaseName || tableAsset.databaseQualifiedName?.split('.').pop();
@@ -164,6 +253,7 @@ export function transformAtlanAsset(asset: AtlanAsset): AssetMetadata {
     description,
     descriptionLength,
     tags,
+    enrichedTags,
     customProperties: {
       qualifiedName: asset.qualifiedName,
       connectionQualifiedName: asset.connectionQualifiedName,
@@ -177,6 +267,7 @@ export function transformAtlanAsset(asset: AtlanAsset): AssetMetadata {
       classificationNames: asset.classificationNames,
       classifications: asset.classifications,
       assetTags: asset.assetTags,
+      atlanTags: asset.atlanTags,  // Full tag objects with propagation settings
       meanings: asset.meanings,
       assignedTerms: asset.assignedTerms,
       domainGUIDs: asset.domainGUIDs,
@@ -238,10 +329,103 @@ export function transformAtlanAsset(asset: AtlanAsset): AssetMetadata {
 }
 
 /**
- * Transform multiple Atlan assets
+ * Transform multiple Atlan assets (synchronous - uses fallback for unresolved names)
  */
-export function transformAtlanAssets(assets: AtlanAsset[]): AssetMetadata[] {
-  return assets.map(transformAtlanAsset);
+export function transformAtlanAssets(assets: AtlanAsset[], nameMaps?: NameResolutionMaps | Map<string, string>): AssetMetadata[] {
+  return assets.map(asset => transformAtlanAsset(asset, nameMaps));
+}
+
+/**
+ * Collect all unique domain GUIDs from assets
+ */
+function collectDomainGUIDs(assets: AtlanAsset[]): string[] {
+  const guids = new Set<string>();
+  for (const asset of assets) {
+    if (asset.domainGUIDs) {
+      for (const guid of asset.domainGUIDs) {
+        guids.add(guid);
+      }
+    }
+  }
+  return [...guids];
+}
+
+/**
+ * Collect all unique tag type names from assets
+ */
+function collectTagTypeNames(assets: AtlanAsset[]): string[] {
+  const typeNames = new Set<string>();
+  for (const asset of assets) {
+    if (asset.classificationNames) {
+      for (const name of asset.classificationNames) {
+        typeNames.add(name);
+      }
+    }
+    if (asset.atlanTags) {
+      for (const tag of asset.atlanTags) {
+        if (tag.typeName) {
+          typeNames.add(tag.typeName);
+        }
+      }
+    }
+  }
+  return [...typeNames];
+}
+
+/**
+ * Transform multiple Atlan assets with resolved names (async)
+ * This fetches human-readable domain and tag names from the Atlan API
+ */
+export async function transformAtlanAssetsWithNames(assets: AtlanAsset[]): Promise<AssetMetadata[]> {
+  // Collect all unique domain GUIDs and tag type names
+  const domainGUIDs = collectDomainGUIDs(assets);
+  const tagTypeNames = collectTagTypeNames(assets);
+
+  // Fetch names in batch
+  let domainNameMap: Map<string, string> | undefined;
+  let tagNameMap: Map<string, string> | undefined;
+
+  const [domainResult, tagResult] = await Promise.allSettled([
+    domainGUIDs.length > 0 ? fetchDomainNames(domainGUIDs) : Promise.resolve(new Map<string, string>()),
+    tagTypeNames.length > 0 ? resolveTagNames(tagTypeNames) : Promise.resolve(new Map<string, string>()),
+  ]);
+
+  if (domainResult.status === 'fulfilled') {
+    domainNameMap = domainResult.value;
+  } else {
+    console.warn('Failed to fetch domain names, using fallback:', domainResult.reason);
+  }
+
+  if (tagResult.status === 'fulfilled') {
+    tagNameMap = tagResult.value;
+  } else {
+    console.warn('Failed to fetch tag names, using fallback:', tagResult.reason);
+  }
+
+  // Transform assets with the resolved names
+  return assets.map(asset => transformAtlanAsset(asset, { domainNameMap, tagNameMap }));
+}
+
+/**
+ * Transform multiple Atlan assets with resolved domain names (async)
+ * @deprecated Use transformAtlanAssetsWithNames instead
+ */
+export async function transformAtlanAssetsWithDomains(assets: AtlanAsset[]): Promise<AssetMetadata[]> {
+  // Collect all unique domain GUIDs
+  const domainGUIDs = collectDomainGUIDs(assets);
+
+  // Fetch domain names in batch
+  let domainNameMap: Map<string, string> | undefined;
+  if (domainGUIDs.length > 0) {
+    try {
+      domainNameMap = await fetchDomainNames(domainGUIDs);
+    } catch (error) {
+      console.warn('Failed to fetch domain names, using fallback:', error);
+    }
+  }
+
+  // Transform assets with the resolved domain names
+  return assets.map(asset => transformAtlanAsset(asset, domainNameMap));
 }
 
 /**
@@ -279,4 +463,3 @@ export function extractHierarchy(assets: AtlanAsset[]): {
 
   return { connections, databases, schemas, tables };
 }
-
