@@ -43,12 +43,18 @@ export function GlobalSettingsDrawer({ isOpen, onClose }: GlobalSettingsDrawerPr
     setDashboardOwnerPivotDimension,
     setDashboardOwnerPivotColumn,
 
+    // Pivot
+    pivotDefaultRowDimensions,
+    pivotDefaultMeasures,
+    setPivotDefaultRowDimensions,
+    setPivotDefaultMeasures,
+
     // Reset
     resetToDefaults,
   } = useUIPreferences();
 
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
-    new Set(['display', 'global-filters', 'dashboard'])
+    new Set(['display', 'global-filters', 'dashboard', 'pivot'])
   );
 
   const toggleSection = (section: string) => {
@@ -74,16 +80,17 @@ export function GlobalSettingsDrawer({ isOpen, onClose }: GlobalSettingsDrawerPr
   return (
     <div className={`global-settings-drawer ${isOpen ? 'open' : 'collapsed'}`}>
       {/* Collapsed Tab */}
-      <button
-        className="drawer-collapsed-tab"
-        onClick={onClose}
-        title="Show global settings"
-        style={{ display: isOpen ? 'none' : 'flex' }}
-      >
-        <ChevronLeft size={14} />
-        <Settings size={16} />
-        <span className="collapsed-label">Settings</span>
-      </button>
+      {!isOpen && (
+        <button
+          className="drawer-collapsed-tab"
+          onClick={onClose}
+          title="Show global settings"
+        >
+          <ChevronLeft size={14} />
+          <Settings size={16} />
+          <span className="collapsed-label">Settings</span>
+        </button>
+      )}
 
       {/* Drawer Panel */}
       {isOpen && (
@@ -327,6 +334,102 @@ export function GlobalSettingsDrawer({ isOpen, onClose }: GlobalSettingsDrawerPr
                       <option value="timeliness">Timeliness</option>
                       <option value="consistency">Consistency</option>
                       <option value="usability">Usability</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Pivot Defaults Section */}
+            <div className="settings-section">
+              <button
+                className="section-header"
+                onClick={() => toggleSection('pivot')}
+              >
+                <span className="section-icon">
+                  {expandedSections.has('pivot') ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </span>
+                <span>Pivot Builder Defaults</span>
+              </button>
+              {expandedSections.has('pivot') && (
+                <div className="section-content">
+                  <p className="section-hint">
+                    Default dimensions and measures for new pivot analyses
+                  </p>
+
+                  <div className="setting-group">
+                    <label className="setting-label">Default Row Dimensions</label>
+                    <div className="dimension-pills">
+                      {pivotDefaultRowDimensions.map((dim) => (
+                        <span key={dim} className="dimension-pill">
+                          {dim}
+                          <button
+                            onClick={() => setPivotDefaultRowDimensions(
+                              pivotDefaultRowDimensions.filter(d => d !== dim)
+                            )}
+                            className="remove-pill"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <select
+                      className="setting-select"
+                      onChange={(e) => {
+                        if (e.target.value && !pivotDefaultRowDimensions.includes(e.target.value)) {
+                          setPivotDefaultRowDimensions([...pivotDefaultRowDimensions, e.target.value]);
+                          e.target.value = '';
+                        }
+                      }}
+                    >
+                      <option value="">Add dimension...</option>
+                      <option value="connection">Connection</option>
+                      <option value="database">Database</option>
+                      <option value="schema">Schema</option>
+                      <option value="assetType">Asset Type</option>
+                      <option value="owner">Owner</option>
+                      <option value="domain">Domain</option>
+                      <option value="certification">Certification</option>
+                      <option value="classification">Classification</option>
+                      <option value="tag">Tag</option>
+                    </select>
+                  </div>
+
+                  <div className="setting-group">
+                    <label className="setting-label">Default Measures</label>
+                    <div className="dimension-pills">
+                      {pivotDefaultMeasures.map((measure) => (
+                        <span key={measure} className="dimension-pill">
+                          {measure}
+                          <button
+                            onClick={() => setPivotDefaultMeasures(
+                              pivotDefaultMeasures.filter(m => m !== measure)
+                            )}
+                            className="remove-pill"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <select
+                      className="setting-select"
+                      onChange={(e) => {
+                        if (e.target.value && !pivotDefaultMeasures.includes(e.target.value)) {
+                          setPivotDefaultMeasures([...pivotDefaultMeasures, e.target.value]);
+                          e.target.value = '';
+                        }
+                      }}
+                    >
+                      <option value="">Add measure...</option>
+                      <option value="assetCount">Asset Count</option>
+                      <option value="overallScore">Overall Score</option>
+                      <option value="completenessScore">Completeness Score</option>
+                      <option value="accuracyScore">Accuracy Score</option>
+                      <option value="timelinessScore">Timeliness Score</option>
+                      <option value="consistencyScore">Consistency Score</option>
+                      <option value="usabilityScore">Usability Score</option>
                     </select>
                   </div>
                 </div>

@@ -2,6 +2,28 @@
   width: 100%;
 }
 
+/* Table Headers */
+.hierarchical-table th {
+  text-align: left;
+  font-weight: 700;
+  padding: 12px 16px;
+}
+
+.hierarchical-table th.numeric {
+  text-align: right;
+}
+
+/* Table Cells */
+.hierarchical-table td {
+  padding: 10px 16px;
+}
+
+.hierarchical-table td.numeric {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
 .hierarchy-row {
   transition: background-color 0.15s;
 }
