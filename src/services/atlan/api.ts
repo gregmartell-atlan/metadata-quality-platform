@@ -1123,6 +1123,7 @@ export interface HierarchyItem {
   qualifiedName: string;
   typeName: string;
   childCount?: number;
+  fullEntity?: any; // Full Atlan entity with all metadata
 }
 
 export interface ConnectorInfo {
@@ -1288,7 +1289,20 @@ export async function getDatabases(connector: string): Promise<HierarchyItem[]> 
         },
       },
     },
-    attributes: ['name', 'qualifiedName', 'schemaCount', 'connectorName', '__typeName'],
+    attributes: [
+      'name', 'qualifiedName', 'schemaCount', 'connectorName', '__typeName',
+      // Governance metadata
+      'description', 'userDescription',
+      'ownerUsers', 'ownerGroups',
+      'certificateStatus', 'certificateStatusMessage', 'certificateUpdatedAt', 'certificateUpdatedBy',
+      'classificationNames',
+      'atlanTags',
+      'meanings', 'assignedTerms', 'domainGUIDs',
+      // Technical
+      'createTime', 'updateTime', 'createdBy', 'updatedBy',
+      'isDiscoverable', 'isEditable', 'isAIGenerated',
+    ],
+    relationAttributes: ['classifications'],
   };
 
   const response = await search(query);
@@ -1301,6 +1315,7 @@ export async function getDatabases(connector: string): Promise<HierarchyItem[]> 
       qualifiedName: (e.attributes.qualifiedName as string) || e.guid,
       typeName: e.typeName,
       childCount: e.attributes.schemaCount as number | undefined,
+      fullEntity: e, // Store full entity for inspector
     }));
   }
   
@@ -1376,7 +1391,20 @@ export async function getSchemas(databaseQualifiedName: string): Promise<Hierarc
         },
       },
     },
-    attributes: ['name', 'qualifiedName', 'tableCount', 'viewCount'],
+    attributes: [
+      'name', 'qualifiedName', 'tableCount', 'viewCount',
+      // Governance metadata
+      'description', 'userDescription',
+      'ownerUsers', 'ownerGroups',
+      'certificateStatus', 'certificateStatusMessage', 'certificateUpdatedAt', 'certificateUpdatedBy',
+      'classificationNames',
+      'atlanTags',
+      'meanings', 'assignedTerms', 'domainGUIDs',
+      // Technical
+      'createTime', 'updateTime', 'createdBy', 'updatedBy',
+      'isDiscoverable', 'isEditable', 'isAIGenerated',
+    ],
+    relationAttributes: ['classifications'],
   });
 
   if (!response?.entities) {
@@ -1388,6 +1416,7 @@ export async function getSchemas(databaseQualifiedName: string): Promise<Hierarc
     const viewCount = (e.attributes.viewCount as number) || 0;
     return {
       guid: e.guid,
+      fullEntity: e, // Store full entity for inspector
       name: (e.attributes.name as string) || e.typeName || e.guid,
       qualifiedName: (e.attributes.qualifiedName as string) || e.guid,
       typeName: e.typeName,

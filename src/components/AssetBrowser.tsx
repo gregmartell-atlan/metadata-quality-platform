@@ -50,6 +50,7 @@ interface TreeNode {
   isLoaded?: boolean;
   asset?: AtlanAsset;
   childCount?: number;
+  fullEntity?: any; // Full Atlan entity for schemas/databases
 }
 
 interface AssetBrowserProps {
@@ -188,6 +189,7 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
         children: [],
         isLoaded: false,
         childCount: db.childCount,
+        fullEntity: db.fullEntity, // Store full entity with metadata
       }));
 
       setTreeData((prev) =>
@@ -278,6 +280,7 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
         children: [],
         isLoaded: false,
         childCount: schema.childCount,
+        fullEntity: schema.fullEntity, // Store full entity with metadata
       }));
 
       // Recursively update the database node within the tree
@@ -607,54 +610,52 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
                 console.log('Opening table asset directly');
                 openInspector(node.asset);
               } else if (node.type === 'connector' || node.type === 'database' || node.type === 'schema') {
-                // For non-table nodes, search by qualified name to get full details
-                try {
-                  const typeName = node.type === 'connector' ? 'Connection' : node.type === 'database' ? 'Database' : 'Schema';
-                  console.log('🔎 Searching for asset:', { nodeName: node.name, qualifiedName: node.qualifiedName, typeName });
-
-                  logger.debug('Fetching asset details', {
-                    nodeName: node.name,
-                    qualifiedName: node.qualifiedName,
-                    typeName
-                  });
-
-                  const query = {
-                    bool: {
-                      must: [
-                        { term: { 'qualifiedName.keyword': node.qualifiedName } }
-                        // Don't filter by typeName - qualified names are unique
-                      ]
-                    }
+                // Use fullEntity if available (from tree loading)
+                if (node.fullEntity) {
+                  console.log('📦 Using fullEntity from tree:', node.fullEntity);
+                  const e = node.fullEntity;
+                  const fullAsset: AtlanAsset = {
+                    guid: e.guid,
+                    typeName: e.typeName,
+                    name: e.attributes?.name || node.name,
+                    qualifiedName: e.attributes?.qualifiedName || node.qualifiedName,
+                    connectionName: e.attributes?.connectionName || node.connectorName,
+                    // Governance
+                    description: e.attributes?.description,
+                    userDescription: e.attributes?.userDescription,
+                    ownerUsers: e.attributes?.ownerUsers,
+                    ownerGroups: e.attributes?.ownerGroups,
+                    certificateStatus: e.attributes?.certificateStatus,
+                    certificateStatusMessage: e.attributes?.certificateStatusMessage,
+                    certificateUpdatedAt: e.attributes?.certificateUpdatedAt,
+                    certificateUpdatedBy: e.attributes?.certificateUpdatedBy,
+                    classificationNames: e.attributes?.classificationNames,
+                    atlanTags: e.classifications?.map((tag: any) => ({
+                      typeName: tag.typeName,
+                      propagate: tag.propagate,
+                      restrictPropagationThroughLineage: tag.restrictPropagationThroughLineage,
+                      restrictPropagationThroughHierarchy: tag.restrictPropagationThroughHierarchy,
+                    })),
+                    meanings: e.attributes?.meanings,
+                    assignedTerms: e.attributes?.assignedTerms,
+                    domainGUIDs: e.attributes?.domainGUIDs,
+                    // Technical
+                    schemaCount: e.attributes?.schemaCount,
+                    tableCount: e.attributes?.tableCount,
+                    viewCount: e.attributes?.viewCount,
+                    createTime: e.attributes?.createTime,
+                    updateTime: e.attributes?.updateTime,
+                    createdBy: e.attributes?.createdBy,
+                    updatedBy: e.attributes?.updatedBy,
+                    isDiscoverable: e.attributes?.isDiscoverable,
+                    isEditable: e.attributes?.isEditable,
+                    isAIGenerated: e.attributes?.isAIGenerated,
                   };
-
-                  const searchResponse = await searchAssets(query, undefined as any, 1, 0);
-                  const results = searchResponse.entities || [];
-                  console.log('📦 Full entity data:', results[0]);
-
-                  console.log('✅ SEARCH RESULTS:', {
-                    count: results.length,
-                    firstResultName: results[0]?.name,
-                    firstResultQualifiedName: results[0]?.qualifiedName,
-                    firstResultType: results[0]?.typeName
-                  });
-
-                  if (results && results.length > 0) {
-                    console.log('📂 Opening inspector for:', results[0].name);
-                    openInspector(results[0]);
-                  } else {
-                    // Fallback to minimal data
-                    const partialAsset: any = {
-                      guid: node.id,
-                      name: node.name,
-                      qualifiedName: node.qualifiedName,
-                      typeName,
-                      connectionName: node.connectorName,
-                    };
-                    openInspector(partialAsset as AtlanAsset);
-                  }
-                } catch (error) {
-                  logger.error('Failed to fetch full asset details', error);
-                  // Open with partial data anyway
+                  console.log('✅ Transformed asset:', fullAsset);
+                  openInspector(fullAsset);
+                } else {
+                  // Fallback to minimal data
+                  console.log('⚠️ No fullEntity, using minimal data');
                   const typeName = node.type === 'connector' ? 'Connection' : node.type === 'database' ? 'Database' : 'Schema';
                   const partialAsset: any = {
                     guid: node.id,
