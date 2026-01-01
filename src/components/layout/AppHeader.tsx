@@ -348,14 +348,16 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
             <Settings size={16} />
           </button>
 
-          {/* Configure View button (page-specific) */}
-          <button
-            className={`config-view-btn ${showViewConfigFlyout ? 'active' : ''}`}
-            onClick={() => setShowViewConfigFlyout(!showViewConfigFlyout)}
-            title="Configure this view"
-          >
-            <Sliders size={16} />
-          </button>
+          {/* Configure View button (page-specific) - hide on pivot (has its own flyout) */}
+          {!location.pathname.includes('/pivot') && (
+            <button
+              className={`config-view-btn ${showViewConfigFlyout ? 'active' : ''}`}
+              onClick={() => setShowViewConfigFlyout(!showViewConfigFlyout)}
+              title="Configure this view"
+            >
+              <Sliders size={16} />
+            </button>
+          )}
 
           {children}
         </div>
@@ -373,11 +375,13 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
         onClose={() => setShowSettingsDrawer(false)}
       />
 
-      {/* View Configuration Flyout (context-aware) */}
-      <ViewConfigFlyout
-        isOpen={showViewConfigFlyout}
-        onClose={() => setShowViewConfigFlyout(false)}
-      />
+      {/* View Configuration Flyout (context-aware) - only for non-pivot pages */}
+      {!location.pathname.includes('/pivot') && (
+        <ViewConfigFlyout
+          isOpen={showViewConfigFlyout}
+          onClose={() => setShowViewConfigFlyout(false)}
+        />
+      )}
 
       {/* Connection Modal */}
       {showConnectModal && (
