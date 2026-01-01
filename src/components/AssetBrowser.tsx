@@ -13,6 +13,7 @@ import {
   getDatabases,
   getSchemas,
   fetchAssetsForModel,
+  searchAssets,
   getAsset,
   isConfigured,
   testConnection,
@@ -599,13 +600,24 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
             } clickable`}
             onClick={async (e) => {
               e.stopPropagation();
+              console.log('🔍 CLICKED NODE:', { type: node.type, name: node.name, qualifiedName: node.qualifiedName });
+
               // Open inspector for any node type that has metadata
               if (node.type === 'table' && node.asset) {
+                console.log('Opening table asset directly');
                 openInspector(node.asset);
               } else if (node.type === 'connector' || node.type === 'database' || node.type === 'schema') {
                 // For non-table nodes, search by qualified name to get full details
                 try {
                   const typeName = node.type === 'connector' ? 'Connection' : node.type === 'database' ? 'Database' : 'Schema';
+                  console.log('🔎 Searching for asset:', { nodeName: node.name, qualifiedName: node.qualifiedName, typeName });
+
+                  logger.debug('Fetching asset details', {
+                    nodeName: node.name,
+                    qualifiedName: node.qualifiedName,
+                    typeName
+                  });
+
                   const query = {
                     bool: {
                       must: [
@@ -615,13 +627,18 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
                     }
                   };
 
-                  const results = await fetchAssetsForModel({
-                    connector: node.connectorName || '',
-                    customQuery: query,
-                    size: 1
+                  const searchResponse = await searchAssets(query, [], 1, 0);
+                  const results = searchResponse.entities || [];
+
+                  console.log('✅ SEARCH RESULTS:', {
+                    count: results.length,
+                    firstResultName: results[0]?.name,
+                    firstResultQualifiedName: results[0]?.qualifiedName,
+                    firstResultType: results[0]?.typeName
                   });
 
                   if (results && results.length > 0) {
+                    console.log('📂 Opening inspector for:', results[0].name);
                     openInspector(results[0]);
                   } else {
                     // Fallback to minimal data
