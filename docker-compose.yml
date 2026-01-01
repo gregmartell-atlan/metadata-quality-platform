@@ -83,7 +83,7 @@ services:
     container_name: dapr-placement
     command: ["./placement", "-port", "50006", "-log-level", "debug"]
     ports:
-      - "50006:50006"
+      - "50007:50006"  # Changed to 50007 to avoid conflict
     networks:
       - app-network
 
@@ -94,7 +94,7 @@ services:
     image: redis:7-alpine
     container_name: metadata-quality-redis
     ports:
-      - "6379:6379"
+      - "6380:6379"  # Changed to 6380 to avoid conflict
     volumes:
       - redis-data:/data
     networks:
