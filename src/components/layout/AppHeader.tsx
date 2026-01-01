@@ -372,14 +372,14 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
       {/* Global Settings Drawer */}
       <GlobalSettingsDrawer
         isOpen={showSettingsDrawer}
-        onClose={() => setShowSettingsDrawer(false)}
+        onClose={() => setShowSettingsDrawer(!showSettingsDrawer)}
       />
 
       {/* View Configuration Flyout (context-aware) - only for non-pivot pages */}
       {!location.pathname.includes('/pivot') && (
         <ViewConfigFlyout
           isOpen={showViewConfigFlyout}
-          onClose={() => setShowViewConfigFlyout(false)}
+          onToggle={() => setShowViewConfigFlyout(!showViewConfigFlyout)}
         />
       )}
 

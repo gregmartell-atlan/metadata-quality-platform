@@ -15,7 +15,7 @@ import './ViewConfigFlyout.css';
 
 interface ViewConfigFlyoutProps {
   isOpen: boolean;
-  onClose: () => void;
+  onToggle: () => void; // Changed from onClose to onToggle
   // Pivot-specific props (passed from Pivot Builder page)
   pivotRowDimensions?: RowDimension[];
   pivotMeasures?: Measure[];
@@ -25,7 +25,7 @@ interface ViewConfigFlyoutProps {
 
 export function ViewConfigFlyout({
   isOpen,
-  onClose,
+  onToggle,
   pivotRowDimensions = [],
   pivotMeasures = [],
   onPivotRowDimensionsChange,
@@ -63,7 +63,7 @@ export function ViewConfigFlyout({
       {/* Collapsed Tab */}
       <button
         className="flyout-collapsed-tab"
-        onClick={onClose}
+        onClick={onToggle}
         title={getTitle()}
         style={{ display: isOpen ? 'none' : 'flex' }}
       >
@@ -78,7 +78,7 @@ export function ViewConfigFlyout({
           <div className="flyout-header">
             <button
               className="flyout-close-btn"
-              onClick={onClose}
+              onClick={onToggle}
               title="Close configuration"
             >
               <ChevronRight size={16} />
