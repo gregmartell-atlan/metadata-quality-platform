@@ -603,18 +603,33 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
               if (node.type === 'table' && node.asset) {
                 openInspector(node.asset);
               } else if (node.type === 'connector' || node.type === 'database' || node.type === 'schema') {
-                // For non-table nodes, fetch full asset details from Atlan
+                // For non-table nodes, search by qualified name to get full details
                 try {
-                  const fullAsset = await getAsset(node.id);
-                  if (fullAsset) {
-                    openInspector(fullAsset);
+                  const typeName = node.type === 'connector' ? 'Connection' : node.type === 'database' ? 'Database' : 'Schema';
+                  const query = {
+                    bool: {
+                      must: [
+                        { term: { 'qualifiedName.keyword': node.qualifiedName } },
+                        { term: { '__typeName.keyword': typeName } }
+                      ]
+                    }
+                  };
+
+                  const results = await fetchAssetsForModel({
+                    connector: node.connectorName || '',
+                    customQuery: query,
+                    size: 1
+                  });
+
+                  if (results && results.length > 0) {
+                    openInspector(results[0]);
                   } else {
-                    // Fallback to minimal data if fetch fails
+                    // Fallback to minimal data
                     const partialAsset: any = {
                       guid: node.id,
                       name: node.name,
                       qualifiedName: node.qualifiedName,
-                      typeName: node.type === 'connector' ? 'Connection' : node.type === 'database' ? 'Database' : 'Schema',
+                      typeName,
                       connectionName: node.connectorName,
                     };
                     openInspector(partialAsset as AtlanAsset);
@@ -622,11 +637,12 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
                 } catch (error) {
                   logger.error('Failed to fetch full asset details', error);
                   // Open with partial data anyway
+                  const typeName = node.type === 'connector' ? 'Connection' : node.type === 'database' ? 'Database' : 'Schema';
                   const partialAsset: any = {
                     guid: node.id,
                     name: node.name,
                     qualifiedName: node.qualifiedName,
-                    typeName: node.type === 'connector' ? 'Connection' : node.type === 'database' ? 'Database' : 'Schema',
+                    typeName,
                     connectionName: node.connectorName,
                   };
                   openInspector(partialAsset as AtlanAsset);
