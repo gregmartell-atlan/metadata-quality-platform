@@ -1,0 +1,47 @@
+# ============================================================================
+# Dapr Object Store Component - Local File System (Development)
+# For production, this would be S3/Azure Blob configured by Atlan
+# ============================================================================
+
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: objectstore
+spec:
+  type: bindings.localstorage
+  version: v1
+  metadata:
+    # Local directory for object storage (development only)
+    - name: rootPath
+      value: /tmp/metadata-quality-objects
+
+scopes:
+  - metadata-quality-platform
+
+---
+# ============================================================================
+# Alternative: S3 Object Store (for production-like testing)
+# Uncomment and configure with AWS credentials to test S3 integration
+# ============================================================================
+# apiVersion: dapr.io/v1alpha1
+# kind: Component
+# metadata:
+#   name: objectstore
+# spec:
+#   type: bindings.aws.s3
+#   version: v1
+#   metadata:
+#     - name: bucket
+#       value: "metadata-quality-dev"
+#     - name: region
+#       value: "us-east-1"
+#     - name: accessKey
+#       value: "${AWS_ACCESS_KEY_ID}"
+#     - name: secretKey
+#       value: "${AWS_SECRET_ACCESS_KEY}"
+#     - name: endpoint
+#       value: ""  # Leave empty for AWS S3, or set for MinIO
+#     - name: forcePathStyle
+#       value: "false"
+# scopes:
+#   - metadata-quality-platform

@@ -1,0 +1,164 @@
+# ============================================================================
+# Metadata Quality Platform - Local Development with Dapr
+# Runs FastAPI backend with Dapr sidecar for state/object store testing
+# ============================================================================
+
+version: '3.8'
+
+services:
+  # ============================================
+  # Main Application (FastAPI + React)
+  # ============================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: metadata-quality-app
+    ports:
+      - "8080:8080"  # FastAPI application
+    environment:
+      # Atlan API credentials (from .env or environment)
+      - ATLAN_API_KEY=${ATLAN_API_KEY}
+      - ATLAN_BASE_URL=${ATLAN_BASE_URL}
+
+      # Atlan App Framework settings
+      - ENVIRONMENT=development
+      - ATLAN_TENANT_ID=local-dev
+      - DEBUG=true
+
+      # Dapr sidecar ports
+      - DAPR_HTTP_PORT=3500
+      - DAPR_GRPC_PORT=50001
+
+      # Temporal (local instance)
+      - TEMPORAL_URL=temporal:7233
+      - TEMPORAL_NAMESPACE=default
+
+      # Application settings
+      - CORS_ORIGINS=http://localhost:8080,http://localhost:5173
+      - MAX_ASSETS_PER_QUERY=10000
+
+    depends_on:
+      - redis
+      - temporal
+    networks:
+      - app-network
+
+  # ============================================
+  # Dapr Sidecar (for state/object store)
+  # ============================================
+  dapr-sidecar:
+    image: daprio/daprd:1.14.4
+    container_name: metadata-quality-dapr
+    command:
+      - "./daprd"
+      - "-app-id"
+      - "metadata-quality-platform"
+      - "-app-port"
+      - "8080"
+      - "-app-protocol"
+      - "http"
+      - "-dapr-http-port"
+      - "3500"
+      - "-dapr-grpc-port"
+      - "50001"
+      - "-placement-host-address"
+      - "placement:50006"
+      - "-components-path"
+      - "/components"
+      - "-log-level"
+      - "debug"
+    volumes:
+      - ./dapr-components:/components
+    network_mode: "service:app"
+    depends_on:
+      - placement
+      - redis
+
+  # ============================================
+  # Dapr Placement Service
+  # ============================================
+  placement:
+    image: daprio/dapr:1.14.4
+    container_name: dapr-placement
+    command: ["./placement", "-port", "50006", "-log-level", "debug"]
+    ports:
+      - "50006:50006"
+    networks:
+      - app-network
+
+  # ============================================
+  # Redis (Dapr State Store)
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: metadata-quality-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # ============================================
+  # Temporal (for local workflow testing)
+  # ============================================
+  temporal:
+    image: temporalio/auto-setup:1.24.2
+    container_name: metadata-quality-temporal
+    ports:
+      - "7233:7233"  # Temporal server
+      - "8233:8233"  # Temporal UI
+    environment:
+      - DB=postgresql
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgres
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+    depends_on:
+      - postgres
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "tctl", "cluster", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ============================================
+  # PostgreSQL (for Temporal)
+  # ============================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: metadata-quality-postgres
+    environment:
+      - POSTGRES_PASSWORD=temporal
+      - POSTGRES_USER=temporal
+      - POSTGRES_DB=temporal
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
