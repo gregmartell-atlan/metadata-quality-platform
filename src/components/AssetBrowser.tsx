@@ -13,6 +13,7 @@ import {
   getDatabases,
   getSchemas,
   fetchAssetsForModel,
+  getAsset,
   isConfigured,
   testConnection,
   type ConnectorInfo,
@@ -596,22 +597,40 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
                 ? 'popular-warm'
                 : ''
             } clickable`}
-            onClick={(e) => {
+            onClick={async (e) => {
               e.stopPropagation();
               // Open inspector for any node type that has metadata
               if (node.type === 'table' && node.asset) {
                 openInspector(node.asset);
               } else if (node.type === 'connector' || node.type === 'database' || node.type === 'schema') {
-                // For non-table nodes, we need to create a minimal asset object
-                // These don't have full asset data loaded, but have basic info
-                const partialAsset: any = {
-                  guid: node.id,
-                  name: node.name,
-                  qualifiedName: node.qualifiedName,
-                  typeName: node.type === 'connector' ? 'Connection' : node.type === 'database' ? 'Database' : 'Schema',
-                  connectionName: node.connectorName,
-                };
-                openInspector(partialAsset as AtlanAsset);
+                // For non-table nodes, fetch full asset details from Atlan
+                try {
+                  const fullAsset = await getAsset(node.id);
+                  if (fullAsset) {
+                    openInspector(fullAsset);
+                  } else {
+                    // Fallback to minimal data if fetch fails
+                    const partialAsset: any = {
+                      guid: node.id,
+                      name: node.name,
+                      qualifiedName: node.qualifiedName,
+                      typeName: node.type === 'connector' ? 'Connection' : node.type === 'database' ? 'Database' : 'Schema',
+                      connectionName: node.connectorName,
+                    };
+                    openInspector(partialAsset as AtlanAsset);
+                  }
+                } catch (error) {
+                  logger.error('Failed to fetch full asset details', error);
+                  // Open with partial data anyway
+                  const partialAsset: any = {
+                    guid: node.id,
+                    name: node.name,
+                    qualifiedName: node.qualifiedName,
+                    typeName: node.type === 'connector' ? 'Connection' : node.type === 'database' ? 'Database' : 'Schema',
+                    connectionName: node.connectorName,
+                  };
+                  openInspector(partialAsset as AtlanAsset);
+                }
               }
             }}
             title={
