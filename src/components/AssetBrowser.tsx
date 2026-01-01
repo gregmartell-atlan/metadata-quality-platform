@@ -627,8 +627,9 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
                     }
                   };
 
-                  const searchResponse = await searchAssets(query, [], 1, 0);
+                  const searchResponse = await searchAssets(query, undefined as any, 1, 0);
                   const results = searchResponse.entities || [];
+                  console.log('📦 Full entity data:', results[0]);
 
                   console.log('✅ SEARCH RESULTS:', {
                     count: results.length,
