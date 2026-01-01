@@ -4,12 +4,12 @@
  */
 
 interface EnvConfig {
-  VITE_PROXY_URL?: string;
+  VITE_API_BASE_URL?: string;
   [key: string]: string | undefined;
 }
 
 const REQUIRED_ENV_VARS: string[] = [];
-const OPTIONAL_ENV_VARS: string[] = ['VITE_PROXY_URL'];
+const OPTIONAL_ENV_VARS: string[] = ['VITE_API_BASE_URL'];
 
 export function validateEnvironment(): void {
   const errors: string[] = [];
@@ -31,13 +31,12 @@ export function validateEnvironment(): void {
     }
   }
 
-  // Validate VITE_PROXY_URL format if provided
-  const proxyUrl = import.meta.env.VITE_PROXY_URL;
-  if (proxyUrl && proxyUrl.trim() !== '') {
-    try {
-      new URL(proxyUrl);
-    } catch {
-      errors.push(`VITE_PROXY_URL is not a valid URL: ${proxyUrl}`);
+  // Validate VITE_API_BASE_URL format if provided (can be relative path or full URL)
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+  if (apiBaseUrl && apiBaseUrl.trim() !== '') {
+    // Allow relative paths (e.g., "/api") or full URLs
+    if (!apiBaseUrl.startsWith('/') && !apiBaseUrl.startsWith('http')) {
+      errors.push(`VITE_API_BASE_URL must be a relative path (/api) or full URL: ${apiBaseUrl}`);
     }
   }
 

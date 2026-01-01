@@ -63,8 +63,10 @@ export interface AtlanAssetSummary {
   isAIGenerated?: boolean;
 }
 
-// Proxy server URL (runs alongside Vite dev server)
-const PROXY_URL = import.meta.env.VITE_PROXY_URL || 'http://localhost:3002';
+// API base URL - now points to FastAPI backend
+// In development: Vite proxy forwards /api to backend
+// In production: FastAPI serves both frontend and API
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 const SAVED_BASE_URL_KEY = 'atlan_base_url';
 
 export interface AtlanApiConfig {
@@ -186,8 +188,8 @@ interface AtlanApiResponse<T> {
 }
 
 /**
- * Make an authenticated request to Atlan API via proxy
- * The proxy handles CORS by making server-side requests
+ * Make an authenticated request to Atlan API via FastAPI backend
+ * FastAPI backend proxies requests to Atlan API server-side
  * Now uses enhanced apiFetch with retry logic and timeouts
  */
 async function atlanFetch<T>(
@@ -199,10 +201,11 @@ async function atlanFetch<T>(
     return { error: 'Not configured. Call configureAtlanApi first.', status: 0 };
   }
 
-  // Route through proxy to avoid CORS
-  // endpoint like "/api/me" becomes "http://localhost:3002/proxy/api/me"
-  const proxyPath = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
-  const url = `${PROXY_URL}/proxy/${proxyPath}`;
+  // Route through FastAPI backend (no more separate proxy server)
+  // endpoint like "/api/meta/search" becomes "/api/atlan/meta/search"
+  // This hits our FastAPI backend which proxies to Atlan
+  const backendPath = endpoint.startsWith('/api/') ? endpoint.slice(5) : endpoint;
+  const url = `${API_BASE_URL}/atlan/${backendPath}`;
 
   // Create deduplication key from endpoint, method, and body (for POST requests)
   const method = options.method || 'GET';
@@ -244,9 +247,9 @@ async function atlanFetch<T>(
         }
       }
 
-      // Handle proxy-specific error messages
+      // Handle backend connection error messages
       if (response.error.includes('connection refused') || response.error.includes('ERR_CONNECTION_REFUSED')) {
-        response.error = 'Proxy server not running. Start it with: npm run proxy';
+        response.error = 'Backend server not running. The FastAPI backend must be running to connect to Atlan.';
       }
 
       logger.error('Atlan API request failed', {
