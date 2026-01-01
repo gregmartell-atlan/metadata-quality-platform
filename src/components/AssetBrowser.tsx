@@ -621,8 +621,8 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
                   const query = {
                     bool: {
                       must: [
-                        { term: { 'qualifiedName.keyword': node.qualifiedName } },
-                        { term: { '__typeName.keyword': typeName } }
+                        { term: { 'qualifiedName.keyword': node.qualifiedName } }
+                        // Don't filter by typeName - qualified names are unique
                       ]
                     }
                   };
