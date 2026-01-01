@@ -212,6 +212,7 @@ export function MetadataSection({ asset }: MetadataSectionProps) {
           </div>
         </div>
       </div>
+      )}
 
       {/* Timestamps */}
       <div className="inspector-section">
