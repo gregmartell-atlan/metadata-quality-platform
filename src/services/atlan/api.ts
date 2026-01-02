@@ -63,10 +63,16 @@ export interface AtlanAssetSummary {
   isAIGenerated?: boolean;
 }
 
-// API base URL - now points to FastAPI backend
-// In development: Vite proxy forwards /api to backend
-// In production: FastAPI serves both frontend and API
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+// API base URL configuration:
+// - VITE_PROXY_URL: Direct URL to proxy server (bypasses Vite proxy) e.g., "http://localhost:3002/proxy"
+// - VITE_API_BASE_URL: Custom API base path (default: "/api")
+// - Default: "/api" which uses Vite proxy to forward to proxy server
+const API_BASE_URL = import.meta.env.VITE_PROXY_URL
+  ? import.meta.env.VITE_PROXY_URL  // Direct to proxy server (bypasses Vite)
+  : (import.meta.env.VITE_API_BASE_URL || '/api');  // Via Vite proxy
+
+// Flag to detect if we're using direct proxy mode (different URL construction)
+const DIRECT_PROXY_MODE = !!import.meta.env.VITE_PROXY_URL;
 const SAVED_BASE_URL_KEY = 'atlan_base_url';
 
 export interface AtlanApiConfig {
@@ -201,11 +207,20 @@ async function atlanFetch<T>(
     return { error: 'Not configured. Call configureAtlanApi first.', status: 0 };
   }
 
-  // Route through FastAPI backend (no more separate proxy server)
-  // endpoint like "/api/meta/search" becomes "/api/atlan/meta/search"
-  // This hits our FastAPI backend which proxies to Atlan
-  const backendPath = endpoint.startsWith('/api/') ? endpoint.slice(5) : endpoint;
-  const url = `${API_BASE_URL}/atlan/${backendPath}`;
+  // Build the URL based on proxy mode:
+  // - Direct proxy mode (VITE_PROXY_URL set): http://localhost:3002/proxy + /api/meta/search
+  // - Vite proxy mode: /api/atlan + /meta/search (Vite forwards to proxy server)
+  let url: string;
+  if (DIRECT_PROXY_MODE) {
+    // Direct to proxy server - endpoint like "/api/meta/search" stays as-is
+    const apiPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    url = `${API_BASE_URL}${apiPath}`;
+    console.log('[atlanFetch] Direct proxy mode:', url);
+  } else {
+    // Via Vite proxy - endpoint "/api/meta/search" becomes "/api/atlan/meta/search"
+    const backendPath = endpoint.startsWith('/api/') ? endpoint.slice(5) : endpoint;
+    url = `${API_BASE_URL}/atlan/${backendPath}`;
+  }
 
   // Create deduplication key from endpoint, method, and body (for POST requests)
   const method = options.method || 'GET';
