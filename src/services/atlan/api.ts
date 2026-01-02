@@ -63,10 +63,10 @@ export interface AtlanAssetSummary {
   isAIGenerated?: boolean;
 }
 
-// API base URL - defaults to direct proxy server connection (original working behavior)
-// The proxy server runs on localhost:3002 and handles CORS
-// Override with VITE_API_BASE_URL if using a different setup (e.g., FastAPI backend)
-const PROXY_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3002';
+// Proxy server URL - browser makes direct CORS requests to this server
+// The proxy server handles authentication and forwards to Atlan
+// This is the original working pattern from before the App Framework migration
+const PROXY_URL = 'http://localhost:3002';
 const SAVED_BASE_URL_KEY = 'atlan_base_url';
 
 export interface AtlanApiConfig {
