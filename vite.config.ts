@@ -18,6 +18,18 @@ export default defineConfig({
         target: `http://${PROXY_HOST}:3002`,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/atlan/, '/proxy/api'),
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            console.log(`[Vite Proxy] ${req.method} ${req.url} -> ${proxyReq.path}`);
+            console.log(`[Vite Proxy] Headers forwarded:`, {
+              'x-atlan-url': req.headers['x-atlan-url'] ? 'present' : 'MISSING',
+              'x-atlan-api-key': req.headers['x-atlan-api-key'] ? 'present' : 'MISSING',
+            });
+          });
+          proxy.on('error', (err) => {
+            console.error('[Vite Proxy] Error:', err.message);
+          });
+        },
       },
     },
   },
