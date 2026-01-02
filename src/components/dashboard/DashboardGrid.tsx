@@ -17,7 +17,9 @@ const COLS = { lg: 12, md: 12, sm: 12 };
 
 export function DashboardGrid() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const width = useContainerWidth(containerRef);
+  const containerWidth = useContainerWidth(containerRef);
+  // useContainerWidth returns an object { width, mounted, ... } in v2.x
+  const width = typeof containerWidth === 'number' ? containerWidth : containerWidth?.width ?? 0;
 
   const {
     currentLayouts,
@@ -27,9 +29,9 @@ export function DashboardGrid() {
   } = useDashboardLayoutStore();
 
   // Debug logging
-  console.log('[DashboardGrid] Rendering with width:', width);
+  console.log('[DashboardGrid] Container width object:', containerWidth);
+  console.log('[DashboardGrid] Extracted width:', width);
   console.log('[DashboardGrid] Current layouts lg:', currentLayouts.lg.length, 'widgets');
-  console.log('[DashboardGrid] Layout items:', currentLayouts.lg.map(l => l.widgetType));
 
   // Handle layout change from react-grid-layout
   const handleLayoutChange = (currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
