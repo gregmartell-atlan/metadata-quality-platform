@@ -24,7 +24,7 @@ const activityIcons = {
   classification: Tag
 };
 
-export function RecentActivityWidget({ widgetId, isEditMode }: WidgetProps) {
+export function RecentActivityWidget({ widgetId, widgetType, isEditMode }: WidgetProps) {
   // Mock activity data - replace with real activity log API
   const activities = useMemo<ActivityItem[]>(() => {
     const now = Date.now();
@@ -89,6 +89,7 @@ export function RecentActivityWidget({ widgetId, isEditMode }: WidgetProps) {
     <WidgetWrapper
       title="Recent Activity"
       widgetId={widgetId}
+      widgetType={widgetType || 'recent-activity'}
       isEditMode={isEditMode || false}
     >
       <div className="activity-feed" style={{ maxHeight: '300px', overflowY: 'auto' }}>

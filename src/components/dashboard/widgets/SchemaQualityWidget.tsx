@@ -10,7 +10,7 @@ import type { WidgetProps } from './registry';
 import { useScoresStore } from '../../../stores/scoresStore';
 import { ScoreBadge } from '../../shared/ScoreBadge';
 
-export function SchemaQualityWidget({ widgetId, isEditMode }: WidgetProps) {
+export function SchemaQualityWidget({ widgetId, widgetType, isEditMode }: WidgetProps) {
   const { bySchema } = useScoresStore();
 
   const schemaStats = useMemo(() => {
@@ -40,6 +40,7 @@ export function SchemaQualityWidget({ widgetId, isEditMode }: WidgetProps) {
     <WidgetWrapper
       title="Schema Quality Leaderboard"
       widgetId={widgetId}
+      widgetType={widgetType || 'schema-quality'}
       isEditMode={isEditMode || false}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

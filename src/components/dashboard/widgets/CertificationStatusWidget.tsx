@@ -9,7 +9,7 @@ import { WidgetWrapper } from './WidgetWrapper';
 import type { WidgetProps } from './registry';
 import { useScoresStore } from '../../../stores/scoresStore';
 
-export function CertificationStatusWidget({ widgetId, isEditMode }: WidgetProps) {
+export function CertificationStatusWidget({ widgetId, widgetType, isEditMode }: WidgetProps) {
   const { byCertification } = useScoresStore();
 
   const certStats = useMemo(() => {
@@ -45,6 +45,7 @@ export function CertificationStatusWidget({ widgetId, isEditMode }: WidgetProps)
     <WidgetWrapper
       title="Certification Status"
       widgetId={widgetId}
+      widgetType={widgetType || 'certification-status'}
       isEditMode={isEditMode || false}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '8px 0' }}>

@@ -9,7 +9,7 @@ import { WidgetWrapper } from './WidgetWrapper';
 import type { WidgetProps } from './registry';
 import { useScoresStore } from '../../../stores/scoresStore';
 
-export function TagCloudWidget({ widgetId, isEditMode }: WidgetProps) {
+export function TagCloudWidget({ widgetId, widgetType, isEditMode }: WidgetProps) {
   const { byTag } = useScoresStore();
 
   const tagData = useMemo(() => {
@@ -34,6 +34,7 @@ export function TagCloudWidget({ widgetId, isEditMode }: WidgetProps) {
     <WidgetWrapper
       title="Tag Cloud"
       widgetId={widgetId}
+      widgetType={widgetType || 'tag-cloud'}
       isEditMode={isEditMode || false}
     >
       <div style={{

@@ -10,7 +10,7 @@ import type { WidgetProps } from './registry';
 import { useScoresStore } from '../../../stores/scoresStore';
 import { ScoreBadge } from '../../shared/ScoreBadge';
 
-export function ConnectorHealthWidget({ widgetId, isEditMode }: WidgetProps) {
+export function ConnectorHealthWidget({ widgetId, widgetType, isEditMode }: WidgetProps) {
   const { assetsWithScores } = useScoresStore();
 
   const connectorStats = useMemo(() => {
@@ -42,6 +42,7 @@ export function ConnectorHealthWidget({ widgetId, isEditMode }: WidgetProps) {
     <WidgetWrapper
       title="Connector Health Matrix"
       widgetId={widgetId}
+      widgetType={widgetType || 'connector-health'}
       isEditMode={isEditMode || false}
     >
       <div style={{ overflowX: 'auto' }}>

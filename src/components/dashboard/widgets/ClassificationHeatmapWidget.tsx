@@ -8,7 +8,7 @@ import { WidgetWrapper } from './WidgetWrapper';
 import type { WidgetProps } from './registry';
 import { useScoresStore } from '../../../stores/scoresStore';
 
-export function ClassificationHeatmapWidget({ widgetId, isEditMode }: WidgetProps) {
+export function ClassificationHeatmapWidget({ widgetId, widgetType, isEditMode }: WidgetProps) {
   const { byClassification, assetsWithScores } = useScoresStore();
 
   const heatmapData = useMemo(() => {
@@ -46,6 +46,7 @@ export function ClassificationHeatmapWidget({ widgetId, isEditMode }: WidgetProp
     <WidgetWrapper
       title="Classification Heatmap"
       widgetId={widgetId}
+      widgetType={widgetType || 'classification-heatmap'}
       isEditMode={isEditMode || false}
     >
       <div style={{ overflowX: 'auto' }}>

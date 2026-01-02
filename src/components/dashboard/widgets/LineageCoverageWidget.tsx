@@ -9,7 +9,7 @@ import { WidgetWrapper } from './WidgetWrapper';
 import type { WidgetProps } from './registry';
 import { useScoresStore } from '../../../stores/scoresStore';
 
-export function LineageCoverageWidget({ widgetId, isEditMode }: WidgetProps) {
+export function LineageCoverageWidget({ widgetId, widgetType, isEditMode }: WidgetProps) {
   const { assetsWithScores } = useScoresStore();
 
   const lineageStats = useMemo(() => {
@@ -37,6 +37,7 @@ export function LineageCoverageWidget({ widgetId, isEditMode }: WidgetProps) {
     <WidgetWrapper
       title="Lineage Coverage"
       widgetId={widgetId}
+      widgetType={widgetType || 'lineage-coverage'}
       isEditMode={isEditMode || false}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

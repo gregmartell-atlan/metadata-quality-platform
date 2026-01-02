@@ -9,7 +9,7 @@ import { WidgetWrapper } from './WidgetWrapper';
 import type { WidgetProps } from './registry';
 import { useScoresStore } from '../../../stores/scoresStore';
 
-export function FreshnessDashboardWidget({ widgetId, isEditMode }: WidgetProps) {
+export function FreshnessDashboardWidget({ widgetId, widgetType, isEditMode }: WidgetProps) {
   const { assetsWithScores } = useScoresStore();
 
   const freshnessStats = useMemo(() => {
@@ -53,6 +53,7 @@ export function FreshnessDashboardWidget({ widgetId, isEditMode }: WidgetProps) 
     <WidgetWrapper
       title="Data Freshness"
       widgetId={widgetId}
+      widgetType={widgetType || 'freshness-dashboard'}
       isEditMode={isEditMode || false}
     >
       {staleCount > 0 && (

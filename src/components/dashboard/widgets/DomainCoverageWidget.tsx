@@ -9,7 +9,7 @@ import type { WidgetProps } from './registry';
 import { useScoresStore } from '../../../stores/scoresStore';
 import { ScoreBadge } from '../../shared/ScoreBadge';
 
-export function DomainCoverageWidget({ widgetId, isEditMode }: WidgetProps) {
+export function DomainCoverageWidget({ widgetId, widgetType, isEditMode }: WidgetProps) {
   const { byDomain } = useScoresStore();
 
   const domainStats = useMemo(() => {
@@ -32,6 +32,7 @@ export function DomainCoverageWidget({ widgetId, isEditMode }: WidgetProps) {
     <WidgetWrapper
       title="Domain Coverage Matrix"
       widgetId={widgetId}
+      widgetType={widgetType || 'domain-coverage'}
       isEditMode={isEditMode || false}
     >
       <div style={{ overflowX: 'auto' }}>

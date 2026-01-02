@@ -9,7 +9,7 @@ import { WidgetWrapper } from './WidgetWrapper';
 import type { WidgetProps } from './registry';
 import { useScoresStore } from '../../../stores/scoresStore';
 
-export function GlossaryTermCoverageWidget({ widgetId, isEditMode }: WidgetProps) {
+export function GlossaryTermCoverageWidget({ widgetId, widgetType, isEditMode }: WidgetProps) {
   const { assetsWithScores } = useScoresStore();
 
   const glossaryStats = useMemo(() => {
@@ -46,6 +46,7 @@ export function GlossaryTermCoverageWidget({ widgetId, isEditMode }: WidgetProps
     <WidgetWrapper
       title="Glossary Term Coverage"
       widgetId={widgetId}
+      widgetType={widgetType || 'glossary-term-coverage'}
       isEditMode={isEditMode || false}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

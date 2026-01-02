@@ -9,7 +9,7 @@ import { WidgetWrapper } from './WidgetWrapper';
 import type { WidgetProps } from './registry';
 import { useScoresStore } from '../../../stores/scoresStore';
 
-export function DescriptionCoverageWidget({ widgetId, isEditMode }: WidgetProps) {
+export function DescriptionCoverageWidget({ widgetId, widgetType, isEditMode }: WidgetProps) {
   const { assetsWithScores } = useScoresStore();
 
   const descriptionStats = useMemo(() => {
@@ -50,6 +50,7 @@ export function DescriptionCoverageWidget({ widgetId, isEditMode }: WidgetProps)
     <WidgetWrapper
       title="Description Coverage Funnel"
       widgetId={widgetId}
+      widgetType={widgetType || 'description-coverage'}
       isEditMode={isEditMode || false}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '8px 0' }}>

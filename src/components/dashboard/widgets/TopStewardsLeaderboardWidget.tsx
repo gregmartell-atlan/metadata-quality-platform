@@ -9,7 +9,7 @@ import { WidgetWrapper } from './WidgetWrapper';
 import type { WidgetProps } from './registry';
 import { useScoresStore } from '../../../stores/scoresStore';
 
-export function TopStewardsLeaderboardWidget({ widgetId, isEditMode }: WidgetProps) {
+export function TopStewardsLeaderboardWidget({ widgetId, widgetType, isEditMode }: WidgetProps) {
   const { byOwner } = useScoresStore();
 
   // Calculate top stewards from real data
@@ -39,6 +39,7 @@ export function TopStewardsLeaderboardWidget({ widgetId, isEditMode }: WidgetPro
     <WidgetWrapper
       title="Top Stewards Leaderboard"
       widgetId={widgetId}
+      widgetType={widgetType || 'top-stewards-leaderboard'}
       isEditMode={isEditMode || false}
     >
       <div className="stewards-leaderboard" style={{ overflowX: 'auto' }}>
