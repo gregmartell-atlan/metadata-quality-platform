@@ -7,6 +7,9 @@ const PROXY_HOST = process.env.DOCKER_ENV ? 'host.docker.internal' : 'localhost'
 
 export default defineConfig({
   plugins: [react()],
+  // Base path for GitHub Pages deployment (e.g., /repo-name/)
+  // Falls back to '/' for local development and other deployments
+  base: process.env.VITE_BASE_PATH || '/',
   resolve: {
     extensions: ['.tsx', '.ts', '.jsx', '.js', '.json'],
   },
