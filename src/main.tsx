@@ -7,6 +7,7 @@ import { ScoresStoreProvider } from './stores/scoresStore'
 import { ScoringSettingsProvider } from './stores/scoringSettingsStore'
 import { ErrorBoundary } from './components/shared'
 import { ToastContainer, useToasts, removeToast } from './components/shared/Toast'
+import { AutoSnapshotProvider } from './components/providers/AutoSnapshotProvider'
 import { validateEnvironment } from './utils/envValidation'
 import { logger } from './utils/logger'
 
@@ -35,7 +36,9 @@ createRoot(document.getElementById('root')!).render(
       <ScoringSettingsProvider>
         <AssetStoreProvider>
           <ScoresStoreProvider>
-            <AppWithToasts />
+            <AutoSnapshotProvider>
+              <AppWithToasts />
+            </AutoSnapshotProvider>
           </ScoresStoreProvider>
         </AssetStoreProvider>
       </ScoringSettingsProvider>

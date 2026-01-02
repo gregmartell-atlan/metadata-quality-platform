@@ -1,0 +1,17 @@
+# Simple dev setup - just frontend + proxy (no Dapr/Temporal needed)
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"  # Vite dev server
+      - "3002:3002"  # Proxy server
+    environment:
+      - NODE_ENV=development
+    volumes:
+      # Mount source for hot reload
+      - ./src:/app/src:ro
+      - ./.env:/app/.env:ro

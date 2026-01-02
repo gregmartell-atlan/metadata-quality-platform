@@ -1,0 +1,25 @@
+# Dev container with Vite + Proxy server
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source
+COPY . .
+
+# Make start script executable
+RUN chmod +x start-dev.sh
+
+# Expose Vite dev port and proxy port
+EXPOSE 5173 3002
+
+# Both servers run in same container, so localhost works (don't set DOCKER_ENV)
+# Set DOCKER_ENV=true only if running Vite in Docker but proxy on host machine
+
+# Run both servers
+CMD ["./start-dev.sh"]
