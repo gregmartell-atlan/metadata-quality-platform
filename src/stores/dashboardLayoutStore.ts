@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Layout } from 'react-grid-layout';
 import { getWidgetMetadata } from '../components/dashboard/widgets/registry';
+import { builtInTemplates } from '../config/dashboards/templates';
 
 /**
  * Dashboard layout item (extends react-grid-layout's Layout)
@@ -66,13 +67,8 @@ const emptyLayout = {
 
 // Get initial layouts from executive template
 function getInitialLayouts() {
-  try {
-    const { builtInTemplates } = require('../config/dashboards/templates');
-    const exec = builtInTemplates.find((t: any) => t.id === 'executive');
-    if (exec) return JSON.parse(JSON.stringify(exec.layouts));
-  } catch {
-    // Templates not available
-  }
+  const exec = builtInTemplates.find((t) => t.id === 'executive');
+  if (exec) return JSON.parse(JSON.stringify(exec.layouts));
   return emptyLayout;
 }
 
@@ -80,14 +76,9 @@ function getInitialLayouts() {
  * Get template by ID (from built-in or custom)
  */
 function getTemplateById(templateId: string, customTemplates: DashboardTemplate[]): DashboardTemplate | null {
-  // Try to import built-in templates dynamically
-  try {
-    const { builtInTemplates } = require('../config/dashboards/templates');
-    const builtIn = builtInTemplates.find((t: DashboardTemplate) => t.id === templateId);
-    if (builtIn) return builtIn;
-  } catch {
-    // Templates not loaded yet
-  }
+  // Check built-in templates
+  const builtIn = builtInTemplates.find((t) => t.id === templateId);
+  if (builtIn) return builtIn;
 
   // Check custom templates
   const custom = customTemplates.find(t => t.id === templateId);
