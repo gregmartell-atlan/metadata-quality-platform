@@ -10,6 +10,7 @@ import type { ComponentType } from 'react';
  */
 export interface WidgetProps {
   widgetId: string;
+  widgetType?: string;
   isEditMode?: boolean;
   config?: Record<string, any>;
 }

@@ -10,7 +10,7 @@ import { useQualitySnapshotStore } from '../../../stores/qualitySnapshotStore';
 import { useScoresStore } from '../../../stores/scoresStore';
 import type { WidgetProps } from './registry';
 
-export function DataQualityTrendsWidget({ widgetId, isEditMode }: WidgetProps) {
+export function DataQualityTrendsWidget({ widgetId, widgetType, isEditMode }: WidgetProps) {
   const { snapshots } = useQualitySnapshotStore();
   const { assetsWithScores } = useScoresStore();
 
@@ -81,6 +81,7 @@ export function DataQualityTrendsWidget({ widgetId, isEditMode }: WidgetProps) {
     <WidgetWrapper
       title="Data Quality Trends"
       widgetId={widgetId}
+      widgetType={widgetType || 'data-quality-trends'}
       isEditMode={isEditMode || false}
     >
       <div style={{ width: '100%', height: '100%', minHeight: 250 }}>

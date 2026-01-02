@@ -71,6 +71,7 @@ export function DashboardGrid() {
         <div key={layoutItem.i} className="dashboard-widget-container">
           <WidgetComponent
             widgetId={layoutItem.widgetId}
+            widgetType={layoutItem.widgetType}
             isEditMode={isEditMode}
             config={layoutItem.config}
           />

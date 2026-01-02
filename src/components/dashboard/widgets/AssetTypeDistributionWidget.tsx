@@ -11,7 +11,7 @@ import { useScoresStore } from '../../../stores/scoresStore';
 
 const COLORS = ['#00d4aa', '#3b82f6', '#a855f7', '#f59e0b', '#ec4899', '#14b8a6', '#8b5cf6', '#06b6d4'];
 
-export function AssetTypeDistributionWidget({ widgetId, isEditMode }: WidgetProps) {
+export function AssetTypeDistributionWidget({ widgetId, widgetType, isEditMode }: WidgetProps) {
   const { byAssetType } = useScoresStore();
 
   const chartData = useMemo(() => {
@@ -28,6 +28,7 @@ export function AssetTypeDistributionWidget({ widgetId, isEditMode }: WidgetProp
     <WidgetWrapper
       title="Asset Type Distribution"
       widgetId={widgetId}
+      widgetType={widgetType || 'asset-type-distribution'}
       isEditMode={isEditMode || false}
     >
       {chartData.length > 0 ? (

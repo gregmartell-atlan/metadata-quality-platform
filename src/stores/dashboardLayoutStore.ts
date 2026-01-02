@@ -200,10 +200,11 @@ export const useDashboardLayoutStore = create<DashboardLayoutState>()(
     }),
     {
       name: 'dashboard-layout-storage',
-      version: 2,
+      version: 3, // Bumped to fix overlapping widget layouts
       migrate: (persistedState: any, version: number) => {
-        // Reset to default template if upgrading from v1 or layouts are empty
-        if (version < 2 || !persistedState.currentLayouts?.lg?.length) {
+        // Reset to default template if upgrading from older versions or layouts are empty
+        if (version < 3 || !persistedState.currentLayouts?.lg?.length) {
+          console.log('[DashboardStore] Migrating from version', version, '-> 3, resetting layouts');
           return {
             ...persistedState,
             currentLayouts: getInitialLayouts()
