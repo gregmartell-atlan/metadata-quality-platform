@@ -1,20 +1,37 @@
 /**
  * Data Quality Trends Widget
- * Shows historical quality scores across 5 dimensions from snapshots
+ * Shows historical quality scores across 5 dimensions from snapshots and daily aggregations
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { WidgetWrapper } from './WidgetWrapper';
 import { useQualitySnapshotStore } from '../../../stores/qualitySnapshotStore';
 import { useScoresStore } from '../../../stores/scoresStore';
+import { storageService } from '../../../services/storage';
+import type { DailyAggregation } from '../../../services/storage';
 import type { WidgetProps } from './registry';
 
 export function DataQualityTrendsWidget({ widgetId, widgetType, isEditMode }: WidgetProps) {
   const { snapshots } = useQualitySnapshotStore();
   const { assetsWithScores } = useScoresStore();
+  const [dailyAggregations, setDailyAggregations] = useState<DailyAggregation[]>([]);
 
-  // Build trend data from snapshots + current state
+  // Load historical daily aggregations on mount
+  useEffect(() => {
+    const loadTrendData = async () => {
+      try {
+        const aggregations = await storageService.getRecentTrend(90);
+        setDailyAggregations(aggregations);
+        console.log('[DataQualityTrendsWidget] Loaded', aggregations.length, 'daily aggregations');
+      } catch (error) {
+        console.error('[DataQualityTrendsWidget] Failed to load trend data:', error);
+      }
+    };
+    loadTrendData();
+  }, []);
+
+  // Build trend data from daily aggregations, snapshots, and current state
   const trendData = useMemo(() => {
     const data: Array<{
       date: string;
@@ -26,18 +43,52 @@ export function DataQualityTrendsWidget({ widgetId, widgetType, isEditMode }: Wi
       usability: number;
     }> = [];
 
-    // Add historical snapshots (oldest first)
-    const sortedSnapshots = [...snapshots].sort((a, b) => a.timestamp - b.timestamp);
+    // Create a map to deduplicate by date
+    const byDate = new Map<string, {
+      timestamp: number;
+      completeness: number;
+      accuracy: number;
+      timeliness: number;
+      consistency: number;
+      usability: number;
+    }>();
 
-    sortedSnapshots.forEach((snapshot) => {
+    // Add daily aggregations from storage (these are the persistent historical data)
+    dailyAggregations.forEach((agg) => {
+      byDate.set(agg.date, {
+        timestamp: agg.timestamp,
+        completeness: agg.scores.completeness,
+        accuracy: agg.scores.accuracy,
+        timeliness: agg.scores.timeliness,
+        consistency: agg.scores.consistency,
+        usability: agg.scores.usability,
+      });
+    });
+
+    // Add snapshots (these may have more granular data)
+    snapshots.forEach((snapshot) => {
+      const dateStr = new Date(snapshot.timestamp).toISOString().split('T')[0];
+      // Only use snapshot if we don't have a daily aggregation for that date
+      if (!byDate.has(dateStr)) {
+        byDate.set(dateStr, {
+          timestamp: snapshot.timestamp,
+          completeness: snapshot.overallScores.completeness,
+          accuracy: snapshot.overallScores.accuracy,
+          timeliness: snapshot.overallScores.timeliness,
+          consistency: snapshot.overallScores.consistency,
+          usability: snapshot.overallScores.usability,
+        });
+      }
+    });
+
+    // Convert map to sorted array
+    const sortedDates = [...byDate.entries()]
+      .sort((a, b) => a[1].timestamp - b[1].timestamp);
+
+    sortedDates.forEach(([dateStr, scores]) => {
       data.push({
-        date: new Date(snapshot.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        timestamp: snapshot.timestamp,
-        completeness: snapshot.overallScores.completeness,
-        accuracy: snapshot.overallScores.accuracy,
-        timeliness: snapshot.overallScores.timeliness,
-        consistency: snapshot.overallScores.consistency,
-        usability: snapshot.overallScores.usability,
+        date: new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        ...scores,
       });
     });
 
@@ -57,9 +108,9 @@ export function DataQualityTrendsWidget({ widgetId, widgetType, isEditMode }: Wi
       const count = assetsWithScores.length;
       const now = Date.now();
 
-      // Only add current if it's different from last snapshot
-      const lastSnapshot = data[data.length - 1];
-      if (!lastSnapshot || now - lastSnapshot.timestamp > 60000) {
+      // Only add current if it's different from last data point
+      const lastDataPoint = data[data.length - 1];
+      if (!lastDataPoint || now - lastDataPoint.timestamp > 60000) {
         data.push({
           date: 'Now',
           timestamp: now,
@@ -73,7 +124,7 @@ export function DataQualityTrendsWidget({ widgetId, widgetType, isEditMode }: Wi
     }
 
     return data;
-  }, [snapshots, assetsWithScores]);
+  }, [dailyAggregations, snapshots, assetsWithScores]);
 
   const hasData = trendData.length > 0;
 
