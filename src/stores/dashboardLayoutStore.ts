@@ -67,8 +67,14 @@ const emptyLayout = {
 
 // Get initial layouts from executive template
 function getInitialLayouts() {
+  console.log('[DashboardStore] Getting initial layouts...');
+  console.log('[DashboardStore] Available templates:', builtInTemplates.map(t => t.id));
   const exec = builtInTemplates.find((t) => t.id === 'executive');
-  if (exec) return JSON.parse(JSON.stringify(exec.layouts));
+  if (exec) {
+    console.log('[DashboardStore] Found executive template with', exec.layouts.lg.length, 'widgets');
+    return JSON.parse(JSON.stringify(exec.layouts));
+  }
+  console.log('[DashboardStore] No executive template found, using empty layout');
   return emptyLayout;
 }
 

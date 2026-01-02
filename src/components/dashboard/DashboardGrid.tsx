@@ -26,6 +26,11 @@ export function DashboardGrid() {
     removeWidget
   } = useDashboardLayoutStore();
 
+  // Debug logging
+  console.log('[DashboardGrid] Rendering with width:', width);
+  console.log('[DashboardGrid] Current layouts lg:', currentLayouts.lg.length, 'widgets');
+  console.log('[DashboardGrid] Layout items:', currentLayouts.lg.map(l => l.widgetType));
+
   // Handle layout change from react-grid-layout
   const handleLayoutChange = (currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
     if (!isEditMode) return;
@@ -48,12 +53,15 @@ export function DashboardGrid() {
 
   // Render widget instances
   const renderWidgets = useMemo(() => {
+    console.log('[DashboardGrid] Rendering', currentLayouts.lg.length, 'widgets');
     return currentLayouts.lg.map((layoutItem) => {
+      console.log('[DashboardGrid] Looking up widget:', layoutItem.widgetType);
       const metadata = getWidgetMetadata(layoutItem.widgetType);
       if (!metadata) {
-        console.warn(`Widget type ${layoutItem.widgetType} not found in registry`);
+        console.warn(`[DashboardGrid] Widget type ${layoutItem.widgetType} NOT FOUND in registry`);
         return null;
       }
+      console.log('[DashboardGrid] Found widget:', metadata.title);
 
       const WidgetComponent = metadata.component;
 

@@ -47,6 +47,7 @@ export const widgetRegistry = new Map<string, WidgetMetadata>();
  * Register a widget
  */
 export function registerWidget(metadata: WidgetMetadata): void {
+  console.log('[WidgetRegistry] Registering widget:', metadata.type);
   widgetRegistry.set(metadata.type, metadata);
 }
 
@@ -54,7 +55,9 @@ export function registerWidget(metadata: WidgetMetadata): void {
  * Get widget metadata by type
  */
 export function getWidgetMetadata(type: string): WidgetMetadata | undefined {
-  return widgetRegistry.get(type);
+  const widget = widgetRegistry.get(type);
+  console.log('[WidgetRegistry] Lookup:', type, '→', widget ? 'FOUND' : 'NOT FOUND', '(registry size:', widgetRegistry.size, ')');
+  return widget;
 }
 
 /**
