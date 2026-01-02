@@ -9,6 +9,9 @@ import type { Layout } from 'react-grid-layout';
 import { useDashboardLayoutStore } from '../../stores/dashboardLayoutStore';
 import { getWidgetMetadata } from './widgets/registry';
 import type { DashboardLayoutItem } from '../../stores/dashboardLayoutStore';
+
+// Import react-grid-layout CSS for resize handles to work
+import 'react-grid-layout/css/styles.css';
 import './DashboardGrid.css';
 
 // Breakpoint definitions
@@ -32,9 +35,11 @@ export function DashboardGrid() {
   console.log('[DashboardGrid] Container width object:', containerWidth);
   console.log('[DashboardGrid] Extracted width:', width);
   console.log('[DashboardGrid] Current layouts lg:', currentLayouts.lg.length, 'widgets');
+  console.log('[DashboardGrid] isEditMode:', isEditMode, '| isDraggable:', isEditMode, '| isResizable:', isEditMode);
 
   // Handle layout change from react-grid-layout
   const handleLayoutChange = (currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
+    console.log('[DashboardGrid] onLayoutChange called, isEditMode:', isEditMode);
     if (!isEditMode) return;
 
     // Update store with new layouts
@@ -51,6 +56,23 @@ export function DashboardGrid() {
 
       updateLayout(breakpoint, updatedLayout);
     });
+  };
+
+  // Handle resize events for debugging
+  const handleResizeStart = (layout: Layout[], oldItem: Layout, newItem: Layout, placeholder: Layout, event: MouseEvent, element: HTMLElement) => {
+    console.log('[DashboardGrid] onResizeStart:', newItem.i, 'w:', newItem.w, 'h:', newItem.h);
+  };
+
+  const handleResizeStop = (layout: Layout[], oldItem: Layout, newItem: Layout, placeholder: Layout, event: MouseEvent, element: HTMLElement) => {
+    console.log('[DashboardGrid] onResizeStop:', newItem.i, 'w:', newItem.w, 'h:', newItem.h);
+  };
+
+  const handleDragStart = (layout: Layout[], oldItem: Layout, newItem: Layout, placeholder: Layout, event: MouseEvent, element: HTMLElement) => {
+    console.log('[DashboardGrid] onDragStart:', newItem.i);
+  };
+
+  const handleDragStop = (layout: Layout[], oldItem: Layout, newItem: Layout, placeholder: Layout, event: MouseEvent, element: HTMLElement) => {
+    console.log('[DashboardGrid] onDragStop:', newItem.i, 'x:', newItem.x, 'y:', newItem.y);
   };
 
   // Render widget instances
@@ -96,6 +118,10 @@ export function DashboardGrid() {
           isResizable={isEditMode}
           draggableHandle=".widget-drag-handle"
           onLayoutChange={handleLayoutChange}
+          onResizeStart={handleResizeStart}
+          onResizeStop={handleResizeStop}
+          onDragStart={handleDragStart}
+          onDragStop={handleDragStop}
           useCSSTransforms={true}
           compactType="vertical"
           preventCollision={false}
