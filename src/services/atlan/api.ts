@@ -63,10 +63,36 @@ export interface AtlanAssetSummary {
   isAIGenerated?: boolean;
 }
 
-// Proxy server URL - browser makes direct CORS requests to this server
-// The proxy server handles authentication and forwards to Atlan
-// This is the original working pattern from before the App Framework migration
-const PROXY_URL = 'http://localhost:3002';
+// ===========================================
+// PROXY MODE CONFIGURATION
+// ===========================================
+// Supports multiple deployment modes:
+//
+// 1. LOCAL DEV (default): Browser → localhost:3002/proxy → Atlan
+//    No env vars needed, just run `npm run proxy` and `npm run dev`
+//
+// 2. DOCKER: Same as local, proxy runs in container
+//    Set VITE_PROXY_HOST if proxy is on different host
+//
+// 3. APP FRAMEWORK: Browser → /api/atlan → FastAPI backend → Atlan
+//    Set VITE_APP_FRAMEWORK_MODE=true
+//    FastAPI handles auth via Atlan App Framework SDK
+//
+// Detection order:
+// 1. VITE_APP_FRAMEWORK_MODE=true → Use /api/atlan/* (FastAPI backend)
+// 2. VITE_PROXY_URL set → Use that URL directly
+// 3. Default → http://localhost:3002 (local proxy server)
+// ===========================================
+
+const APP_FRAMEWORK_MODE = import.meta.env.VITE_APP_FRAMEWORK_MODE === 'true';
+const PROXY_HOST = import.meta.env.VITE_PROXY_HOST || 'localhost';
+const PROXY_URL = import.meta.env.VITE_PROXY_URL || `http://${PROXY_HOST}:3002`;
+
+// Log mode on startup (only in dev)
+if (import.meta.env.DEV) {
+  console.log('[Atlan API] Mode:', APP_FRAMEWORK_MODE ? 'App Framework' : 'Direct Proxy');
+  console.log('[Atlan API] Proxy URL:', APP_FRAMEWORK_MODE ? '/api/atlan/*' : `${PROXY_URL}/proxy/*`);
+}
 const SAVED_BASE_URL_KEY = 'atlan_base_url';
 
 export interface AtlanApiConfig {
@@ -201,10 +227,17 @@ async function atlanFetch<T>(
     return { error: 'Not configured. Call configureAtlanApi first.', status: 0 };
   }
 
-  // Route through proxy to avoid CORS (original working pattern)
-  // endpoint like "/api/meta/search" becomes "http://localhost:3002/proxy/api/meta/search"
-  const proxyPath = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
-  const url = `${PROXY_URL}/proxy/${proxyPath}`;
+  // Build URL based on mode
+  let url: string;
+  if (APP_FRAMEWORK_MODE) {
+    // App Framework mode: /api/atlan/* → FastAPI backend handles auth
+    const backendPath = endpoint.startsWith('/api/') ? endpoint.slice(5) : endpoint;
+    url = `/api/atlan/${backendPath}`;
+  } else {
+    // Direct proxy mode: http://localhost:3002/proxy/* → proxy server handles auth
+    const proxyPath = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    url = `${PROXY_URL}/proxy/${proxyPath}`;
+  }
 
   // Create deduplication key from endpoint, method, and body (for POST requests)
   const method = options.method || 'GET';
