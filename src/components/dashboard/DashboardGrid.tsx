@@ -4,14 +4,15 @@
  */
 
 import { useMemo } from 'react';
-import { Responsive, WidthProvider } from 'react-grid-layout';
-import type { Layout } from 'react-grid-layout';
+import GridLayout from 'react-grid-layout';
 import { useDashboardLayoutStore } from '../../stores/dashboardLayoutStore';
 import { getWidgetMetadata } from './widgets/registry';
 import type { DashboardLayoutItem } from '../../stores/dashboardLayoutStore';
 import './DashboardGrid.css';
 
-const ResponsiveGridLayout = WidthProvider(Responsive);
+const ResponsiveGridLayout = GridLayout.WidthProvider(GridLayout.Responsive);
+
+type Layout = GridLayout.Layout;
 
 // Breakpoint definitions
 const BREAKPOINTS = { lg: 1200, md: 768, sm: 0 };
