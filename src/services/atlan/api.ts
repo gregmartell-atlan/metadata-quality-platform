@@ -1066,6 +1066,80 @@ export async function getAsset(guid: string, attributes: string[] = []): Promise
 }
 
 // ============================================
+// WORKFLOW API
+// ============================================
+
+import type { WorkflowStatus, AuditWorkflowRequest, AuditWorkflowResult, StartWorkflowResponse } from '../../types/workflow';
+
+/**
+ * Start an audit workflow
+ */
+export async function startAudit(request: AuditWorkflowRequest): Promise<StartWorkflowResponse> {
+  const response = await fetch(`${API_BASE_URL}/audit/run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to start audit: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get workflow status
+ */
+export async function getWorkflowStatus(workflowId: string): Promise<WorkflowStatus> {
+  const response = await fetch(`${API_BASE_URL}/audit/status/${workflowId}`);
+
+  if (!response.ok) {
+    throw new Error(`Failed to get workflow status: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get workflow result
+ */
+export async function getWorkflowResult(workflowId: string): Promise<AuditWorkflowResult> {
+  const response = await fetch(`${API_BASE_URL}/audit/result/${workflowId}`);
+
+  if (!response.ok) {
+    throw new Error(`Failed to get workflow result: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Poll workflow until complete
+ */
+export async function pollWorkflowUntilComplete(
+  workflowId: string,
+  onProgress?: (status: WorkflowStatus) => void,
+  pollingInterval: number = 2000
+): Promise<AuditWorkflowResult> {
+  while (true) {
+    const status = await getWorkflowStatus(workflowId);
+    onProgress?.(status);
+
+    if (status.status === 'completed') {
+      return getWorkflowResult(workflowId);
+    } else if (status.status === 'failed') {
+      throw new Error(`Workflow failed: ${status.error || 'Unknown error'}`);
+    } else if (status.status === 'cancelled') {
+      throw new Error('Workflow was cancelled');
+    }
+
+    // Wait before polling again
+    await new Promise(resolve => setTimeout(resolve, pollingInterval));
+  }
+}
+
+// ============================================
 // CLASSIFICATION TYPE DEFINITIONS
 // ============================================
 
