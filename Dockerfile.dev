@@ -18,5 +18,8 @@ RUN chmod +x start-dev.sh
 # Expose Vite dev port and proxy port
 EXPOSE 5173 3002
 
+# Both servers run in same container, so localhost works (don't set DOCKER_ENV)
+# Set DOCKER_ENV=true only if running Vite in Docker but proxy on host machine
+
 # Run both servers
 CMD ["./start-dev.sh"]
