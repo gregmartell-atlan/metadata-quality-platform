@@ -64,6 +64,18 @@ const emptyLayout = {
   sm: []
 };
 
+// Get initial layouts from executive template
+function getInitialLayouts() {
+  try {
+    const { builtInTemplates } = require('../config/dashboards/templates');
+    const exec = builtInTemplates.find((t: any) => t.id === 'executive');
+    if (exec) return JSON.parse(JSON.stringify(exec.layouts));
+  } catch {
+    // Templates not available
+  }
+  return emptyLayout;
+}
+
 /**
  * Get template by ID (from built-in or custom)
  */
@@ -89,7 +101,7 @@ export const useDashboardLayoutStore = create<DashboardLayoutState>()(
   persist(
     (set, get) => ({
       activeTemplateId: 'executive',
-      currentLayouts: emptyLayout,
+      currentLayouts: getInitialLayouts(),
       isEditMode: false,
       customTemplates: [],
 
@@ -191,7 +203,17 @@ export const useDashboardLayoutStore = create<DashboardLayoutState>()(
     }),
     {
       name: 'dashboard-layout-storage',
-      version: 1,
+      version: 2,
+      migrate: (persistedState: any, version: number) => {
+        // Reset to default template if upgrading from v1 or layouts are empty
+        if (version < 2 || !persistedState.currentLayouts?.lg?.length) {
+          return {
+            ...persistedState,
+            currentLayouts: getInitialLayouts()
+          };
+        }
+        return persistedState;
+      },
       partialize: (state) => ({
         activeTemplateId: state.activeTemplateId,
         currentLayouts: state.currentLayouts,
