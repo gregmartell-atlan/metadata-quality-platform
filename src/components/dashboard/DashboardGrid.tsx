@@ -3,22 +3,22 @@
  * Responsive grid layout using react-grid-layout
  */
 
-import { useMemo } from 'react';
-import GridLayout from 'react-grid-layout';
+import { useMemo, useRef } from 'react';
+import { Responsive, useContainerWidth } from 'react-grid-layout';
+import type { Layout } from 'react-grid-layout';
 import { useDashboardLayoutStore } from '../../stores/dashboardLayoutStore';
 import { getWidgetMetadata } from './widgets/registry';
 import type { DashboardLayoutItem } from '../../stores/dashboardLayoutStore';
 import './DashboardGrid.css';
-
-const ResponsiveGridLayout = GridLayout.WidthProvider(GridLayout.Responsive);
-
-type Layout = GridLayout.Layout;
 
 // Breakpoint definitions
 const BREAKPOINTS = { lg: 1200, md: 768, sm: 0 };
 const COLS = { lg: 12, md: 12, sm: 12 };
 
 export function DashboardGrid() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const width = useContainerWidth(containerRef);
+
   const {
     currentLayouts,
     isEditMode,
@@ -70,23 +70,28 @@ export function DashboardGrid() {
   }, [currentLayouts.lg, isEditMode]);
 
   return (
-    <ResponsiveGridLayout
-      className="dashboard-grid-layout"
-      layouts={currentLayouts}
-      breakpoints={BREAKPOINTS}
-      cols={COLS}
-      rowHeight={120}
-      containerPadding={[24, 24]}
-      margin={[16, 16]}
-      isDraggable={isEditMode}
-      isResizable={isEditMode}
-      draggableHandle=".widget-drag-handle"
-      onLayoutChange={handleLayoutChange}
-      useCSSTransforms={true}
-      compactType="vertical"
-      preventCollision={false}
-    >
-      {renderWidgets}
-    </ResponsiveGridLayout>
+    <div ref={containerRef} className="dashboard-grid-wrapper">
+      {width > 0 && (
+        <Responsive
+          className="dashboard-grid-layout"
+          width={width}
+          layouts={currentLayouts}
+          breakpoints={BREAKPOINTS}
+          cols={COLS}
+          rowHeight={120}
+          containerPadding={[24, 24]}
+          margin={[16, 16]}
+          isDraggable={isEditMode}
+          isResizable={isEditMode}
+          draggableHandle=".widget-drag-handle"
+          onLayoutChange={handleLayoutChange}
+          useCSSTransforms={true}
+          compactType="vertical"
+          preventCollision={false}
+        >
+          {renderWidgets}
+        </Responsive>
+      )}
+    </div>
   );
 }

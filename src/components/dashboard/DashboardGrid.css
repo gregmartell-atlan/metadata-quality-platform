@@ -1,5 +1,9 @@
 /* Dashboard Grid Layout Styling */
 
+.dashboard-grid-wrapper {
+  width: 100%;
+}
+
 .dashboard-grid-layout {
   width: 100%;
   min-height: calc(100vh - 200px);
