@@ -42,13 +42,13 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy backend requirements
-COPY atlan-metadata-designer/backend/requirements.txt ./requirements.txt
+COPY backend/requirements.txt ./requirements.txt
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend application code
-COPY atlan-metadata-designer/backend/app ./app
+COPY backend/app ./app
 
 # Copy built frontend from Stage 1
 COPY --from=frontend-builder /build/dist ./app/static
