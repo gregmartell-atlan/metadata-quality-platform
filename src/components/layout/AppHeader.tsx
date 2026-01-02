@@ -32,8 +32,8 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
   // Atlan connection state
   const [isConnected, setIsConnected] = useState(false);
   const [showConnectModal, setShowConnectModal] = useState(false);
-  const [apiKey, setApiKey] = useState('');
-  const [baseUrl, setBaseUrl] = useState('https://api.atlan.com');
+  const [apiKey, setApiKey] = useState(import.meta.env.VITE_ATLAN_API_KEY || '');
+  const [baseUrl, setBaseUrl] = useState(import.meta.env.VITE_ATLAN_BASE_URL || 'https://your-tenant.atlan.com');
   const [connectError, setConnectError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
 

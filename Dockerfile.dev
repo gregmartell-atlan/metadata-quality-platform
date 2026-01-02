@@ -1,4 +1,4 @@
-# Simple dev container for frontend only
+# Dev container with Vite + Proxy server
 FROM node:20-alpine
 
 WORKDIR /app
@@ -12,8 +12,11 @@ RUN npm ci
 # Copy source
 COPY . .
 
-# Expose Vite dev port
-EXPOSE 5173
+# Make start script executable
+RUN chmod +x start-dev.sh
 
-# Run dev server
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+# Expose Vite dev port and proxy port
+EXPOSE 5173 3002
+
+# Run both servers
+CMD ["./start-dev.sh"]
