@@ -1,0 +1,119 @@
+/* Dashboard Grid Layout Styling */
+
+.dashboard-grid-layout {
+  width: 100%;
+  min-height: calc(100vh - 200px);
+}
+
+.dashboard-widget-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.dashboard-widget {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-widget .card-body {
+  flex: 1;
+  overflow: auto;
+}
+
+/* Drag and drop states */
+.react-grid-item.react-draggable-dragging {
+  opacity: 0.8;
+  z-index: 1000;
+  transition: none;
+}
+
+.react-grid-item.resizing {
+  opacity: 0.8;
+  transition: none;
+}
+
+.react-grid-placeholder {
+  background: var(--accent-primary);
+  opacity: 0.2;
+  border-radius: 8px;
+  transition: all 200ms ease;
+  border: 2px dashed var(--accent-primary);
+}
+
+/* Drag handle styling */
+.widget-drag-handle {
+  cursor: grab;
+  padding: 4px;
+  color: var(--text-muted);
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.widget-drag-handle:hover {
+  color: var(--accent-primary);
+}
+
+.widget-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Widget actions */
+.widget-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.widget-action-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.widget-action-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.widget-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+}
+
+/* Resize handles */
+.react-resizable-handle {
+  background: none;
+}
+
+.react-resizable-handle::after {
+  border-color: var(--border-color);
+  border-style: solid;
+}
+
+.react-resizable-handle-se::after {
+  border-width: 0 2px 2px 0;
+}
+
+/* Edit mode banner */
+.edit-mode-banner {
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+  padding: 12px 24px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 8px;
+  margin: 0 24px 16px 24px;
+}

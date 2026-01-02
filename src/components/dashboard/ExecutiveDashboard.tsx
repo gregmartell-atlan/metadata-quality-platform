@@ -1,22 +1,27 @@
-import {
-  Scorecard,
-  StatsRow,
-  Heatmap,
-  Campaigns,
-  TrendChart,
-  Tasks,
-  Accountability,
-  OwnerPivot,
-} from './index';
 import { AppHeader } from '../layout/AppHeader';
 import { Button } from '../shared';
 import { useState, useEffect } from 'react';
+import { Edit3, LayoutTemplate, Save, RotateCcw } from 'lucide-react';
+import { DashboardGrid } from './DashboardGrid';
+import { WidgetPickerPanel } from './WidgetPickerPanel';
+import { TemplateSelectorModal } from './TemplateSelectorModal';
+import { useDashboardLayoutStore } from '../../stores/dashboardLayoutStore';
 import { useScoresStore } from '../../stores/scoresStore';
 import './ExecutiveDashboard.css';
+import './widgets'; // Import to trigger widget registration
 
 export function ExecutiveDashboard() {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
   const { assetsWithScores } = useScoresStore();
+  const { isEditMode, toggleEditMode, activeTemplateId, resetToTemplate, setActiveTemplate, currentLayouts } = useDashboardLayoutStore();
+
+  // Initialize default template on first load
+  useEffect(() => {
+    if (currentLayouts.lg.length === 0) {
+      setActiveTemplate('executive');
+    }
+  }, []);
 
   useEffect(() => {
     // Update last updated time when scores are calculated
@@ -28,6 +33,12 @@ export function ExecutiveDashboard() {
   const handleRefresh = () => {
     setLastUpdated(new Date());
     window.dispatchEvent(new CustomEvent('dashboard-refresh'));
+  };
+
+  const handleResetLayout = () => {
+    if (activeTemplateId && confirm('Reset dashboard to template? This will discard all customizations.')) {
+      resetToTemplate(activeTemplateId);
+    }
   };
 
   const getTimeAgo = (date: Date) => {
@@ -47,27 +58,62 @@ export function ExecutiveDashboard() {
         title="Executive Overview"
         subtitle={`Last updated ${getTimeAgo(lastUpdated)}`}
       >
-        <Button variant="secondary" className="filter-btn active">
-          All Domains
+        {/* Edit mode controls */}
+        {isEditMode && (
+          <>
+            <WidgetPickerPanel />
+            <Button
+              variant="secondary"
+              onClick={handleResetLayout}
+              className="reset-btn"
+            >
+              <RotateCcw size={14} />
+              Reset
+            </Button>
+          </>
+        )}
+
+        {/* Template selector */}
+        <Button
+          variant="secondary"
+          onClick={() => setShowTemplateModal(true)}
+          className="template-btn"
+        >
+          <LayoutTemplate size={14} />
+          Template
         </Button>
-        <Button variant="secondary" className="filter-btn">
-          Last 30 Days
+
+        {/* Edit mode toggle */}
+        <Button
+          variant={isEditMode ? 'primary' : 'secondary'}
+          onClick={toggleEditMode}
+          className="edit-btn"
+        >
+          {isEditMode ? <Save size={14} /> : <Edit3 size={14} />}
+          {isEditMode ? 'Done' : 'Edit'}
         </Button>
+
+        {/* Refresh button */}
         <Button variant="primary" onClick={handleRefresh} className="refresh-btn">
           Refresh
         </Button>
       </AppHeader>
 
-      <div className="dashboard-grid">
-        <Scorecard />
-        <StatsRow />
-        <Heatmap />
-        <Campaigns />
-        <OwnerPivot />
-        <TrendChart />
-        <Tasks />
-        <Accountability />
-      </div>
+      {/* Edit mode banner */}
+      {isEditMode && (
+        <div className="edit-mode-banner">
+          Edit mode active - Drag widgets to reposition, resize by dragging corners, or add new widgets
+        </div>
+      )}
+
+      {/* Dashboard grid with react-grid-layout */}
+      <DashboardGrid />
+
+      {/* Template selector modal */}
+      <TemplateSelectorModal
+        isOpen={showTemplateModal}
+        onClose={() => setShowTemplateModal(false)}
+      />
     </div>
   );
 }
