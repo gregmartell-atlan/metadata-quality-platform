@@ -282,12 +282,8 @@
   --border-default: var(--color-gray-600);
   --border-strong: var(--color-gray-500);
 
-  /* Components */
-  --sidebar-bg: var(--color-gray-800);
-  --sidebar-border: var(--color-gray-700);
-  --sidebar-item-hover: var(--color-gray-700);
-  --sidebar-item-active-bg: rgba(34, 91, 210, 0.2);
-  --sidebar-item-active-text: var(--color-blue-400);
+  /* Components - Sidebar stays dark navy in ALL themes (Atlan style) */
+  /* Sidebar variables NOT overridden - keep dark navy from :root */
 
   --card-bg: var(--color-gray-800);
   --card-border: var(--color-gray-700);
