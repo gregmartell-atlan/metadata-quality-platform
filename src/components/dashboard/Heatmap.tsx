@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Eye } from 'lucide-react';
-import { Card, Tooltip, InfoTooltip } from '../shared';
+import { Card, Tooltip } from '../shared';
 import { useScoresStore } from '../../stores/scoresStore';
 import { useUIPreferences } from '../../stores/uiPreferencesStore';
 import { useAssetPreviewStore } from '../../stores/assetPreviewStore';
@@ -14,7 +14,7 @@ import './Heatmap.css';
 type PivotDimension = 'domain' | 'owner' | 'schema' | 'connection' | 'tag' | 'certification' | 'classification' | 'assetType';
 
 export function Heatmap() {
-  const { byDomain, byOwner, bySchema, byConnection, byTag, byCertification, byClassification, byAssetType, groupBy, assetsWithScores } = useScoresStore();
+  const { byDomain, byOwner, bySchema, byConnection, byTag, byCertification, byClassification, byAssetType } = useScoresStore();
   const { dashboardHeatmapDimension, setDashboardHeatmapDimension } = useUIPreferences();
   const { openPreview } = useAssetPreviewStore();
   const [pivotDimension, setPivotDimension] = useState<PivotDimension>(dashboardHeatmapDimension as PivotDimension);

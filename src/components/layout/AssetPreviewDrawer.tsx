@@ -7,7 +7,6 @@
 
 import { useEffect } from 'react';
 import { X, ExternalLink, Tag, User, Calendar, Database, Shield, FileText, Link2 } from 'lucide-react';
-import { ScoreBadge } from '../shared';
 import type { AtlanAsset } from '../../services/atlan/types';
 import './AssetPreviewDrawer.css';
 

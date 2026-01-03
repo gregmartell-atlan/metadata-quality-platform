@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Settings, RefreshCw } from 'lucide-react';
-import { Card, Button, Tooltip, InfoTooltip } from '../shared';
+import { Card, Button, Tooltip } from '../shared';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
 import { useAssetPreviewStore } from '../../stores/assetPreviewStore';

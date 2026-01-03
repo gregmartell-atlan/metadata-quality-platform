@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Eye } from 'lucide-react';
-import { Card, Tooltip, InfoTooltip } from '../shared';
+import { Card, Tooltip } from '../shared';
 import { ScoreBadge } from '../shared';
 import { useScoresStore } from '../../stores/scoresStore';
 import { useUIPreferences } from '../../stores/uiPreferencesStore';
@@ -16,7 +16,7 @@ type RowDimension = 'owner' | 'tag' | 'certification' | 'classification' | 'asse
 type ColumnDimension = 'completeness' | 'accuracy' | 'timeliness' | 'consistency' | 'usability';
 
 export function OwnerPivot() {
-  const { byOwner, byTag, byCertification, byClassification, byAssetType, bySchema, byConnection, groupBy, assetsWithScores } = useScoresStore();
+  const { byOwner, byTag, byCertification, byClassification, byAssetType, bySchema, byConnection } = useScoresStore();
   const { dashboardOwnerPivotDimension, dashboardOwnerPivotColumn, setDashboardOwnerPivotDimension, setDashboardOwnerPivotColumn } = useUIPreferences();
   const { openPreview } = useAssetPreviewStore();
   const [rowDimension, setRowDimension] = useState<RowDimension>(
