@@ -5,11 +5,12 @@
  */
 
 import { useState } from 'react';
-import { Download, BarChart3, AlertTriangle, Lightbulb } from 'lucide-react';
+import { Download, BarChart3, AlertTriangle, Lightbulb, HelpCircle } from 'lucide-react';
 import { AppHeader } from '../components/layout/AppHeader';
 import { DaaPRadarChart, CoverageHeatmap } from '../components/analytics';
-import { Card, Button } from '../components/shared';
+import { Card, Button, Tooltip, InfoTooltip } from '../components/shared';
 import { useFieldCoverage, getOverallCompleteness, getTopGaps } from '../hooks/useFieldCoverage';
+import { getFieldInfo, getDimensionInfo } from '../constants/metadataDescriptions';
 import { exportAnalyticsReport } from '../utils/analyticsExport';
 import type { RequirementsMatrix } from '../types/requirements';
 import './AnalyticsPage.css';
@@ -88,6 +89,17 @@ export function AnalyticsPage() {
               <div className="stat-card-header">
                 <BarChart3 size={18} />
                 <span>Overall Completeness</span>
+                <InfoTooltip
+                  content={
+                    <div>
+                      <strong>What is Overall Completeness?</strong>
+                      <p style={{ margin: '8px 0 0 0' }}>
+                        The average metadata coverage across all fields and asset types.
+                        Higher percentages indicate better documentation of your data assets.
+                      </p>
+                    </div>
+                  }
+                />
               </div>
               <div className="stat-card-value">{overallCompleteness}%</div>
               <div className="stat-card-progress">
@@ -103,14 +115,52 @@ export function AnalyticsPage() {
               <div className="stat-card-header">
                 <AlertTriangle size={18} />
                 <span>Top Gaps</span>
+                <InfoTooltip
+                  content={
+                    <div>
+                      <strong>Top Metadata Gaps</strong>
+                      <p style={{ margin: '8px 0 0 0' }}>
+                        Fields with the lowest coverage percentages. These are opportunities
+                        to improve your data documentation and discoverability.
+                      </p>
+                    </div>
+                  }
+                />
               </div>
               <ul className="gap-list">
-                {topGaps.map((field) => (
-                  <li key={field.field} className="gap-item">
-                    <span className="gap-field">{field.field}</span>
-                    <span className="gap-value">{Math.round(field.percentage)}%</span>
-                  </li>
-                ))}
+                {topGaps.map((field) => {
+                  const fieldInfo = getFieldInfo(field.field);
+                  return (
+                    <Tooltip
+                      key={field.field}
+                      content={
+                        fieldInfo ? (
+                          <div className="gap-tooltip">
+                            <div className="gap-tooltip-header">
+                              <span>{fieldInfo.name}</span>
+                              <span className={`gap-tooltip-badge gap-tooltip-badge-${fieldInfo.importance}`}>
+                                {fieldInfo.importance}
+                              </span>
+                            </div>
+                            <p>{fieldInfo.description}</p>
+                            <div className="gap-tooltip-dimension">
+                              DaaP Dimension: <strong>{fieldInfo.daapDimension}</strong>
+                            </div>
+                          </div>
+                        ) : (
+                          field.field
+                        )
+                      }
+                      position="left"
+                      maxWidth={280}
+                    >
+                      <li className="gap-item">
+                        <span className="gap-field">{fieldInfo?.name || field.field}</span>
+                        <span className="gap-value">{Math.round(field.percentage)}%</span>
+                      </li>
+                    </Tooltip>
+                  );
+                })}
                 {topGaps.length === 0 && (
                   <li className="gap-item gap-empty">No data available</li>
                 )}
@@ -211,18 +261,65 @@ export function AnalyticsPage() {
                         </td>
                         <td>
                           <div className="field-tags">
-                            {req.requirements.slice(0, 4).map((r) => (
-                              <span
-                                key={r.field}
-                                className={`field-tag field-tag-${r.level}`}
-                              >
-                                {r.field}
-                              </span>
-                            ))}
+                            {req.requirements.slice(0, 4).map((r) => {
+                              const fieldInfo = getFieldInfo(r.field);
+                              return (
+                                <Tooltip
+                                  key={r.field}
+                                  content={
+                                    fieldInfo ? (
+                                      <div className="field-tag-tooltip">
+                                        <div className="field-tag-tooltip-header">
+                                          <span>{fieldInfo.name}</span>
+                                          <span className={`field-tag-tooltip-badge field-tag-tooltip-badge-${fieldInfo.importance}`}>
+                                            {fieldInfo.importance}
+                                          </span>
+                                        </div>
+                                        <p>{fieldInfo.description}</p>
+                                        <div className="field-tag-tooltip-dimension">
+                                          DaaP Dimension: <strong>{fieldInfo.daapDimension}</strong>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      r.field
+                                    )
+                                  }
+                                  position="top"
+                                  maxWidth={280}
+                                >
+                                  <span className={`field-tag field-tag-${r.level}`}>
+                                    {fieldInfo?.name || r.field}
+                                  </span>
+                                </Tooltip>
+                              );
+                            })}
                             {req.requirements.length > 4 && (
-                              <span className="field-tag field-tag-more">
-                                +{req.requirements.length - 4}
-                              </span>
+                              <Tooltip
+                                content={
+                                  <div className="field-tag-more-tooltip">
+                                    <strong>Additional fields:</strong>
+                                    <ul>
+                                      {req.requirements.slice(4).map((r) => {
+                                        const fieldInfo = getFieldInfo(r.field);
+                                        return (
+                                          <li key={r.field}>
+                                            <span>{fieldInfo?.name || r.field}</span>
+                                            <span className={`field-tag-more-badge field-tag-more-badge-${r.level}`}>
+                                              {r.level}
+                                            </span>
+                                          </li>
+                                        );
+                                      })}
+                                    </ul>
+                                  </div>
+                                }
+                                position="top"
+                                maxWidth={280}
+                              >
+                                <span className="field-tag field-tag-more">
+                                  +{req.requirements.length - 4}
+                                </span>
+                              </Tooltip>
                             )}
                           </div>
                         </td>

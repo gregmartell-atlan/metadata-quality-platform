@@ -156,3 +156,165 @@
   height: 12px;
   border-radius: var(--radius-sm);
 }
+
+/* Header Row with Info Tooltip */
+.heatmap-header-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+}
+
+.heatmap-header-row .heatmap-title {
+  margin: 0;
+}
+
+/* Interactive field headers */
+.heatmap-field-header {
+  cursor: help;
+  transition: color var(--transition-fast);
+}
+
+.heatmap-field-header:hover {
+  color: var(--color-blue-500);
+}
+
+/* Field Tooltip Content */
+.heatmap-field-tooltip {
+  min-width: 240px;
+}
+
+.heatmap-field-tooltip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  font-weight: var(--font-weight-semibold);
+}
+
+.heatmap-field-tooltip-badge {
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.heatmap-field-tooltip-badge-required {
+  background: var(--color-danger-500);
+  color: #ffffff;
+}
+
+.heatmap-field-tooltip-badge-recommended {
+  background: var(--color-warning-500);
+  color: #000000;
+}
+
+.heatmap-field-tooltip-badge-optional {
+  background: var(--color-gray-600);
+  color: #ffffff;
+}
+
+.heatmap-field-tooltip p {
+  margin: var(--space-2) 0;
+  color: var(--color-gray-300);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.heatmap-field-tooltip-dimension {
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-gray-700);
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-400);
+}
+
+.heatmap-field-tooltip-dimension strong {
+  color: var(--color-blue-400);
+}
+
+/* Cell Tooltip Content */
+.heatmap-cell-tooltip {
+  min-width: 200px;
+}
+
+.heatmap-cell-tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+}
+
+.heatmap-cell-tooltip-header span:nth-child(2) {
+  color: var(--color-gray-500);
+}
+
+.heatmap-cell-tooltip-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding: var(--space-3);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+}
+
+.heatmap-cell-tooltip-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.heatmap-cell-tooltip-value {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: #ffffff;
+}
+
+.heatmap-cell-tooltip-label {
+  font-size: 10px;
+  color: var(--color-gray-400);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.heatmap-cell-tooltip-status {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-300);
+  margin-bottom: var(--space-2);
+}
+
+.heatmap-cell-tooltip-status strong {
+  color: #ffffff;
+}
+
+.heatmap-cell-tooltip-action {
+  font-size: var(--font-size-xs);
+  color: var(--color-blue-300);
+  background: rgba(59, 130, 246, 0.1);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  border-left: 2px solid var(--color-blue-400);
+}
+
+.heatmap-cell-tooltip-empty {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-400);
+  font-style: italic;
+}
+
+/* Cell hover effect */
+.heatmap-cell-wrapper {
+  cursor: help;
+}
+
+.heatmap-cell:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}

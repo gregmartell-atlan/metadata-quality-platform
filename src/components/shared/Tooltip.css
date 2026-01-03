@@ -1,0 +1,172 @@
+/* Tooltip Component Styles */
+
+.tooltip-trigger {
+  display: inline-flex;
+  cursor: help;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 9999;
+  padding: var(--space-3);
+  background: var(--color-gray-900);
+  color: #ffffff;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+  animation: tooltipFadeIn 0.15s ease-out;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tooltip-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* Tooltip Arrow */
+.tooltip-arrow {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--color-gray-900);
+  transform: rotate(45deg);
+}
+
+.tooltip-top .tooltip-arrow {
+  bottom: -4px;
+  left: 50%;
+  margin-left: -4px;
+}
+
+.tooltip-bottom .tooltip-arrow {
+  top: -4px;
+  left: 50%;
+  margin-left: -4px;
+}
+
+.tooltip-left .tooltip-arrow {
+  right: -4px;
+  top: 50%;
+  margin-top: -4px;
+}
+
+.tooltip-right .tooltip-arrow {
+  left: -4px;
+  top: 50%;
+  margin-top: -4px;
+}
+
+/* Info Tooltip Icon */
+.info-tooltip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  opacity: 0.6;
+  transition: opacity var(--transition-fast), color var(--transition-fast);
+  cursor: help;
+}
+
+.info-tooltip-icon:hover {
+  opacity: 1;
+  color: var(--color-blue-500);
+}
+
+/* Metadata Tooltip */
+.metadata-tooltip {
+  min-width: 200px;
+}
+
+.metadata-tooltip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.metadata-tooltip-field {
+  font-weight: var(--font-weight-semibold);
+  text-transform: capitalize;
+}
+
+.metadata-tooltip-badge {
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.metadata-tooltip-badge-required {
+  background: var(--color-danger-500);
+  color: #ffffff;
+}
+
+.metadata-tooltip-badge-recommended {
+  background: var(--color-warning-500);
+  color: #000000;
+}
+
+.metadata-tooltip-badge-optional {
+  background: var(--color-gray-600);
+  color: #ffffff;
+}
+
+.metadata-tooltip-description {
+  margin: 0 0 var(--space-3) 0;
+  color: var(--color-gray-300);
+  font-size: var(--font-size-xs);
+}
+
+.metadata-tooltip-coverage {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-400);
+}
+
+.metadata-tooltip-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--color-gray-700);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.metadata-tooltip-bar-fill {
+  height: 100%;
+  background: var(--color-blue-400);
+  border-radius: var(--radius-full);
+}
+
+.metadata-tooltip-percentage {
+  font-weight: var(--font-weight-semibold);
+  color: #ffffff;
+  min-width: 32px;
+  text-align: right;
+}
+
+/* Dark mode adjustments - tooltips stay dark */
+[data-theme="dark"] .tooltip {
+  background: var(--color-gray-800);
+  border: 1px solid var(--color-gray-700);
+}
+
+[data-theme="dark"] .tooltip-arrow {
+  background: var(--color-gray-800);
+}

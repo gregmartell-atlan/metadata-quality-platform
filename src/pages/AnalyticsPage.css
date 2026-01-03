@@ -243,6 +243,194 @@
 .field-tag-more {
   background: var(--bg-muted);
   color: var(--text-secondary);
+  cursor: help;
+}
+
+/* Interactive field tags */
+.field-tag {
+  cursor: help;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.field-tag:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Gap Item Tooltips */
+.gap-item {
+  cursor: help;
+  padding: var(--space-2);
+  margin: calc(-1 * var(--space-2));
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.gap-item:hover {
+  background: var(--bg-subtle);
+}
+
+.gap-tooltip {
+  min-width: 220px;
+}
+
+.gap-tooltip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  font-weight: var(--font-weight-semibold);
+}
+
+.gap-tooltip-badge {
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.gap-tooltip-badge-required {
+  background: var(--color-danger-500);
+  color: #ffffff;
+}
+
+.gap-tooltip-badge-recommended {
+  background: var(--color-warning-500);
+  color: #000000;
+}
+
+.gap-tooltip-badge-optional {
+  background: var(--color-gray-600);
+  color: #ffffff;
+}
+
+.gap-tooltip p {
+  margin: var(--space-2) 0;
+  color: var(--color-gray-300);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.gap-tooltip-dimension {
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-gray-700);
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-400);
+}
+
+.gap-tooltip-dimension strong {
+  color: var(--color-blue-400);
+}
+
+/* Field Tag Tooltips */
+.field-tag-tooltip {
+  min-width: 220px;
+}
+
+.field-tag-tooltip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  font-weight: var(--font-weight-semibold);
+}
+
+.field-tag-tooltip-badge {
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.field-tag-tooltip-badge-required {
+  background: var(--color-danger-500);
+  color: #ffffff;
+}
+
+.field-tag-tooltip-badge-recommended {
+  background: var(--color-warning-500);
+  color: #000000;
+}
+
+.field-tag-tooltip-badge-optional {
+  background: var(--color-gray-600);
+  color: #ffffff;
+}
+
+.field-tag-tooltip p {
+  margin: var(--space-2) 0;
+  color: var(--color-gray-300);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.field-tag-tooltip-dimension {
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-gray-700);
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-400);
+}
+
+.field-tag-tooltip-dimension strong {
+  color: var(--color-blue-400);
+}
+
+/* More Fields Tooltip */
+.field-tag-more-tooltip {
+  min-width: 180px;
+}
+
+.field-tag-more-tooltip strong {
+  display: block;
+  margin-bottom: var(--space-2);
+}
+
+.field-tag-more-tooltip ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.field-tag-more-tooltip li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+}
+
+.field-tag-more-badge {
+  font-size: 9px;
+  font-weight: var(--font-weight-medium);
+  padding: 1px 4px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+}
+
+.field-tag-more-badge-required {
+  background: var(--color-danger-500);
+  color: #ffffff;
+}
+
+.field-tag-more-badge-recommended {
+  background: var(--color-warning-500);
+  color: #000000;
+}
+
+.field-tag-more-badge-optional {
+  background: var(--color-gray-600);
+  color: #ffffff;
 }
 
 /* Responsive sidebar adjustment */
