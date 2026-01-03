@@ -9,6 +9,7 @@ import type { Layout } from 'react-grid-layout';
 import { useDashboardLayoutStore } from '../../stores/dashboardLayoutStore';
 import { getWidgetMetadata } from './widgets/registry';
 import type { DashboardLayoutItem } from '../../stores/dashboardLayoutStore';
+import { logger } from '../../utils/logger';
 
 // Import react-grid-layout CSS for resize handles to work
 import 'react-grid-layout/css/styles.css';
@@ -28,18 +29,10 @@ export function DashboardGrid() {
     currentLayouts,
     isEditMode,
     updateLayout,
-    removeWidget
   } = useDashboardLayoutStore();
 
-  // Debug logging
-  console.log('[DashboardGrid] Container width object:', containerWidth);
-  console.log('[DashboardGrid] Extracted width:', width);
-  console.log('[DashboardGrid] Current layouts lg:', currentLayouts.lg.length, 'widgets');
-  console.log('[DashboardGrid] isEditMode:', isEditMode, '| isDraggable:', isEditMode, '| isResizable:', isEditMode);
-
   // Handle layout change from react-grid-layout
-  const handleLayoutChange = (currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
-    console.log('[DashboardGrid] onLayoutChange called, isEditMode:', isEditMode);
+  const handleLayoutChange = (_currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
     if (!isEditMode) return;
 
     // Update store with new layouts
@@ -58,34 +51,14 @@ export function DashboardGrid() {
     });
   };
 
-  // Handle resize events for debugging
-  const handleResizeStart = (layout: Layout[], oldItem: Layout, newItem: Layout, placeholder: Layout, event: MouseEvent, element: HTMLElement) => {
-    console.log('[DashboardGrid] onResizeStart:', newItem.i, 'w:', newItem.w, 'h:', newItem.h);
-  };
-
-  const handleResizeStop = (layout: Layout[], oldItem: Layout, newItem: Layout, placeholder: Layout, event: MouseEvent, element: HTMLElement) => {
-    console.log('[DashboardGrid] onResizeStop:', newItem.i, 'w:', newItem.w, 'h:', newItem.h);
-  };
-
-  const handleDragStart = (layout: Layout[], oldItem: Layout, newItem: Layout, placeholder: Layout, event: MouseEvent, element: HTMLElement) => {
-    console.log('[DashboardGrid] onDragStart:', newItem.i);
-  };
-
-  const handleDragStop = (layout: Layout[], oldItem: Layout, newItem: Layout, placeholder: Layout, event: MouseEvent, element: HTMLElement) => {
-    console.log('[DashboardGrid] onDragStop:', newItem.i, 'x:', newItem.x, 'y:', newItem.y);
-  };
-
   // Render widget instances
   const renderWidgets = useMemo(() => {
-    console.log('[DashboardGrid] Rendering', currentLayouts.lg.length, 'widgets');
     return currentLayouts.lg.map((layoutItem) => {
-      console.log('[DashboardGrid] Looking up widget:', layoutItem.widgetType);
       const metadata = getWidgetMetadata(layoutItem.widgetType);
       if (!metadata) {
-        console.warn(`[DashboardGrid] Widget type ${layoutItem.widgetType} NOT FOUND in registry`);
+        logger.warn(`[DashboardGrid] Widget type ${layoutItem.widgetType} NOT FOUND in registry`);
         return null;
       }
-      console.log('[DashboardGrid] Found widget:', metadata.title);
 
       const WidgetComponent = metadata.component;
 
@@ -118,10 +91,6 @@ export function DashboardGrid() {
           isResizable={isEditMode}
           draggableHandle=".widget-drag-handle"
           onLayoutChange={handleLayoutChange}
-          onResizeStart={handleResizeStart}
-          onResizeStop={handleResizeStop}
-          onDragStart={handleDragStart}
-          onDragStop={handleDragStop}
           useCSSTransforms={true}
           compactType="vertical"
           preventCollision={false}

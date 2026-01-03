@@ -1,3 +1,5 @@
+import { memo } from 'react';
+import { getScoreBand, getScoreLabel } from '../../utils/scoreThresholds';
 import './ScoreBadge.css';
 
 interface ScoreBadgeProps {
@@ -5,28 +7,12 @@ interface ScoreBadgeProps {
   showLabel?: boolean;
 }
 
-export function ScoreBadge({ score, showLabel = false }: ScoreBadgeProps) {
-  const getScoreClass = (score: number): string => {
-    if (score >= 80) return 'excellent';
-    if (score >= 60) return 'good';
-    if (score >= 40) return 'fair';
-    if (score >= 20) return 'poor';
-    return 'critical';
-  };
-
-  const getLabel = (score: number): string => {
-    if (score >= 80) return 'Excellent';
-    if (score >= 60) return 'Good';
-    if (score >= 40) return 'Fair';
-    if (score >= 20) return 'Poor';
-    return 'Critical';
-  };
-
+export const ScoreBadge = memo(function ScoreBadge({ score, showLabel = false }: ScoreBadgeProps) {
   return (
-    <span className={`score-badge ${getScoreClass(score)}`}>
+    <span className={`score-badge ${getScoreBand(score)}`}>
       {score}
-      {showLabel && ` (${getLabel(score)})`}
+      {showLabel && ` (${getScoreLabel(score)})`}
     </span>
   );
-}
+});
 

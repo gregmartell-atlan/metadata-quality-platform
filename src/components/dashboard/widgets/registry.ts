@@ -4,6 +4,7 @@
  */
 
 import type { ComponentType } from 'react';
+import { logger } from '../../../utils/logger';
 
 /**
  * Common props all widgets receive
@@ -48,7 +49,7 @@ export const widgetRegistry = new Map<string, WidgetMetadata>();
  * Register a widget
  */
 export function registerWidget(metadata: WidgetMetadata): void {
-  console.log('[WidgetRegistry] Registering widget:', metadata.type);
+  logger.debug('[WidgetRegistry] Registering widget:', metadata.type);
   widgetRegistry.set(metadata.type, metadata);
 }
 
@@ -57,7 +58,7 @@ export function registerWidget(metadata: WidgetMetadata): void {
  */
 export function getWidgetMetadata(type: string): WidgetMetadata | undefined {
   const widget = widgetRegistry.get(type);
-  console.log('[WidgetRegistry] Lookup:', type, '→', widget ? 'FOUND' : 'NOT FOUND', '(registry size:', widgetRegistry.size, ')');
+  logger.debug('[WidgetRegistry] Lookup:', { type, found: !!widget, registrySize: widgetRegistry.size });
   return widget;
 }
 

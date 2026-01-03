@@ -90,8 +90,8 @@ const PROXY_URL = import.meta.env.VITE_PROXY_URL || `http://${PROXY_HOST}:3002`;
 
 // Log mode on startup (only in dev)
 if (import.meta.env.DEV) {
-  console.log('[Atlan API] Mode:', APP_FRAMEWORK_MODE ? 'App Framework' : 'Direct Proxy');
-  console.log('[Atlan API] Proxy URL:', APP_FRAMEWORK_MODE ? '/api/atlan/*' : `${PROXY_URL}/proxy/*`);
+  logger.info('[Atlan API] Mode:', APP_FRAMEWORK_MODE ? 'App Framework' : 'Direct Proxy');
+  logger.info('[Atlan API] Proxy URL:', APP_FRAMEWORK_MODE ? '/api/atlan/*' : `${PROXY_URL}/proxy/*`);
 }
 const SAVED_BASE_URL_KEY = 'atlan_base_url';
 
@@ -1196,22 +1196,17 @@ export async function getClassificationTypeDefs(): Promise<Map<string, string>> 
     method: 'GET',
   });
 
-  console.log('[getClassificationTypeDefs] API response status:', response.status, 'error:', response.error || 'none');
+  logger.debug('[getClassificationTypeDefs] API response status:', { status: response.status, error: response.error || 'none' });
 
   if (response.error || !response.data) {
-    console.warn('Failed to fetch classification type definitions:', response.error || 'No data');
+    logger.warn('Failed to fetch classification type definitions:', response.error || 'No data');
     return new Map();
   }
 
   const result = new Map<string, string>();
   const classificationDefs = response.data.classificationDefs || [];
 
-  console.log(`[getClassificationTypeDefs] Fetched ${classificationDefs.length} classification definitions`);
-  if (classificationDefs.length > 0) {
-    console.log('[getClassificationTypeDefs] Sample definitions:',
-      classificationDefs.slice(0, 5).map(d => ({ name: d.name, displayName: d.displayName }))
-    );
-  }
+  logger.debug(`[getClassificationTypeDefs] Fetched ${classificationDefs.length} classification definitions`);
 
   for (const def of classificationDefs) {
     const typeName = def.name;
@@ -1637,17 +1632,6 @@ export async function getLineage(
     // Compute name with fallbacks
     const computedName = attributes.name || entity.displayText || 'Unknown';
 
-    // Debug logging - show raw entity structure
-    console.log('[normalizeEntity] RAW entity:', JSON.stringify({
-      guid: entity.guid,
-      typeName: entity.typeName,
-      displayText: entity.displayText,
-      hasAttributes: !!entity.attributes,
-      attributeKeys: entity.attributes ? Object.keys(entity.attributes) : [],
-      'attributes.name': attributes.name,
-    }, null, 2));
-    console.log('[normalizeEntity] Computed name:', computedName);
-
     // Spread attributes FIRST, then override with explicit values
     // This ensures our fallback logic takes precedence over undefined values
     const normalized = {
@@ -1669,9 +1653,6 @@ export async function getLineage(
       createdBy: entity.createdBy,
       updatedBy: entity.updatedBy,
     };
-
-    // Log the final normalized result
-    console.log('[normalizeEntity] RESULT:', { guid: normalized.guid, name: normalized.name, typeName: normalized.typeName });
 
     return normalized;
   }
