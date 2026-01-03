@@ -67,17 +67,18 @@ export const useAssetContextStore = create<AssetContextState>()(
       error: null,
 
       setContext: (type, filters, label, assets) => {
+        const safeAssets = assets || [];
         const newContext = {
           type,
           filters,
           label,
-          assetCount: assets.length,
+          assetCount: safeAssets.length,
           lastUpdated: new Date().toISOString(),
         };
         
         set({
           context: newContext,
-          contextAssets: assets,
+          contextAssets: safeAssets,
           error: null,
         });
         

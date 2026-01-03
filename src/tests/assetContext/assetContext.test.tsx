@@ -54,7 +54,7 @@ describe('Asset Context Store', () => {
 
   describe('Basic Operations', () => {
     it('should set context with assets', () => {
-      const { setContext, contextAssets, context } = useAssetContextStore.getState();
+      const { setContext } = useAssetContextStore.getState();
       const assets = [
         createMockAsset('guid1', 'Table1'),
         createMockAsset('guid2', 'Table2'),
@@ -64,6 +64,8 @@ describe('Asset Context Store', () => {
         setContext('connection', { connectionName: 'TestConnection' }, 'Test Connection', assets);
       });
 
+      // Re-read state after mutation
+      const { contextAssets, context } = useAssetContextStore.getState();
       expect(contextAssets).toHaveLength(2);
       expect(context?.type).toBe('connection');
       expect(context?.label).toBe('Test Connection');
@@ -71,25 +73,26 @@ describe('Asset Context Store', () => {
     });
 
     it('should clear context', () => {
-      const { setContext, clearContext, contextAssets, context } = useAssetContextStore.getState();
+      const { setContext, clearContext } = useAssetContextStore.getState();
       const assets = [createMockAsset('guid1', 'Table1')];
 
       act(() => {
         setContext('manual', {}, 'Test', assets);
       });
 
-      expect(contextAssets).toHaveLength(1);
+      expect(useAssetContextStore.getState().contextAssets).toHaveLength(1);
 
       act(() => {
         clearContext();
       });
 
+      const { contextAssets, context } = useAssetContextStore.getState();
       expect(contextAssets).toHaveLength(0);
       expect(context).toBeNull();
     });
 
     it('should update context assets', () => {
-      const { setContext, setContextAssets, contextAssets } = useAssetContextStore.getState();
+      const { setContext, setContextAssets } = useAssetContextStore.getState();
       const initialAssets = [createMockAsset('guid1', 'Table1')];
       const newAssets = [
         createMockAsset('guid1', 'Table1'),
@@ -101,13 +104,13 @@ describe('Asset Context Store', () => {
         setContext('connection', { connectionName: 'Test' }, 'Test', initialAssets);
       });
 
-      expect(contextAssets).toHaveLength(1);
+      expect(useAssetContextStore.getState().contextAssets).toHaveLength(1);
 
       act(() => {
         setContextAssets(newAssets);
       });
 
-      expect(contextAssets).toHaveLength(3);
+      expect(useAssetContextStore.getState().contextAssets).toHaveLength(3);
     });
   });
 
@@ -146,17 +149,18 @@ describe('Asset Context Store', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty assets array', () => {
-      const { setContext, contextAssets } = useAssetContextStore.getState();
+      const { setContext } = useAssetContextStore.getState();
 
       act(() => {
         setContext('connection', { connectionName: 'Test' }, 'Test', []);
       });
 
+      const { contextAssets } = useAssetContextStore.getState();
       expect(contextAssets).toHaveLength(0);
     });
 
     it('should handle large asset arrays', () => {
-      const { setContext, contextAssets } = useAssetContextStore.getState();
+      const { setContext } = useAssetContextStore.getState();
       const largeAssetArray = Array.from({ length: 10000 }, (_, i) =>
         createMockAsset(`guid${i}`, `Table${i}`)
       );
@@ -165,11 +169,12 @@ describe('Asset Context Store', () => {
         setContext('all', {}, 'All Assets', largeAssetArray);
       });
 
+      const { contextAssets } = useAssetContextStore.getState();
       expect(contextAssets).toHaveLength(10000);
     });
 
     it('should handle rapid context changes', async () => {
-      const { setContext, contextAssets } = useAssetContextStore.getState();
+      const { setContext } = useAssetContextStore.getState();
 
       // Rapidly change context
       for (let i = 0; i < 10; i++) {
@@ -180,13 +185,15 @@ describe('Asset Context Store', () => {
         });
       }
 
+      // Re-read state after mutations
+      const { contextAssets } = useAssetContextStore.getState();
       // Should have the last context
       expect(contextAssets).toHaveLength(1);
       expect(contextAssets[0].name).toBe('Table9');
     });
 
     it('should handle null/undefined in asset properties', () => {
-      const { setContext, contextAssets } = useAssetContextStore.getState();
+      const { setContext } = useAssetContextStore.getState();
       const assetWithNulls: AtlanAsset = {
         ...createMockAsset('guid1', 'Table1'),
         description: null,
@@ -199,18 +206,20 @@ describe('Asset Context Store', () => {
         setContext('manual', {}, 'Test', [assetWithNulls]);
       });
 
+      const { contextAssets } = useAssetContextStore.getState();
       expect(contextAssets).toHaveLength(1);
       expect(contextAssets[0].description).toBeNull();
     });
 
     it('should handle context with missing filters', () => {
-      const { setContext, context } = useAssetContextStore.getState();
+      const { setContext } = useAssetContextStore.getState();
       const assets = [createMockAsset('guid1', 'Table1')];
 
       act(() => {
         setContext('database', {}, 'Test Database', assets);
       });
 
+      const { context } = useAssetContextStore.getState();
       expect(context).not.toBeNull();
       expect(context?.filters).toEqual({});
     });
@@ -218,13 +227,15 @@ describe('Asset Context Store', () => {
 
   describe('Persistence', () => {
     it('should persist context but not assets', () => {
-      const { setContext, context } = useAssetContextStore.getState();
+      const { setContext } = useAssetContextStore.getState();
       const assets = [createMockAsset('guid1', 'Table1')];
 
       act(() => {
         setContext('connection', { connectionName: 'Test' }, 'Test Connection', assets);
       });
 
+      // Re-read state after mutation
+      const { context } = useAssetContextStore.getState();
       // Context should be persisted, but assets should be cleared on reload
       // This is tested by checking the partialize function behavior
       expect(context).not.toBeNull();
@@ -355,6 +366,10 @@ describe('Performance Tests', () => {
 });
 
 describe('Calculation Updates', () => {
+  beforeEach(() => {
+    useAssetContextStore.getState().clearContext();
+  });
+
   it('should trigger calculations when context changes', async () => {
     const calculationTriggered = vi.fn();
 

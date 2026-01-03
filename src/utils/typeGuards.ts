@@ -2,8 +2,6 @@
  * Type guards for runtime type checking
  */
 
-import type { AtlanAsset as ScoringAtlanAsset } from '../scoring/contracts';
-
 export type ScoringAssetType = "Connection" | "Database" | "Schema" | "Table";
 
 /**
