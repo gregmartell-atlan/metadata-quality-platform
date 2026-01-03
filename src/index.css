@@ -88,6 +88,58 @@
   --color-info-500: #0969DA;
   --color-info-600: #0969DA;
 
+  /* Orange/Amber Scale (for gradients) */
+  --color-orange-100: #FFEDD5;
+  --color-orange-200: #FED7AA;
+  --color-orange-500: #F97316;
+  --color-orange-600: #EA580C;
+  --color-orange-800: #9A3412;
+
+  --color-amber-100: #FEF3C7;
+  --color-amber-200: #FDE68A;
+  --color-amber-500: #F59E0B;
+  --color-amber-600: #D97706;
+  --color-amber-800: #92400E;
+
+  /* Emerald Scale (for heatmap high values) */
+  --color-emerald-100: #D1FAE5;
+  --color-emerald-200: #A7F3D0;
+  --color-emerald-500: #10B981;
+  --color-emerald-600: #059669;
+  --color-emerald-800: #065F46;
+
+  /* Lime Scale */
+  --color-lime-200: #D9F99D;
+  --color-lime-500: #84CC16;
+  --color-lime-600: #65A30D;
+
+  /* ========================================
+     HEATMAP COLOR SCALE - Coverage visualization
+     ======================================== */
+  --heatmap-empty: var(--color-gray-100);
+  --heatmap-0: var(--color-danger-100);
+  --heatmap-0-text: var(--color-danger-700);
+  --heatmap-25: #FECACA;
+  --heatmap-25-text: var(--color-danger-700);
+  --heatmap-50: var(--color-orange-200);
+  --heatmap-50-text: var(--color-orange-800);
+  --heatmap-75: var(--color-amber-200);
+  --heatmap-75-text: var(--color-amber-800);
+  --heatmap-90: var(--color-emerald-200);
+  --heatmap-90-text: var(--color-emerald-800);
+  --heatmap-100: var(--color-success-500);
+  --heatmap-100-text: #ffffff;
+
+  /* Heat Cell Scale (for pivot tables) */
+  --heat-90: var(--color-emerald-500);
+  --heat-80: #22C55E;
+  --heat-70: var(--color-lime-600);
+  --heat-60: #A3E635;
+  --heat-50: var(--color-amber-500);
+  --heat-40: #F59E0B;
+  --heat-30: var(--color-orange-500);
+  --heat-20: #EF4444;
+
   /* ========================================
      SEMANTIC TOKENS - Purpose-based
      ======================================== */
@@ -342,6 +394,21 @@
   --input-border-hover: var(--color-gray-500);
   --input-text: var(--color-gray-100);
   --input-placeholder: var(--color-gray-500);
+
+  /* Heatmap dark mode adjustments */
+  --heatmap-empty: var(--color-gray-700);
+  --heatmap-0: rgba(207, 34, 46, 0.3);
+  --heatmap-0-text: #F87171;
+  --heatmap-25: rgba(207, 34, 46, 0.2);
+  --heatmap-25-text: #FCA5A5;
+  --heatmap-50: rgba(249, 115, 22, 0.25);
+  --heatmap-50-text: #FDBA74;
+  --heatmap-75: rgba(245, 158, 11, 0.25);
+  --heatmap-75-text: #FCD34D;
+  --heatmap-90: rgba(16, 185, 129, 0.25);
+  --heatmap-90-text: #6EE7B7;
+  --heatmap-100: var(--color-success-500);
+  --heatmap-100-text: #ffffff;
 
   /* Legacy */
   --bg-primary: var(--bg-canvas);

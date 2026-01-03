@@ -96,32 +96,32 @@
 
 .dim-icon.database {
   background: rgba(99, 102, 241, 0.1);
-  color: #6366f1;
+  color: var(--color-indigo-500, #6366f1);
 }
 
 .dim-icon.schema {
   background: rgba(139, 92, 246, 0.1);
-  color: #8b5cf6;
+  color: var(--color-violet-500, #8b5cf6);
 }
 
 .dim-icon.table {
-  background: rgba(34, 197, 94, 0.1);
-  color: #22c55e;
+  background: var(--state-success-bg);
+  color: var(--color-success-500);
 }
 
 .dim-icon.domain {
   background: rgba(124, 58, 237, 0.1);
-  color: #7c3aed;
+  color: var(--color-purple-500, #7c3aed);
 }
 
 .dim-icon.owner {
   background: rgba(236, 72, 153, 0.1);
-  color: #ec4899;
+  color: var(--color-pink-500, #ec4899);
 }
 
 .dim-icon.process {
   background: rgba(249, 115, 22, 0.1);
-  color: #f97316;
+  color: var(--color-orange-500);
 }
 
 .score-cell {
@@ -179,42 +179,42 @@
 }
 
 .heat-cell.h-90 {
-  background: #10b981;
+  background: var(--heat-90);
   color: #000;
 }
 
 .heat-cell.h-80 {
-  background: #22c55e;
+  background: var(--heat-80);
   color: #000;
 }
 
 .heat-cell.h-70 {
-  background: #65a30d;
+  background: var(--heat-70);
   color: #000;
 }
 
 .heat-cell.h-60 {
-  background: #a3e635;
+  background: var(--heat-60);
   color: #000;
 }
 
 .heat-cell.h-50 {
-  background: #eab308;
+  background: var(--heat-50);
   color: #000;
 }
 
 .heat-cell.h-40 {
-  background: #f59e0b;
+  background: var(--heat-40);
   color: #000;
 }
 
 .heat-cell.h-30 {
-  background: #f97316;
+  background: var(--heat-30);
   color: #000;
 }
 
 .heat-cell.h-20 {
-  background: #ef4444;
+  background: var(--heat-20);
   color: #fff;
 }
 
@@ -227,7 +227,7 @@
 .bar-container {
   flex: 1;
   height: 8px;
-  background: var(--bg-secondary);
+  background: var(--bg-subtle);
   border-radius: 4px;
   overflow: hidden;
   min-width: 80px;
