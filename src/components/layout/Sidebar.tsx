@@ -3,7 +3,7 @@
  */
 
 import { useState } from 'react';
-import { LayoutGrid, BarChart3, Target, Users, RefreshCw, Zap, GitBranch, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Home, LayoutGrid, BarChart3, Target, Users, RefreshCw, Zap, GitBranch, ChevronLeft, ChevronRight, Radar, Settings } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import './Sidebar.css';
 
@@ -30,10 +30,21 @@ export function Sidebar() {
 
       <nav>
         <div className="nav-section">
-          {!isCollapsed && <div className="nav-label">Dashboards</div>}
           <Link
             to="/"
             className={`nav-item ${isActive('/') ? 'active' : ''}`}
+            title="Home"
+          >
+            <Home size={18} />
+            {!isCollapsed && <span>Home</span>}
+          </Link>
+        </div>
+
+        <div className="nav-section">
+          {!isCollapsed && <div className="nav-label">Dashboards</div>}
+          <Link
+            to="/dashboard"
+            className={`nav-item ${isActive('/dashboard') ? 'active' : ''}`}
             title="Executive Overview"
           >
             <LayoutGrid size={18} />
@@ -76,6 +87,14 @@ export function Sidebar() {
             {!isCollapsed && <span>Lineage Explorer</span>}
           </Link>
           <Link
+            to="/analytics"
+            className={`nav-item ${isActive('/analytics') ? 'active' : ''}`}
+            title="DaaP Analytics"
+          >
+            <Radar size={18} />
+            {!isCollapsed && <span>DaaP Analytics</span>}
+          </Link>
+          <Link
             to="/trends"
             className={`nav-item ${isActive('/trends') ? 'active' : ''}`}
             title="Quality Trends"
@@ -103,6 +122,17 @@ export function Sidebar() {
             <Zap size={18} />
             {!isCollapsed && <span>Automation Rules</span>}
           </button>
+        </div>
+
+        <div className="nav-section nav-section-bottom">
+          <Link
+            to="/settings"
+            className={`nav-item ${isActive('/settings') ? 'active' : ''}`}
+            title="Settings"
+          >
+            <Settings size={18} />
+            {!isCollapsed && <span>Settings</span>}
+          </Link>
         </div>
       </nav>
     </aside>

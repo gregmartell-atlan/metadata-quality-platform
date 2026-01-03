@@ -5,6 +5,7 @@
  */
 
 import { getAtlanConfig, getClassificationTypeDefs } from './api';
+import { logger } from '../../utils/logger';
 
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
@@ -58,7 +59,7 @@ export async function fetchTagDisplayName(typeName: string): Promise<string> {
     setCachedTagName(typeName, displayName);
     return displayName;
   } catch (error) {
-    console.warn(`Failed to fetch tag display name for ${typeName}:`, error);
+    logger.warn(`Failed to fetch tag display name for ${typeName}`, error);
     setCachedTagName(typeName, typeName);
     return typeName;
   }
@@ -71,14 +72,14 @@ export async function fetchTagDisplayName(typeName: string): Promise<string> {
 export async function fetchAllTagDisplayNames(): Promise<Map<string, string>> {
   const config = getAtlanConfig();
   if (!config) {
-    console.log('[TagResolver] No Atlan config available');
+    logger.debug('[TagResolver] No Atlan config available');
     return new Map();
   }
 
   try {
-    console.log('[TagResolver] Fetching classification type definitions via API...');
+    logger.debug('[TagResolver] Fetching classification type definitions via API...');
     const allNames = await getClassificationTypeDefs();
-    console.log(`[TagResolver] Got ${allNames.size} classification type definitions`);
+    logger.debug(`[TagResolver] Got ${allNames.size} classification type definitions`);
 
     // Cache all the names
     for (const [typeName, displayName] of allNames.entries()) {
@@ -87,7 +88,7 @@ export async function fetchAllTagDisplayNames(): Promise<Map<string, string>> {
 
     return allNames;
   } catch (error) {
-    console.warn('Failed to fetch all tag display names:', error);
+    logger.warn('Failed to fetch all tag display names', error);
     return new Map();
   }
 }
@@ -96,7 +97,7 @@ export async function fetchAllTagDisplayNames(): Promise<Map<string, string>> {
  * Resolve multiple tag type names to display names
  */
 export async function resolveTagNames(typeNames: string[]): Promise<Map<string, string>> {
-  console.log(`[TagResolver] Resolving ${typeNames.length} tag type names:`, typeNames.slice(0, 10));
+  logger.debug(`[TagResolver] Resolving ${typeNames.length} tag type names`, typeNames.slice(0, 10));
 
   const result = new Map<string, string>();
   const uncached: string[] = [];
@@ -113,22 +114,16 @@ export async function resolveTagNames(typeNames: string[]): Promise<Map<string, 
 
   // If we have uncached items, fetch all definitions (more efficient than individual lookups)
   if (uncached.length > 0) {
-    console.log(`[TagResolver] ${uncached.length} uncached tags, fetching definitions...`);
+    logger.debug(`[TagResolver] ${uncached.length} uncached tags, fetching definitions...`);
     const allNames = await fetchAllTagDisplayNames();
-    console.log(`[TagResolver] Got ${allNames.size} definitions from API`);
+    logger.debug(`[TagResolver] Got ${allNames.size} definitions from API`);
 
     for (const typeName of uncached) {
       const displayName = allNames.get(typeName) || typeName;
-      if (displayName !== typeName) {
-        console.log(`[TagResolver] Resolved: ${typeName} -> ${displayName}`);
-      } else {
-        console.log(`[TagResolver] No display name found for: ${typeName}`);
-      }
       result.set(typeName, displayName);
     }
   }
 
-  console.log(`[TagResolver] Final resolution results:`, Object.fromEntries(result.entries()));
   return result;
 }
 

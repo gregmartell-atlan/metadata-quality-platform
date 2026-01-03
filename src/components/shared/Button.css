@@ -1,41 +1,184 @@
+/* Atlantis Button Component */
+
 .btn {
-  padding: var(--gap-sm) var(--gap-md);
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid var(--border-default);
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
   display: inline-flex;
   align-items: center;
-  gap: var(--gap-xs);
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: 1px solid transparent;
+  white-space: nowrap;
+  min-height: 36px;
 }
 
-.btn:hover {
-  background: var(--bg-hover);
-  border-color: var(--accent-primary);
-  color: var(--text-primary);
+.btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Primary Button - Use only ONE per view/logical area */
 .btn-primary {
-  background: var(--accent-primary);
-  color: var(--bg-primary);
-  border-color: var(--accent-primary);
+  background: var(--button-primary-bg);
+  border-color: var(--button-primary-border);
+  color: var(--button-primary-text);
 }
 
-.btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--glow-primary);
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-blue-700);
 }
 
+.btn-primary:active:not(:disabled) {
+  background: var(--color-blue-800);
+}
+
+/* Secondary Button - White/light bg with grey border */
+.btn-secondary {
+  background: var(--bg-surface);
+  border-color: var(--border-default);
+  color: var(--text-default);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  border-color: var(--border-strong);
+}
+
+.btn-secondary:active:not(:disabled) {
+  background: var(--bg-muted);
+}
+
+/* Ghost Button */
 .btn-ghost {
-  background: none;
+  background: var(--button-ghost-bg);
+  border-color: transparent;
+  color: var(--button-ghost-text);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--button-ghost-bg-hover);
+  color: var(--text-default);
+}
+
+/* Destructive Button - Only for irreversible actions, use explicit labels */
+.btn-danger {
+  background: var(--color-danger-500);
+  border-color: var(--color-danger-500);
+  color: #ffffff;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--color-danger-600);
+  border-color: var(--color-danger-600);
+}
+
+.btn-danger:active:not(:disabled) {
+  background: var(--color-danger-700);
+  border-color: var(--color-danger-700);
+}
+
+/* Destructive secondary (outline) variant */
+.btn-danger-secondary {
+  background: transparent;
+  border-color: var(--color-danger-500);
+  color: var(--color-danger-500);
+}
+
+.btn-danger-secondary:hover:not(:disabled) {
+  background: var(--color-danger-50);
+}
+
+/* Link Button */
+.btn-link {
+  background: transparent;
   border: none;
+  color: var(--text-link);
+  padding: 0;
+  min-height: auto;
 }
 
-.btn-ghost:hover {
+.btn-link:hover:not(:disabled) {
+  color: var(--text-link-hover);
+  text-decoration: underline;
+}
+
+/* Size Variants */
+.btn-sm {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-sm);
+  min-height: 28px;
+}
+
+.btn-lg {
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--font-size-lg);
+  min-height: 44px;
+}
+
+/* Icon Only - Keep 32-40px hit area even if icon is small */
+.btn-icon {
+  padding: var(--space-2);
+  min-width: 36px;
+  min-height: 36px;
+}
+
+.btn-icon.btn-sm {
+  padding: 6px;
+  min-width: 32px;
+  min-height: 32px;
+}
+
+.btn-icon.btn-lg {
+  padding: var(--space-3);
+  min-width: 40px;
+  min-height: 40px;
+}
+
+/* Icon button ghost variant for compact actions (refresh, more options) */
+.btn-icon-ghost {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: var(--space-2);
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: var(--radius-sm);
+}
+
+.btn-icon-ghost:hover:not(:disabled) {
   background: var(--bg-hover);
+  color: var(--text-default);
 }
 
+/* Full Width */
+.btn-full {
+  width: 100%;
+}
+
+/* Button Icon */
+.btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.btn-sm svg {
+  width: 14px;
+  height: 14px;
+}
+
+.btn-lg svg {
+  width: 18px;
+  height: 18px;
+}

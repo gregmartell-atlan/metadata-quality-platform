@@ -1,14 +1,14 @@
-import type { ReactNode } from 'react';
+import { memo, type ReactNode } from 'react';
 import './Card.css';
 
 interface CardProps {
   children: ReactNode;
   className?: string;
-  title?: string;
+  title?: ReactNode;
   actions?: ReactNode;
 }
 
-export function Card({ children, className = '', title, actions }: CardProps) {
+export const Card = memo(function Card({ children, className = '', title, actions }: CardProps) {
   return (
     <div className={`card ${className}`}>
       {(title || actions) && (
@@ -20,5 +20,5 @@ export function Card({ children, className = '', title, actions }: CardProps) {
       <div className="card-body">{children}</div>
     </div>
   );
-}
+});
 

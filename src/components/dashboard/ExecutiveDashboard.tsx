@@ -2,7 +2,6 @@ import { AppHeader } from '../layout/AppHeader';
 import { Button } from '../shared';
 import { useState, useEffect, useCallback } from 'react';
 import { Edit3, LayoutTemplate, Save, RotateCcw, Camera, Clock } from 'lucide-react';
-// Force rebuild - snapshot buttons added
 import { DashboardGrid } from './DashboardGrid';
 import { WidgetPickerPanel } from './WidgetPickerPanel';
 import { TemplateSelectorModal } from './TemplateSelectorModal';
@@ -164,7 +163,7 @@ export function ExecutiveDashboard() {
         </div>
       )}
 
-      {/* Dashboard grid with react-grid-layout */}
+      {/* Dashboard grid - uses react-grid-layout for consistent positioning */}
       <DashboardGrid />
 
       {/* Template selector modal */}

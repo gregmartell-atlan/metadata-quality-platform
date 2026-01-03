@@ -8,6 +8,7 @@ import { Award, Target, CheckCircle, Clock, Scale, Users as UsersIcon } from 'lu
 import type { AtlanAsset } from '../../../services/atlan/types';
 import { useScoresStore } from '../../../stores/scoresStore';
 import { ScoreBadge } from '../../shared/ScoreBadge';
+import { getScoreClass } from '../../../utils/scoreThresholds';
 
 interface QualitySectionProps {
   asset: AtlanAsset;
@@ -67,13 +68,6 @@ export function QualitySection({ asset }: QualitySectionProps) {
           <div className="dimensions-list">
             {dimensions.map(({ key, label, icon, description }) => {
               const score = scores[key as keyof typeof scores] as number;
-              const getScoreClass = (s: number): string => {
-                if (s >= 80) return 'excellent';
-                if (s >= 60) return 'good';
-                if (s >= 40) return 'fair';
-                if (s >= 20) return 'poor';
-                return 'critical';
-              };
 
               return (
                 <div key={key} className="dimension-item">

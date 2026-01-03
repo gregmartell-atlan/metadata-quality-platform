@@ -6,6 +6,7 @@
  */
 
 import type { AtlanLineageResponse, AtlanAsset } from '../services/atlan/types';
+import { logger } from './logger';
 import type {
   LineageNode,
   LineageEdge,
@@ -110,15 +111,6 @@ export function buildLineageGraph(
 
     const entityType = isProcessType(asset.typeName || '') ? 'process' : 'asset';
 
-    // Debug logging
-    console.log('[buildLineageGraph] Creating node:', {
-      guid: asset.guid,
-      'asset.name': asset.name,
-      'asset.qualifiedName': asset.qualifiedName,
-      typeName: asset.typeName,
-      label: asset.name || asset.qualifiedName || 'Unknown',
-    });
-
     const node: LineageNode = {
       id: asset.guid,
       guid: asset.guid,
@@ -147,20 +139,11 @@ export function buildLineageGraph(
 
   // Build all edges first (don't filter yet)
   const allEdges: LineageEdge[] = [];
-  console.log('[buildLineageGraph] Relations count:', relations.length);
-  console.log('[buildLineageGraph] Nodes count:', nodes.length);
-  console.log('[buildLineageGraph] Node GUIDs:', nodes.map(n => n.guid));
+  logger.debug('[buildLineageGraph] Relations:', relations.length, 'Nodes:', nodes.length);
 
   relations.forEach((relation) => {
     const fromNode = nodes.find((n) => n.guid === relation.fromEntityId);
     const toNode = nodes.find((n) => n.guid === relation.toEntityId);
-
-    console.log('[buildLineageGraph] Processing relation:', {
-      fromEntityId: relation.fromEntityId,
-      toEntityId: relation.toEntityId,
-      fromNodeFound: !!fromNode,
-      toNodeFound: !!toNode,
-    });
 
     if (!fromNode || !toNode) return;
 
@@ -277,8 +260,7 @@ export function buildLineageGraph(
   centerNode.upstreamCount = centerUpstreamEdges.length;
   centerNode.downstreamCount = centerDownstreamEdges.length;
 
-  console.log('[buildLineageGraph] Final edges count:', edges.length);
-  console.log('[buildLineageGraph] Final edges:', edges.map(e => ({ id: e.id, source: e.source, target: e.target })));
+  logger.debug('[buildLineageGraph] Final graph - nodes:', nodes.length, 'edges:', edges.length);
 
   return {
     nodes,

@@ -90,8 +90,8 @@ const PROXY_URL = import.meta.env.VITE_PROXY_URL || `http://${PROXY_HOST}:3002`;
 
 // Log mode on startup (only in dev)
 if (import.meta.env.DEV) {
-  console.log('[Atlan API] Mode:', APP_FRAMEWORK_MODE ? 'App Framework' : 'Direct Proxy');
-  console.log('[Atlan API] Proxy URL:', APP_FRAMEWORK_MODE ? '/api/atlan/*' : `${PROXY_URL}/proxy/*`);
+  logger.info('[Atlan API] Mode:', APP_FRAMEWORK_MODE ? 'App Framework' : 'Direct Proxy');
+  logger.info('[Atlan API] Proxy URL:', APP_FRAMEWORK_MODE ? '/api/atlan/*' : `${PROXY_URL}/proxy/*`);
 }
 const SAVED_BASE_URL_KEY = 'atlan_base_url';
 
@@ -172,6 +172,7 @@ interface CacheEntry<T> {
 
 const cache = new Map<string, CacheEntry<unknown>>();
 const CACHE_TTL = 60_000; // 60 seconds
+const MAX_CACHE_SIZE = 100; // Prevent unbounded memory growth
 
 /**
  * Get cached response if still valid
@@ -186,9 +187,33 @@ function getCached<T>(key: string): T | null {
 }
 
 /**
- * Store response in cache
+ * Store response in cache with LRU eviction
  */
 function setCache<T>(key: string, data: T): void {
+  // Evict oldest entries if cache is full
+  if (cache.size >= MAX_CACHE_SIZE) {
+    const keysToDelete: string[] = [];
+    const now = Date.now();
+
+    // First, remove expired entries
+    for (const [k, v] of cache) {
+      if (now - v.timestamp >= CACHE_TTL) {
+        keysToDelete.push(k);
+      }
+    }
+    keysToDelete.forEach(k => cache.delete(k));
+
+    // If still too large, remove oldest entries (Map maintains insertion order)
+    if (cache.size >= MAX_CACHE_SIZE) {
+      const iterator = cache.keys();
+      const toRemove = cache.size - MAX_CACHE_SIZE + 1;
+      for (let i = 0; i < toRemove; i++) {
+        const oldestKey = iterator.next().value;
+        if (oldestKey) cache.delete(oldestKey);
+      }
+    }
+  }
+
   cache.set(key, { data, timestamp: Date.now() });
 }
 
@@ -1103,11 +1128,22 @@ export async function getAsset(guid: string, attributes: string[] = []): Promise
 
 import type { WorkflowStatus, AuditWorkflowRequest, AuditWorkflowResult, StartWorkflowResponse } from '../../types/workflow';
 
+// Backend API URL for workflow operations (set via environment variable)
+const WORKFLOW_API_URL = import.meta.env.VITE_WORKFLOW_API_URL || '';
+
+function getWorkflowApiUrl(): string {
+  if (!WORKFLOW_API_URL) {
+    throw new Error('Workflow API not configured. Set VITE_WORKFLOW_API_URL environment variable.');
+  }
+  return WORKFLOW_API_URL;
+}
+
 /**
  * Start an audit workflow
  */
 export async function startAudit(request: AuditWorkflowRequest): Promise<StartWorkflowResponse> {
-  const response = await fetch(`${API_BASE_URL}/audit/run`, {
+  const baseUrl = getWorkflowApiUrl();
+  const response = await fetch(`${baseUrl}/audit/run`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
@@ -1124,7 +1160,8 @@ export async function startAudit(request: AuditWorkflowRequest): Promise<StartWo
  * Get workflow status
  */
 export async function getWorkflowStatus(workflowId: string): Promise<WorkflowStatus> {
-  const response = await fetch(`${API_BASE_URL}/audit/status/${workflowId}`);
+  const baseUrl = getWorkflowApiUrl();
+  const response = await fetch(`${baseUrl}/audit/status/${workflowId}`);
 
   if (!response.ok) {
     throw new Error(`Failed to get workflow status: ${response.statusText}`);
@@ -1137,7 +1174,8 @@ export async function getWorkflowStatus(workflowId: string): Promise<WorkflowSta
  * Get workflow result
  */
 export async function getWorkflowResult(workflowId: string): Promise<AuditWorkflowResult> {
-  const response = await fetch(`${API_BASE_URL}/audit/result/${workflowId}`);
+  const baseUrl = getWorkflowApiUrl();
+  const response = await fetch(`${baseUrl}/audit/result/${workflowId}`);
 
   if (!response.ok) {
     throw new Error(`Failed to get workflow result: ${response.statusText}`);
@@ -1148,13 +1186,17 @@ export async function getWorkflowResult(workflowId: string): Promise<AuditWorkfl
 
 /**
  * Poll workflow until complete
+ * @param maxPollingTime Maximum time to poll in ms (default 5 minutes)
  */
 export async function pollWorkflowUntilComplete(
   workflowId: string,
   onProgress?: (status: WorkflowStatus) => void,
-  pollingInterval: number = 2000
+  pollingInterval: number = 2000,
+  maxPollingTime: number = 5 * 60 * 1000
 ): Promise<AuditWorkflowResult> {
-  while (true) {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < maxPollingTime) {
     const status = await getWorkflowStatus(workflowId);
     onProgress?.(status);
 
@@ -1169,6 +1211,8 @@ export async function pollWorkflowUntilComplete(
     // Wait before polling again
     await new Promise(resolve => setTimeout(resolve, pollingInterval));
   }
+
+  throw new Error(`Workflow polling timed out after ${maxPollingTime / 1000}s`);
 }
 
 // ============================================
@@ -1196,22 +1240,17 @@ export async function getClassificationTypeDefs(): Promise<Map<string, string>> 
     method: 'GET',
   });
 
-  console.log('[getClassificationTypeDefs] API response status:', response.status, 'error:', response.error || 'none');
+  logger.debug('[getClassificationTypeDefs] API response status:', { status: response.status, error: response.error || 'none' });
 
   if (response.error || !response.data) {
-    console.warn('Failed to fetch classification type definitions:', response.error || 'No data');
+    logger.warn('Failed to fetch classification type definitions:', response.error || 'No data');
     return new Map();
   }
 
   const result = new Map<string, string>();
   const classificationDefs = response.data.classificationDefs || [];
 
-  console.log(`[getClassificationTypeDefs] Fetched ${classificationDefs.length} classification definitions`);
-  if (classificationDefs.length > 0) {
-    console.log('[getClassificationTypeDefs] Sample definitions:',
-      classificationDefs.slice(0, 5).map(d => ({ name: d.name, displayName: d.displayName }))
-    );
-  }
+  logger.debug(`[getClassificationTypeDefs] Fetched ${classificationDefs.length} classification definitions`);
 
   for (const def of classificationDefs) {
     const typeName = def.name;
@@ -1637,17 +1676,6 @@ export async function getLineage(
     // Compute name with fallbacks
     const computedName = attributes.name || entity.displayText || 'Unknown';
 
-    // Debug logging - show raw entity structure
-    console.log('[normalizeEntity] RAW entity:', JSON.stringify({
-      guid: entity.guid,
-      typeName: entity.typeName,
-      displayText: entity.displayText,
-      hasAttributes: !!entity.attributes,
-      attributeKeys: entity.attributes ? Object.keys(entity.attributes) : [],
-      'attributes.name': attributes.name,
-    }, null, 2));
-    console.log('[normalizeEntity] Computed name:', computedName);
-
     // Spread attributes FIRST, then override with explicit values
     // This ensures our fallback logic takes precedence over undefined values
     const normalized = {
@@ -1669,9 +1697,6 @@ export async function getLineage(
       createdBy: entity.createdBy,
       updatedBy: entity.updatedBy,
     };
-
-    // Log the final normalized result
-    console.log('[normalizeEntity] RESULT:', { guid: normalized.guid, name: normalized.name, typeName: normalized.typeName });
 
     return normalized;
   }

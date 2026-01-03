@@ -1,30 +1,91 @@
+/* Atlantis Card Component */
+
 .card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--card-shadow);
   overflow: hidden;
-  animation: fadeIn 0.4s ease-out;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--gap-md);
+  padding: var(--space-4);
   border-bottom: 1px solid var(--border-subtle);
 }
 
+.card-header-borderless {
+  border-bottom: none;
+}
+
 .card-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-default);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.card-title-icon {
+  color: var(--text-muted);
+  font-size: var(--font-size-base);
+}
+
+.card-info-icon {
+  color: var(--text-muted);
+  cursor: help;
+  opacity: 0.6;
+  transition: opacity var(--transition-fast);
+}
+
+.card-info-icon:hover {
+  opacity: 1;
+}
+
+.card-subtitle {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
 }
 
 .card-actions {
   display: flex;
-  gap: var(--gap-sm);
+  gap: var(--space-1);
+}
+
+/* Toggle button group (# %) */
+.card-toggle-group {
+  display: flex;
+  align-items: center;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+}
+
+.card-toggle-btn {
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.card-toggle-btn:hover {
+  color: var(--text-default);
+}
+
+.card-toggle-btn.active {
+  background: var(--bg-surface);
+  color: var(--text-default);
+  box-shadow: var(--shadow-xs);
 }
 
 .card-action {
@@ -32,9 +93,9 @@
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -42,21 +103,205 @@
 
 .card-action:hover {
   background: var(--bg-hover);
-  color: var(--text-primary);
+  color: var(--text-default);
 }
 
 .card-body {
-  padding: var(--gap-md);
+  padding: var(--space-4);
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
+.card-body-compact {
+  padding: var(--space-3);
+}
+
+/* Dashboard-specific compact card (12-16px padding) */
+.card-dashboard {
+  border-radius: var(--radius-md);
+}
+
+.card-dashboard .card-header {
+  padding: 12px 16px;
+  border-bottom: none;
+}
+
+.card-dashboard .card-body {
+  padding: 12px 16px;
+}
+
+.card-dashboard .card-title {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--text-secondary);
+}
+
+.card-footer {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-subtle);
+}
+
+/* Card Variants */
+.card-elevated {
+  box-shadow: var(--shadow-md);
+}
+
+.card-flat {
+  box-shadow: none;
+}
+
+.card-interactive {
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.card-interactive:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+/* Card with status indicator */
+.card-status-success {
+  border-left: 3px solid var(--color-success-500);
+}
+
+.card-status-warning {
+  border-left: 3px solid var(--color-warning-500);
+}
+
+.card-status-danger {
+  border-left: 3px solid var(--color-danger-500);
+}
+
+.card-status-info {
+  border-left: 3px solid var(--color-blue-500);
+}
+
+/* Skeleton loading state */
+.card-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-subtle) 25%,
+    var(--bg-muted) 50%,
+    var(--bg-subtle) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  100% {
+    background-position: -200% 0;
   }
 }
 
+/* ========================================
+   Dashboard Filter Bar
+   ======================================== */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+}
+
+.filter-bar-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.filter-bar-items {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+/* Filter chip/pill for selected filters */
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 4px 10px;
+  background: var(--bg-selected);
+  border: 1px solid var(--color-blue-200);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-blue-700);
+}
+
+.filter-chip-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  background: none;
+  border: none;
+  color: var(--color-blue-500);
+  cursor: pointer;
+  border-radius: var(--radius-full);
+  padding: 0;
+  margin-left: 2px;
+}
+
+.filter-chip-remove:hover {
+  background: var(--color-blue-100);
+  color: var(--color-blue-700);
+}
+
+.filter-clear-all {
+  font-size: var(--font-size-xs);
+  color: var(--text-link);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.filter-clear-all:hover {
+  text-decoration: underline;
+}
+
+/* Empty/Error states */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  text-align: center;
+}
+
+.empty-state-icon {
+  color: var(--text-muted);
+  margin-bottom: var(--space-3);
+}
+
+.empty-state-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-default);
+  margin-bottom: var(--space-2);
+}
+
+.empty-state-message {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  margin-bottom: var(--space-4);
+  max-width: 300px;
+}
+
+.empty-state-actions {
+  display: flex;
+  gap: var(--space-2);
+}

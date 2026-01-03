@@ -3,7 +3,7 @@
  * Provides drag handle, action buttons, widget type selector, and consistent container for all widgets
  */
 
-import { useState, type ReactNode } from 'react';
+import { useState, useMemo, memo, type ReactNode } from 'react';
 import { GripVertical, Settings, X, RefreshCw } from 'lucide-react';
 import { Card } from '../../shared/Card';
 import { getWidgetsByCategory, type WidgetMetadata } from './registry';
@@ -20,7 +20,7 @@ interface WidgetWrapperProps {
   dragHandleClassName?: string;
 }
 
-export function WidgetWrapper({
+export const WidgetWrapper = memo(function WidgetWrapper({
   title,
   widgetId,
   widgetType,
@@ -33,13 +33,17 @@ export function WidgetWrapper({
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const { currentLayouts, updateLayout } = useDashboardLayoutStore();
 
-  // Get all available widgets grouped by category
-  const allWidgets = getWidgetsByCategory();
-  const widgetsByCategory = allWidgets.reduce((acc, widget) => {
-    if (!acc[widget.category]) acc[widget.category] = [];
-    acc[widget.category].push(widget);
-    return acc;
-  }, {} as Record<string, WidgetMetadata[]>);
+  // Memoize widget grouping - only compute when type selector is shown
+  const widgetsByCategory = useMemo(() => {
+    if (!showTypeSelector) return {} as Record<string, WidgetMetadata[]>;
+
+    const allWidgets = getWidgetsByCategory();
+    return allWidgets.reduce((acc, widget) => {
+      if (!acc[widget.category]) acc[widget.category] = [];
+      acc[widget.category].push(widget);
+      return acc;
+    }, {} as Record<string, WidgetMetadata[]>);
+  }, [showTypeSelector]);
 
   const handleChangeWidgetType = (newType: string) => {
     // Update the widget type in all breakpoints
@@ -204,4 +208,4 @@ export function WidgetWrapper({
       {children}
     </Card>
   );
-}
+});

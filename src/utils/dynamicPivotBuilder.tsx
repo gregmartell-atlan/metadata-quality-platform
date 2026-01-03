@@ -17,6 +17,7 @@ import {
   getMeasureLabel,
   formatMeasure,
 } from './pivotMeasures';
+import { getScoreClass } from './scoreThresholds';
 import type { LineageInfo } from '../services/atlan/lineageEnricher';
 import { logger } from './logger';
 
@@ -434,13 +435,5 @@ export function pivotDataToTableRows(
   }
 
   return rows;
-}
-
-function getScoreClass(score: number): string {
-  if (score >= 80) return 'excellent';
-  if (score >= 60) return 'good';
-  if (score >= 40) return 'fair';
-  if (score >= 20) return 'poor';
-  return 'critical';
 }
 
