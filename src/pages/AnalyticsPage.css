@@ -1,0 +1,189 @@
+/* Analytics Page Styles */
+
+.analytics-page {
+  flex: 1;
+  margin-left: 220px;
+  min-height: 100vh;
+  background: var(--bg-canvas);
+}
+
+.analytics-content {
+  padding: var(--space-6);
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+
+@media (max-width: 1200px) {
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.analytics-chart-section {
+  min-height: 400px;
+}
+
+.analytics-dimensions-section .card {
+  height: 100%;
+}
+
+/* Dimension List */
+.dimension-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dimension-item {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-subtle);
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+}
+
+.dimension-item:hover {
+  background: var(--bg-hover);
+}
+
+.dimension-indicator {
+  width: 4px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.dimension-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.dimension-name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-default);
+  margin-bottom: 2px;
+}
+
+.dimension-description {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.dimension-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.dimension-field {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+}
+
+/* Requirements Summary */
+.analytics-requirements {
+  margin-top: var(--space-6);
+}
+
+.requirements-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+@media (max-width: 768px) {
+  .requirements-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.requirement-stat {
+  text-align: center;
+}
+
+.requirement-stat-value {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-blue-600);
+  line-height: 1;
+  margin-bottom: var(--space-1);
+}
+
+.requirement-stat-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+
+/* Requirements Table */
+.requirements-table-wrapper {
+  overflow-x: auto;
+}
+
+.asset-type-cell {
+  white-space: nowrap;
+}
+
+.asset-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  background: var(--state-info-bg);
+  color: var(--color-blue-700);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.field-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.field-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+}
+
+.field-tag-required {
+  background: var(--state-danger-bg);
+  color: var(--state-danger-text);
+}
+
+.field-tag-recommended {
+  background: var(--state-warning-bg);
+  color: var(--state-warning-text);
+}
+
+.field-tag-optional {
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+}
+
+.field-tag-more {
+  background: var(--bg-muted);
+  color: var(--text-secondary);
+}
+
+/* Responsive sidebar adjustment */
+.app:has(.sidebar.collapsed) .analytics-page {
+  margin-left: 56px;
+}

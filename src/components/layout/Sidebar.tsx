@@ -3,7 +3,7 @@
  */
 
 import { useState } from 'react';
-import { LayoutGrid, BarChart3, Target, Users, RefreshCw, Zap, GitBranch, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutGrid, BarChart3, Target, Users, RefreshCw, Zap, GitBranch, ChevronLeft, ChevronRight, Radar } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import './Sidebar.css';
 
@@ -74,6 +74,14 @@ export function Sidebar() {
           >
             <GitBranch size={18} />
             {!isCollapsed && <span>Lineage Explorer</span>}
+          </Link>
+          <Link
+            to="/analytics"
+            className={`nav-item ${isActive('/analytics') ? 'active' : ''}`}
+            title="DaaP Analytics"
+          >
+            <Radar size={18} />
+            {!isCollapsed && <span>DaaP Analytics</span>}
           </Link>
           <Link
             to="/trends"

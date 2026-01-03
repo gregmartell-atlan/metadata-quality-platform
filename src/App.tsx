@@ -5,6 +5,7 @@ import { Sidebar } from './components/layout/Sidebar';
 import { ExecutiveDashboard } from './components/dashboard/ExecutiveDashboard';
 import { PivotBuilder } from './pages/PivotBuilder';
 import { LineageViewPage } from './pages/LineageViewPage';
+import { AnalyticsPage } from './pages/AnalyticsPage';
 import { AssetInspectorModal } from './components/AssetInspector/AssetInspectorModal';
 import { useUIPreferences } from './stores/uiPreferencesStore';
 import './App.css';
@@ -40,6 +41,7 @@ function App() {
               <Route path="/" element={<ExecutiveDashboard />} />
               <Route path="/pivot" element={<PivotBuilder />} />
               <Route path="/lineage" element={<LineageViewPage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/stewardship" element={<div className="page-placeholder">Stewardship Ops</div>} />
               <Route path="/campaigns" element={<div className="page-placeholder">Campaign Tracking</div>} />
               <Route path="/trends" element={<div className="page-placeholder">Quality Trends</div>} />
