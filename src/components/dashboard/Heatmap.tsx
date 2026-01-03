@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { Eye } from 'lucide-react';
 import { Card, Tooltip, InfoTooltip } from '../shared';
 import { useScoresStore } from '../../stores/scoresStore';
 import { useUIPreferences } from '../../stores/uiPreferencesStore';
+import { useAssetPreviewStore } from '../../stores/assetPreviewStore';
 import {
   getQualityDimensionInfo,
   getScoreBandInfo,
@@ -14,6 +16,7 @@ type PivotDimension = 'domain' | 'owner' | 'schema' | 'connection' | 'tag' | 'ce
 export function Heatmap() {
   const { byDomain, byOwner, bySchema, byConnection, byTag, byCertification, byClassification, byAssetType, groupBy, assetsWithScores } = useScoresStore();
   const { dashboardHeatmapDimension, setDashboardHeatmapDimension } = useUIPreferences();
+  const { openPreview } = useAssetPreviewStore();
   const [pivotDimension, setPivotDimension] = useState<PivotDimension>(dashboardHeatmapDimension as PivotDimension);
 
   // Sync with global preference
@@ -85,8 +88,16 @@ export function Heatmap() {
   const pivotMap = getPivotMap();
   const pivotData = Array.from(pivotMap.entries()).map(([key, assets]) => ({
     key,
+    assets, // Keep reference to assets for preview
     scores: calculateGroupScores(assets),
   })).sort((a, b) => b.scores.overall - a.scores.overall);
+
+  // Handle row click to preview first asset
+  const handleRowClick = (assets: typeof assetsWithScores) => {
+    if (assets.length > 0) {
+      openPreview(assets[0].asset);
+    }
+  };
   const getScoreClass = (score: number): string => {
     if (score >= 80) return 'excellent';
     if (score >= 60) return 'good';
@@ -205,8 +216,18 @@ export function Heatmap() {
               </tr>
             ) : (
               pivotData.map((item) => (
-                <tr key={item.key}>
-                  <td>{item.key}</td>
+                <tr key={item.key} className="heatmap-row-clickable">
+                  <td
+                    className="heatmap-row-label"
+                    onClick={() => handleRowClick(item.assets)}
+                    title={`Click to preview assets in ${item.key}`}
+                  >
+                    <span className="heatmap-row-name">{item.key}</span>
+                    <span className="heatmap-row-count">
+                      <Eye size={12} />
+                      {item.assets.length}
+                    </span>
+                  </td>
                   {(['completeness', 'accuracy', 'timeliness', 'consistency', 'usability'] as const).map((dim) => {
                     const score = item.scores[dim];
                     const bandInfo = getScoreBandInfo(score);

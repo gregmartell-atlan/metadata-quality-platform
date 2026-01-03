@@ -3,8 +3,10 @@ import { Settings, RefreshCw } from 'lucide-react';
 import { Card, Button, Tooltip, InfoTooltip } from '../shared';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
+import { useAssetPreviewStore } from '../../stores/assetPreviewStore';
 import { ScoringSettings } from '../settings/ScoringSettings';
 import { getQualityDimensionInfo, getScoreBandInfo } from '../../constants/metadataDescriptions';
+import type { AssetWithScores } from '../../stores/scoresStore';
 import './Scorecard.css';
 
 // Circular gauge component
@@ -66,7 +68,19 @@ function CircularGauge({ value, size = 160 }: { value: number; size?: number }) 
 }
 
 // Progress bar for dimension scores
-function DimensionBar({ label, value, icon, dimensionKey }: { label: string; value: number; icon: string; dimensionKey: string }) {
+function DimensionBar({
+  label,
+  value,
+  icon,
+  dimensionKey,
+  onClick,
+}: {
+  label: string;
+  value: number;
+  icon: string;
+  dimensionKey: string;
+  onClick?: () => void;
+}) {
   const getColor = (score: number) => {
     if (score >= 80) return 'var(--score-excellent, #22c55e)';
     if (score >= 60) return 'var(--score-good, #84cc16)';
@@ -108,7 +122,11 @@ function DimensionBar({ label, value, icon, dimensionKey }: { label: string; val
       position="right"
       maxWidth={280}
     >
-      <div className="dimension-bar">
+      <div
+        className={`dimension-bar ${onClick ? 'dimension-bar-clickable' : ''}`}
+        onClick={onClick}
+        title={onClick ? `Click to see lowest-scoring asset for ${label}` : undefined}
+      >
         <div className="dimension-header">
           <span className="dimension-icon">{icon}</span>
           <span className="dimension-name">{label}</span>
@@ -131,10 +149,27 @@ function DimensionBar({ label, value, icon, dimensionKey }: { label: string; val
 export function Scorecard() {
   const { setAssetsWithScores, assetsWithScores } = useScoresStore();
   const { contextAssets, getAssetCount } = useAssetContextStore();
+  const { openPreview } = useAssetPreviewStore();
   const [showSettings, setShowSettings] = useState(false);
   const trend = 4.2; // Placeholder for trend logic
 
   const effectiveCount = contextAssets.length > 0 ? getAssetCount() : assetsWithScores.length;
+
+  // Get the lowest-scoring asset for a given dimension
+  const getLowestScoringAsset = (dimension: keyof AssetWithScores['scores']) => {
+    if (assetsWithScores.length === 0) return null;
+    return assetsWithScores.reduce((lowest, current) =>
+      current.scores[dimension] < lowest.scores[dimension] ? current : lowest
+    );
+  };
+
+  // Handle dimension click - show lowest-scoring asset
+  const handleDimensionClick = (dimension: keyof AssetWithScores['scores']) => {
+    const lowestAsset = getLowestScoringAsset(dimension);
+    if (lowestAsset) {
+      openPreview(lowestAsset.asset);
+    }
+  };
 
   // Calculate average scores from assetsWithScores
   const scores = useMemo(() => {
@@ -229,11 +264,11 @@ export function Scorecard() {
 
           {/* Dimension bars */}
           <div className="scorecard-dimensions">
-            <DimensionBar label="Completeness" value={scores.completeness} icon="📝" dimensionKey="completeness" />
-            <DimensionBar label="Accuracy" value={scores.accuracy} icon="🎯" dimensionKey="accuracy" />
-            <DimensionBar label="Timeliness" value={scores.timeliness} icon="⏱️" dimensionKey="timeliness" />
-            <DimensionBar label="Consistency" value={scores.consistency} icon="🔗" dimensionKey="consistency" />
-            <DimensionBar label="Usability" value={scores.usability} icon="✨" dimensionKey="usability" />
+            <DimensionBar label="Completeness" value={scores.completeness} icon="📝" dimensionKey="completeness" onClick={() => handleDimensionClick('completeness')} />
+            <DimensionBar label="Accuracy" value={scores.accuracy} icon="🎯" dimensionKey="accuracy" onClick={() => handleDimensionClick('accuracy')} />
+            <DimensionBar label="Timeliness" value={scores.timeliness} icon="⏱️" dimensionKey="timeliness" onClick={() => handleDimensionClick('timeliness')} />
+            <DimensionBar label="Consistency" value={scores.consistency} icon="🔗" dimensionKey="consistency" onClick={() => handleDimensionClick('consistency')} />
+            <DimensionBar label="Usability" value={scores.usability} icon="✨" dimensionKey="usability" onClick={() => handleDimensionClick('usability')} />
           </div>
 
           {/* Asset count and refresh */}

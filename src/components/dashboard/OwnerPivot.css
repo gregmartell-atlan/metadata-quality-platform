@@ -217,3 +217,46 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* Clickable Rows for Asset Preview */
+.pivot-row-clickable:hover {
+  background: var(--bg-hover);
+}
+
+.dimension-cell-clickable {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  transition: color var(--transition-fast);
+}
+
+.dimension-cell-clickable:hover {
+  color: var(--color-blue-500);
+}
+
+.dimension-cell-clickable:hover .dimension-cell-count {
+  background: var(--color-blue-500);
+  color: #ffffff;
+}
+
+.dimension-cell-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dimension-cell-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-muted);
+  transition: all var(--transition-fast);
+}
+

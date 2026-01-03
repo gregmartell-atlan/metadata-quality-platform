@@ -246,6 +246,19 @@
   background: var(--bg-subtle);
 }
 
+/* Clickable dimension bars */
+.dimension-bar-clickable {
+  cursor: pointer;
+}
+
+.dimension-bar-clickable:hover {
+  background: var(--bg-hover);
+}
+
+.dimension-bar-clickable:hover .dimension-name {
+  color: var(--color-blue-500);
+}
+
 /* Gauge wrapper for tooltip */
 .gauge-wrapper {
   cursor: help;

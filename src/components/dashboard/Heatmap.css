@@ -311,3 +311,47 @@
   color: var(--color-gray-300);
 }
 
+/* Clickable Rows for Asset Preview */
+.heatmap-row-clickable:hover {
+  background: var(--bg-hover);
+}
+
+.heatmap-row-label {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-right: var(--space-2);
+  transition: color var(--transition-fast);
+}
+
+.heatmap-row-label:hover {
+  color: var(--color-blue-500);
+}
+
+.heatmap-row-label:hover .heatmap-row-count {
+  background: var(--color-blue-500);
+  color: #ffffff;
+}
+
+.heatmap-row-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heatmap-row-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-muted);
+  transition: all var(--transition-fast);
+}
+

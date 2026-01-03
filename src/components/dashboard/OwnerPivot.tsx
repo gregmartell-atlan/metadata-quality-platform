@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { Eye } from 'lucide-react';
 import { Card, Tooltip, InfoTooltip } from '../shared';
 import { ScoreBadge } from '../shared';
 import { useScoresStore } from '../../stores/scoresStore';
 import { useUIPreferences } from '../../stores/uiPreferencesStore';
+import { useAssetPreviewStore } from '../../stores/assetPreviewStore';
 import {
   getScoreBandByName,
   getQualityDimensionInfo,
@@ -14,8 +16,9 @@ type RowDimension = 'owner' | 'tag' | 'certification' | 'classification' | 'asse
 type ColumnDimension = 'completeness' | 'accuracy' | 'timeliness' | 'consistency' | 'usability';
 
 export function OwnerPivot() {
-  const { byOwner, byTag, byCertification, byClassification, byAssetType, bySchema, byConnection, groupBy } = useScoresStore();
+  const { byOwner, byTag, byCertification, byClassification, byAssetType, bySchema, byConnection, groupBy, assetsWithScores } = useScoresStore();
   const { dashboardOwnerPivotDimension, dashboardOwnerPivotColumn, setDashboardOwnerPivotDimension, setDashboardOwnerPivotColumn } = useUIPreferences();
+  const { openPreview } = useAssetPreviewStore();
   const [rowDimension, setRowDimension] = useState<RowDimension>(
     (dashboardOwnerPivotDimension === 'owner' ? 'owner' : dashboardOwnerPivotDimension) as RowDimension
   );
@@ -58,7 +61,7 @@ export function OwnerPivot() {
     let fair = 0;
     let good = 0;
     let totalScore = 0;
-    
+
     assets.forEach(({ scores }) => {
       const score = scores[columnDimension];
       if (score < 25) critical++;
@@ -67,11 +70,12 @@ export function OwnerPivot() {
       else good++;
       totalScore += score;
     });
-    
+
     const avgScore = assets.length > 0 ? Math.round(totalScore / assets.length) : 0;
-    
+
     return {
       name,
+      assets, // Keep reference for preview
       critical,
       poor,
       fair,
@@ -85,6 +89,13 @@ export function OwnerPivot() {
     if (b.name.startsWith('No ') || b.name === 'Unowned' || b.name === 'Not Certified') return -1;
     return b.total - a.total;
   });
+
+  // Handle row click to preview first asset
+  const handleRowClick = (assets: typeof assetsWithScores) => {
+    if (assets.length > 0) {
+      openPreview(assets[0].asset);
+    }
+  };
   
   const getRowLabel = () => {
     switch (rowDimension) {
@@ -301,9 +312,19 @@ export function OwnerPivot() {
                 </tr>
               ) : (
                 groups.map((group, idx) => (
-                <tr key={idx}>
-                  <td className={`dimension-cell ${group.name === 'Unowned' || group.name.startsWith('No ') || group.name === 'Not Certified' ? 'unowned' : ''}`}>
-                    {group.name === 'Unowned' ? '⚠ Unowned' : group.name.startsWith('No ') ? `⚠ ${group.name}` : group.name === 'Not Certified' ? '⚠ Not Certified' : group.name}
+                <tr key={idx} className="pivot-row-clickable">
+                  <td
+                    className={`dimension-cell dimension-cell-clickable ${group.name === 'Unowned' || group.name.startsWith('No ') || group.name === 'Not Certified' ? 'unowned' : ''}`}
+                    onClick={() => handleRowClick(group.assets)}
+                    title={`Click to preview assets in ${group.name}`}
+                  >
+                    <span className="dimension-cell-name">
+                      {group.name === 'Unowned' ? '⚠ Unowned' : group.name.startsWith('No ') ? `⚠ ${group.name}` : group.name === 'Not Certified' ? '⚠ Not Certified' : group.name}
+                    </span>
+                    <span className="dimension-cell-count">
+                      <Eye size={12} />
+                      {group.total}
+                    </span>
                   </td>
                   <td className={`measure ${group.name === 'Unowned' || group.name.startsWith('No ') || group.name === 'Not Certified' ? 'unowned' : ''}`}>
                     {group.critical}
