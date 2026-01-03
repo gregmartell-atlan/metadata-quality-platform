@@ -5,10 +5,11 @@
  * Helps prioritize remediation by showing high-usage, low-quality assets.
  */
 
-import { useMemo, memo, useState } from 'react';
+import { useMemo, memo, useState, useCallback } from 'react';
 import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
 import { InfoTooltip } from '../shared';
-import { AlertTriangle, CheckCircle, Clock, Archive } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Clock, Archive, Filter, ChevronDown } from 'lucide-react';
+import { calculatePopularityScore } from '../../utils/popularityScore';
 import type { AssetWithScores } from '../../stores/scoresStore';
 import './QualityImpactMatrix.css';
 
@@ -26,23 +27,57 @@ interface QuadrantData {
   assets: AssetWithScores[];
 }
 
+type DimensionFilter = 'all' | 'assetType' | 'connection' | 'owner' | 'certification';
+
 // Thresholds for quadrants
 const QUALITY_THRESHOLD = 60;
 const USAGE_THRESHOLD = 50; // Normalized 0-100
 
-function normalizeUsage(asset: AssetWithScores): number {
-  const { queryCount = 0, sourceReadCount = 0, viewScore = 0, popularityScore = 0 } = asset.asset;
+/**
+ * Calculate normalized usage score (0-100) using proper popularity calculation
+ * Uses the same logic as popularityScore.ts for consistency
+ */
+function calculateUsageScore(asset: AssetWithScores): number {
+  // Use the existing calculatePopularityScore which returns 0-1 (normalized)
+  const popularityNormalized = calculatePopularityScore(asset.asset);
 
-  // Combine multiple usage signals
-  const signals = [
-    Math.min(queryCount / 100, 1) * 100,
-    Math.min(sourceReadCount / 1000, 1) * 100,
-    viewScore || 0,
-    (popularityScore || 0) * 100,
-  ].filter(s => s > 0);
+  // Also factor in query counts if available (for tables/views)
+  const queryCount = (asset.asset as any).queryCount || 0;
+  const queryScore = Math.min(queryCount / 500, 1); // Cap at 500 queries = 100%
 
-  if (signals.length === 0) return 0;
-  return signals.reduce((a, b) => a + b, 0) / signals.length;
+  // Combine: 70% popularity score, 30% query score
+  const combined = (popularityNormalized * 0.7) + (queryScore * 0.3);
+
+  // Return as 0-100 scale
+  return Math.round(combined * 100);
+}
+
+/**
+ * Get unique dimension values for filtering
+ */
+function getDimensionValues(assets: AssetWithScores[], dimension: DimensionFilter): string[] {
+  const values = new Set<string>();
+
+  assets.forEach(asset => {
+    let value: string | undefined;
+    switch (dimension) {
+      case 'assetType':
+        value = asset.asset.typeName;
+        break;
+      case 'connection':
+        value = asset.asset.connectionName || asset.asset.connectionQualifiedName?.split('/').pop();
+        break;
+      case 'owner':
+        value = asset.asset.ownerUsers?.[0] || asset.asset.ownerGroups?.[0] || 'Unowned';
+        break;
+      case 'certification':
+        value = asset.asset.certificateStatus || 'None';
+        break;
+    }
+    if (value) values.add(value);
+  });
+
+  return Array.from(values).sort();
 }
 
 export const QualityImpactMatrix = memo(function QualityImpactMatrix({
@@ -50,6 +85,36 @@ export const QualityImpactMatrix = memo(function QualityImpactMatrix({
   onAssetClick,
 }: QualityImpactMatrixProps) {
   const [selectedQuadrant, setSelectedQuadrant] = useState<string | null>(null);
+  const [filterDimension, setFilterDimension] = useState<DimensionFilter>('all');
+  const [filterValue, setFilterValue] = useState<string>('');
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Get available filter values based on selected dimension
+  const filterOptions = useMemo(() => {
+    if (filterDimension === 'all') return [];
+    return getDimensionValues(assets, filterDimension);
+  }, [assets, filterDimension]);
+
+  // Filter assets based on dimension selection
+  const filteredAssets = useMemo(() => {
+    if (filterDimension === 'all' || !filterValue) return assets;
+
+    return assets.filter(asset => {
+      switch (filterDimension) {
+        case 'assetType':
+          return asset.asset.typeName === filterValue;
+        case 'connection':
+          return (asset.asset.connectionName || asset.asset.connectionQualifiedName?.split('/').pop()) === filterValue;
+        case 'owner':
+          const owner = asset.asset.ownerUsers?.[0] || asset.asset.ownerGroups?.[0] || 'Unowned';
+          return owner === filterValue;
+        case 'certification':
+          return (asset.asset.certificateStatus || 'None') === filterValue;
+        default:
+          return true;
+      }
+    });
+  }, [assets, filterDimension, filterValue]);
 
   const { scatterData, quadrants, summary } = useMemo(() => {
     const critical: AssetWithScores[] = [];
@@ -57,9 +122,9 @@ export const QualityImpactMatrix = memo(function QualityImpactMatrix({
     const techDebt: AssetWithScores[] = [];
     const quickWins: AssetWithScores[] = [];
 
-    const scatter = assets.map(asset => {
+    const scatter = filteredAssets.map(asset => {
       const quality = asset.scores.overall;
-      const usage = normalizeUsage(asset);
+      const usage = calculateUsageScore(asset);
 
       // Categorize into quadrants
       if (quality < QUALITY_THRESHOLD && usage >= USAGE_THRESHOLD) {
@@ -128,12 +193,12 @@ export const QualityImpactMatrix = memo(function QualityImpactMatrix({
         avgCriticalQuality: critical.length > 0
           ? Math.round(critical.reduce((sum, a) => sum + a.scores.overall, 0) / critical.length)
           : 0,
-        healthyPercent: Math.round((healthy.length / (assets.length || 1)) * 100),
+        healthyPercent: Math.round((healthy.length / (filteredAssets.length || 1)) * 100),
       },
     };
-  }, [assets]);
+  }, [filteredAssets]);
 
-  const getPointColor = (quadrant: string) => {
+  const getPointColor = useCallback((quadrant: string) => {
     const colors: Record<string, string> = {
       critical: 'var(--color-red-500)',
       healthy: 'var(--color-green-500)',
@@ -141,20 +206,28 @@ export const QualityImpactMatrix = memo(function QualityImpactMatrix({
       quickWins: 'var(--color-blue-400)',
     };
     return colors[quadrant] || 'var(--color-gray-400)';
-  };
+  }, []);
 
-  const filteredData = selectedQuadrant
+  const visibleData = selectedQuadrant
     ? scatterData.filter(d => d.quadrant === selectedQuadrant)
     : scatterData;
+
+  const handleDimensionChange = (dim: DimensionFilter) => {
+    setFilterDimension(dim);
+    setFilterValue('');
+  };
 
   const renderTooltip = (props: any) => {
     const { active, payload } = props;
     if (!active || !payload?.[0]) return null;
 
     const data = payload[0].payload;
+    const asset = data.asset as AssetWithScores;
+
     return (
       <div className="matrix-tooltip">
         <div className="matrix-tooltip-name">{data.name}</div>
+        <div className="matrix-tooltip-type">{asset.asset.typeName}</div>
         <div className="matrix-tooltip-row">
           <span>Quality:</span>
           <span className="matrix-tooltip-value">{Math.round(data.x)}%</span>
@@ -177,25 +250,79 @@ export const QualityImpactMatrix = memo(function QualityImpactMatrix({
           <h3>Quality Impact Matrix</h3>
           <InfoTooltip content="Shows assets plotted by quality score (x-axis) vs usage/popularity (y-axis). Critical quadrant shows high-usage assets with poor quality that need immediate attention." />
         </div>
-        {summary.criticalRisk > 0 && (
-          <div className="matrix-alert">
-            <AlertTriangle size={14} />
-            <span>{summary.criticalRisk} critical assets at {summary.avgCriticalQuality}% avg quality</span>
-          </div>
-        )}
+        <div className="matrix-header-right">
+          {summary.criticalRisk > 0 && (
+            <div className="matrix-alert">
+              <AlertTriangle size={14} />
+              <span>{summary.criticalRisk} critical assets at {summary.avgCriticalQuality}% avg quality</span>
+            </div>
+          )}
+          <button
+            className={`matrix-filter-toggle ${showFilters ? 'active' : ''}`}
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <Filter size={14} />
+            <span>Filter</span>
+            <ChevronDown size={12} className={showFilters ? 'rotated' : ''} />
+          </button>
+        </div>
       </div>
+
+      {/* Dimension filters */}
+      {showFilters && (
+        <div className="matrix-filters">
+          <div className="filter-group">
+            <label>Dimension:</label>
+            <select
+              value={filterDimension}
+              onChange={(e) => handleDimensionChange(e.target.value as DimensionFilter)}
+              className="filter-select"
+            >
+              <option value="all">All Assets</option>
+              <option value="assetType">Asset Type</option>
+              <option value="connection">Connection</option>
+              <option value="owner">Owner</option>
+              <option value="certification">Certification</option>
+            </select>
+          </div>
+          {filterDimension !== 'all' && filterOptions.length > 0 && (
+            <div className="filter-group">
+              <label>Value:</label>
+              <select
+                value={filterValue}
+                onChange={(e) => setFilterValue(e.target.value)}
+                className="filter-select"
+              >
+                <option value="">All {filterDimension}</option>
+                {filterOptions.map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {filterValue && (
+            <div className="filter-active">
+              <span>Showing: {filterValue}</span>
+              <button onClick={() => { setFilterDimension('all'); setFilterValue(''); }}>
+                Clear
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="matrix-content">
         <div className="matrix-chart">
-          <ResponsiveContainer width="100%" height={300}>
-            <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+          <ResponsiveContainer width="100%" height={320}>
+            <ScatterChart margin={{ top: 20, right: 20, bottom: 30, left: 40 }}>
               <XAxis
                 type="number"
                 dataKey="x"
                 name="Quality"
                 domain={[0, 100]}
                 tickFormatter={(v) => `${v}%`}
-                label={{ value: 'Quality Score', position: 'bottom', offset: 0 }}
+                tick={{ fontSize: 11 }}
+                label={{ value: 'Quality Score', position: 'bottom', offset: 10, fontSize: 12 }}
               />
               <YAxis
                 type="number"
@@ -203,22 +330,25 @@ export const QualityImpactMatrix = memo(function QualityImpactMatrix({
                 name="Usage"
                 domain={[0, 100]}
                 tickFormatter={(v) => `${v}%`}
-                label={{ value: 'Usage', angle: -90, position: 'left', offset: 10 }}
+                tick={{ fontSize: 11 }}
+                label={{ value: 'Usage', angle: -90, position: 'left', offset: -5, fontSize: 12 }}
               />
-              <ZAxis type="number" dataKey="z" range={[20, 80]} />
+              <ZAxis type="number" dataKey="z" range={[30, 100]} />
               <Tooltip content={renderTooltip} />
               <ReferenceLine x={QUALITY_THRESHOLD} stroke="var(--border-default)" strokeDasharray="3 3" />
               <ReferenceLine y={USAGE_THRESHOLD} stroke="var(--border-default)" strokeDasharray="3 3" />
               <Scatter
-                data={filteredData}
+                data={visibleData}
                 onClick={(data) => onAssetClick?.(data.asset)}
                 cursor="pointer"
               >
-                {filteredData.map((entry, index) => (
+                {visibleData.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
                     fill={getPointColor(entry.quadrant)}
                     fillOpacity={0.7}
+                    stroke={getPointColor(entry.quadrant)}
+                    strokeWidth={1}
                   />
                 ))}
               </Scatter>
@@ -251,6 +381,26 @@ export const QualityImpactMatrix = memo(function QualityImpactMatrix({
               </div>
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Summary stats row */}
+      <div className="matrix-summary">
+        <div className="summary-item">
+          <span className="summary-label">Total</span>
+          <span className="summary-value">{filteredAssets.length}</span>
+        </div>
+        <div className="summary-item critical">
+          <span className="summary-label">Critical</span>
+          <span className="summary-value">{quadrants.critical.count}</span>
+        </div>
+        <div className="summary-item healthy">
+          <span className="summary-label">Healthy</span>
+          <span className="summary-value">{quadrants.healthy.count}</span>
+        </div>
+        <div className="summary-item">
+          <span className="summary-label">Health Rate</span>
+          <span className="summary-value">{summary.healthyPercent}%</span>
         </div>
       </div>
     </div>

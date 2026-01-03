@@ -6,8 +6,9 @@
  */
 
 import { useMemo, memo, useState } from 'react';
-import { ChevronDown, ChevronRight, FileText, Users, Tag, Link, GitBranch, Award, TrendingUp } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, Users, Tag, Link, GitBranch, Award, TrendingUp, Filter } from 'lucide-react';
 import { InfoTooltip } from '../shared';
+import { calculatePopularityScore } from '../../utils/popularityScore';
 import type { AssetWithScores } from '../../stores/scoresStore';
 import './RemediationPrioritizer.css';
 
@@ -27,6 +28,8 @@ interface GapCategory {
   effortEstimate: string;
 }
 
+type DimensionFilter = 'all' | 'assetType' | 'connection' | 'owner';
+
 // Estimate how much fixing each gap type improves overall score
 const GAP_WEIGHTS = {
   description: 15, // High impact on completeness
@@ -37,12 +40,65 @@ const GAP_WEIGHTS = {
   lineage: 8,
 };
 
+/**
+ * Get unique dimension values for filtering
+ */
+function getDimensionValues(assets: AssetWithScores[], dimension: DimensionFilter): string[] {
+  const values = new Set<string>();
+
+  assets.forEach(asset => {
+    let value: string | undefined;
+    switch (dimension) {
+      case 'assetType':
+        value = asset.asset.typeName;
+        break;
+      case 'connection':
+        value = asset.asset.connectionName || asset.asset.connectionQualifiedName?.split('/').pop();
+        break;
+      case 'owner':
+        value = asset.asset.ownerUsers?.[0] || asset.asset.ownerGroups?.[0] || 'Unowned';
+        break;
+    }
+    if (value) values.add(value);
+  });
+
+  return Array.from(values).sort();
+}
+
 export const RemediationPrioritizer = memo(function RemediationPrioritizer({
   assets,
   onAssetClick,
 }: RemediationPrioritizerProps) {
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'impact' | 'count'>('impact');
+  const [filterDimension, setFilterDimension] = useState<DimensionFilter>('all');
+  const [filterValue, setFilterValue] = useState<string>('');
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Get available filter values based on selected dimension
+  const filterOptions = useMemo(() => {
+    if (filterDimension === 'all') return [];
+    return getDimensionValues(assets, filterDimension);
+  }, [assets, filterDimension]);
+
+  // Filter assets based on dimension selection
+  const filteredAssets = useMemo(() => {
+    if (filterDimension === 'all' || !filterValue) return assets;
+
+    return assets.filter(asset => {
+      switch (filterDimension) {
+        case 'assetType':
+          return asset.asset.typeName === filterValue;
+        case 'connection':
+          return (asset.asset.connectionName || asset.asset.connectionQualifiedName?.split('/').pop()) === filterValue;
+        case 'owner':
+          const owner = asset.asset.ownerUsers?.[0] || asset.asset.ownerGroups?.[0] || 'Unowned';
+          return owner === filterValue;
+        default:
+          return true;
+      }
+    });
+  }, [assets, filterDimension, filterValue]);
 
   const { categories, summary } = useMemo(() => {
     // Analyze gaps
@@ -53,7 +109,7 @@ export const RemediationPrioritizer = memo(function RemediationPrioritizer({
     const missingCertification: AssetWithScores[] = [];
     const missingLineage: AssetWithScores[] = [];
 
-    assets.forEach(asset => {
+    filteredAssets.forEach(asset => {
       const a = asset.asset;
       const hasDescription = !!(a.description || a.userDescription);
       const hasOwner = (a.ownerUsers && a.ownerUsers.length > 0) || (a.ownerGroups && a.ownerGroups.length > 0);
@@ -70,19 +126,9 @@ export const RemediationPrioritizer = memo(function RemediationPrioritizer({
       if (!hasLineage) missingLineage.push(asset);
     });
 
-    const totalAssets = assets.length || 1;
+    const totalAssets = filteredAssets.length || 1;
 
     const cats: GapCategory[] = [
-      {
-        id: 'description',
-        name: 'Missing Descriptions',
-        icon: <FileText size={16} />,
-        description: 'Assets without descriptions are hard to discover and understand',
-        assets: missingDescription,
-        impactPerAsset: GAP_WEIGHTS.description / 100,
-        totalImpact: (missingDescription.length / totalAssets) * GAP_WEIGHTS.description,
-        effortEstimate: '~5 min each',
-      },
       {
         id: 'owner',
         name: 'Missing Owners',
@@ -94,14 +140,14 @@ export const RemediationPrioritizer = memo(function RemediationPrioritizer({
         effortEstimate: '~2 min each',
       },
       {
-        id: 'certification',
-        name: 'Not Certified',
-        icon: <Award size={16} />,
-        description: 'Uncertified assets reduce trust in data quality',
-        assets: missingCertification,
-        impactPerAsset: GAP_WEIGHTS.certification / 100,
-        totalImpact: (missingCertification.length / totalAssets) * GAP_WEIGHTS.certification,
-        effortEstimate: '~10 min each',
+        id: 'description',
+        name: 'Missing Descriptions',
+        icon: <FileText size={16} />,
+        description: 'Assets without descriptions are hard to discover and understand',
+        assets: missingDescription,
+        impactPerAsset: GAP_WEIGHTS.description / 100,
+        totalImpact: (missingDescription.length / totalAssets) * GAP_WEIGHTS.description,
+        effortEstimate: '~5 min each',
       },
       {
         id: 'terms',
@@ -112,6 +158,16 @@ export const RemediationPrioritizer = memo(function RemediationPrioritizer({
         impactPerAsset: GAP_WEIGHTS.glossaryTerms / 100,
         totalImpact: (missingTerms.length / totalAssets) * GAP_WEIGHTS.glossaryTerms,
         effortEstimate: '~3 min each',
+      },
+      {
+        id: 'certification',
+        name: 'Not Certified',
+        icon: <Award size={16} />,
+        description: 'Uncertified assets reduce trust in data quality',
+        assets: missingCertification,
+        impactPerAsset: GAP_WEIGHTS.certification / 100,
+        totalImpact: (missingCertification.length / totalAssets) * GAP_WEIGHTS.certification,
+        effortEstimate: '~10 min each',
       },
       {
         id: 'lineage',
@@ -144,8 +200,8 @@ export const RemediationPrioritizer = memo(function RemediationPrioritizer({
     });
 
     // Calculate summary
-    const currentAvgScore = assets.length > 0
-      ? Math.round(assets.reduce((sum, a) => sum + a.scores.overall, 0) / assets.length)
+    const currentAvgScore = filteredAssets.length > 0
+      ? Math.round(filteredAssets.reduce((sum, a) => sum + a.scores.overall, 0) / filteredAssets.length)
       : 0;
 
     const potentialImprovement = sorted.reduce((sum, cat) => sum + cat.totalImpact, 0);
@@ -161,25 +217,33 @@ export const RemediationPrioritizer = memo(function RemediationPrioritizer({
         totalGaps: sorted.reduce((sum, cat) => sum + cat.assets.length, 0),
       },
     };
-  }, [assets, sortBy]);
+  }, [filteredAssets, sortBy]);
 
   const toggleCategory = (id: string) => {
     setExpandedCategory(expandedCategory === id ? null : id);
   };
 
+  const handleDimensionChange = (dim: DimensionFilter) => {
+    setFilterDimension(dim);
+    setFilterValue('');
+  };
+
   // Get top 10 assets to fix (highest usage + lowest quality)
+  // Uses normalized popularity score for proper ranking
   const topAssetsToFix = useMemo(() => {
-    const withImpact = assets
+    const withImpact = filteredAssets
       .filter(a => a.scores.overall < 70)
       .map(a => {
-        const usage = (a.asset.queryCount || 0) + (a.asset.sourceReadCount || 0) / 10;
-        const qualityGap = 100 - a.scores.overall;
-        return { ...a, impactScore: usage * qualityGap / 100 };
+        // Use normalized popularity score (0-1) for usage
+        const usage = calculatePopularityScore(a.asset);
+        const qualityGap = (100 - a.scores.overall) / 100; // Normalize to 0-1
+        // Impact = usage × quality gap (both normalized 0-1)
+        return { ...a, impactScore: usage * qualityGap };
       })
       .sort((a, b) => b.impactScore - a.impactScore);
 
     return withImpact.slice(0, 10);
-  }, [assets]);
+  }, [filteredAssets]);
 
   return (
     <div className="remediation-prioritizer">
@@ -189,6 +253,12 @@ export const RemediationPrioritizer = memo(function RemediationPrioritizer({
           <InfoTooltip content="Prioritized list of metadata gaps to fix, ranked by potential impact on overall quality score." />
         </div>
         <div className="remediation-controls">
+          <button
+            className={`filter-toggle ${showFilters ? 'active' : ''}`}
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <Filter size={14} />
+          </button>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'impact' | 'count')}
@@ -200,22 +270,63 @@ export const RemediationPrioritizer = memo(function RemediationPrioritizer({
         </div>
       </div>
 
+      {/* Dimension filters */}
+      {showFilters && (
+        <div className="remediation-filters">
+          <div className="filter-group">
+            <label>Filter by:</label>
+            <select
+              value={filterDimension}
+              onChange={(e) => handleDimensionChange(e.target.value as DimensionFilter)}
+              className="filter-select"
+            >
+              <option value="all">All Assets</option>
+              <option value="assetType">Asset Type</option>
+              <option value="connection">Connection</option>
+              <option value="owner">Owner</option>
+            </select>
+          </div>
+          {filterDimension !== 'all' && filterOptions.length > 0 && (
+            <div className="filter-group">
+              <select
+                value={filterValue}
+                onChange={(e) => setFilterValue(e.target.value)}
+                className="filter-select"
+              >
+                <option value="">All</option>
+                {filterOptions.map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {filterValue && (
+            <button
+              className="filter-clear"
+              onClick={() => { setFilterDimension('all'); setFilterValue(''); }}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Summary banner */}
       <div className="remediation-summary">
         <div className="summary-stat">
-          <div className="summary-label">Current Score</div>
+          <div className="summary-label">CURRENT SCORE</div>
           <div className="summary-value">{summary.currentScore}%</div>
         </div>
         <div className="summary-arrow">
           <TrendingUp size={20} />
         </div>
         <div className="summary-stat highlight">
-          <div className="summary-label">Potential</div>
+          <div className="summary-label">POTENTIAL</div>
           <div className="summary-value">{summary.potentialScore}%</div>
         </div>
         <div className="summary-detail">
           <span className="summary-gap-count">{summary.totalGaps}</span> gaps across{' '}
-          <span className="summary-asset-count">{assets.length}</span> assets
+          <span className="summary-asset-count">{filteredAssets.length}</span> assets
         </div>
       </div>
 
@@ -252,6 +363,7 @@ export const RemediationPrioritizer = memo(function RemediationPrioritizer({
                       onClick={() => onAssetClick?.(asset)}
                     >
                       <span className="asset-name">{asset.asset.name}</span>
+                      <span className="asset-type">{asset.asset.typeName}</span>
                       <span className="asset-score">{Math.round(asset.scores.overall)}%</span>
                     </button>
                   ))}
