@@ -18,6 +18,7 @@ import { scoreAssets, initializeScoringService, setScoringModeGetter } from '../
 import { getAtlanConfig } from '../services/atlan/api';
 import type { AtlanAsset as ScoringAtlanAsset } from '../scoring/contracts';
 import { logger } from '../utils/logger';
+import { getOwnerNames, getMeaningTexts, isValidScoringType } from '../utils/typeGuards';
 
 interface AssetWithScores {
   asset: AtlanAsset;
@@ -136,38 +137,38 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
     if (scoringMode === "config-driven") {
       try {
         // Transform to scoring format
-        const scoringAssets: ScoringAtlanAsset[] = assets.map(asset => ({
-          guid: asset.guid,
-          typeName: asset.typeName as any,
-          name: asset.name,
-          qualifiedName: asset.qualifiedName,
-          connectionName: asset.connectionName,
-          description: asset.description,
-          userDescription: asset.userDescription,
-          ownerUsers: Array.isArray(asset.ownerUsers) 
-            ? asset.ownerUsers.map((u: any) => typeof u === 'string' ? u : u.name || u.guid || '')
-            : asset.ownerUsers || null,
-          ownerGroups: Array.isArray(asset.ownerGroups)
-            ? asset.ownerGroups.map((g: any) => typeof g === 'string' ? g : g.name || g.guid || '')
-            : asset.ownerGroups || null,
-          certificateStatus: asset.certificateStatus,
-          certificateUpdatedAt: asset.certificateUpdatedAt,
-          classificationNames: asset.classificationNames,
-          meanings: asset.meanings?.map((m: { guid: string; displayText: string } | string) =>
-            typeof m === 'string' ? m : m.displayText
-          ) ?? null,
-          domainGUIDs: asset.domainGUIDs,
-          updateTime: asset.updateTime,
-          sourceUpdatedAt: asset.sourceUpdatedAt,
-          sourceLastReadAt: asset.sourceLastReadAt,
-          lastRowChangedAt: asset.lastRowChangedAt,
-          popularityScore: asset.popularityScore,
-          viewScore: asset.viewScore,
-          starredCount: asset.starredCount,
-          __hasLineage: asset.__hasLineage,
-          readme: asset.readme ? { hasReadme: true } : null,
-          isDiscoverable: asset.isDiscoverable,
-        }));
+        const scoringAssets: ScoringAtlanAsset[] = assets.map(asset => {
+          const ownerUsers = getOwnerNames(asset.ownerUsers);
+          const ownerGroups = getOwnerNames(asset.ownerGroups);
+          const meanings = getMeaningTexts(asset.meanings);
+
+          return {
+            guid: asset.guid,
+            typeName: isValidScoringType(asset.typeName) ? asset.typeName : 'Table',
+            name: asset.name,
+            qualifiedName: asset.qualifiedName,
+            connectionName: asset.connectionName,
+            description: asset.description,
+            userDescription: asset.userDescription,
+            ownerUsers: ownerUsers.length > 0 ? ownerUsers : null,
+            ownerGroups: ownerGroups.length > 0 ? ownerGroups : null,
+            certificateStatus: asset.certificateStatus,
+            certificateUpdatedAt: asset.certificateUpdatedAt,
+            classificationNames: asset.classificationNames,
+            meanings: meanings.length > 0 ? meanings : null,
+            domainGUIDs: asset.domainGUIDs,
+            updateTime: asset.updateTime,
+            sourceUpdatedAt: asset.sourceUpdatedAt,
+            sourceLastReadAt: asset.sourceLastReadAt,
+            lastRowChangedAt: asset.lastRowChangedAt,
+            popularityScore: asset.popularityScore,
+            viewScore: asset.viewScore,
+            starredCount: asset.starredCount,
+            __hasLineage: asset.__hasLineage,
+            readme: asset.readme ? { hasReadme: true } : null,
+            isDiscoverable: asset.isDiscoverable,
+          };
+        });
 
         const results = await scoreAssets(scoringAssets);
         
