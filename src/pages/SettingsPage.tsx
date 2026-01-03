@@ -34,6 +34,7 @@ import {
   type RequirementLevel,
   type FieldRequirements,
 } from '../stores/qualityRulesStore';
+import { useScoringSettingsStore, type ScoringMode } from '../stores/scoringSettingsStore';
 import './SettingsPage.css';
 
 // Field labels for display
@@ -104,6 +105,13 @@ export function SettingsPage() {
     importRules,
   } = useQualityRules();
 
+  const {
+    scoringMode,
+    activeProfiles,
+    setScoringMode,
+    setActiveProfiles,
+  } = useScoringSettingsStore();
+
   const handleExportRules = () => {
     const json = exportRules();
     const blob = new Blob([json], { type: 'application/json' });
@@ -139,6 +147,14 @@ export function SettingsPage() {
       setGlobalCertificationFilter(globalCertificationFilter.filter((s) => s !== status));
     } else {
       setGlobalCertificationFilter([...globalCertificationFilter, status]);
+    }
+  };
+
+  const toggleScoringProfile = (profileId: string) => {
+    if (activeProfiles.includes(profileId)) {
+      setActiveProfiles(activeProfiles.filter((p) => p !== profileId));
+    } else {
+      setActiveProfiles([...activeProfiles, profileId]);
     }
   };
 
@@ -276,6 +292,74 @@ export function SettingsPage() {
             </div>
           </div>
           <div className="settings-card-body">
+            {/* Scoring Mode */}
+            <div className="setting-section">
+              <div className="setting-section-header">
+                <Sliders size={16} />
+                <span>Scoring Mode</span>
+              </div>
+              <p className="setting-section-description">
+                Choose between legacy scoring or config-driven scoring with profiles
+              </p>
+              <div className="scoring-mode-options">
+                <label className="radio-item">
+                  <input
+                    type="radio"
+                    name="scoringMode"
+                    value="legacy"
+                    checked={scoringMode === 'legacy'}
+                    onChange={() => setScoringMode('legacy')}
+                  />
+                  <div className="radio-content">
+                    <span className="radio-label">Legacy</span>
+                    <span className="radio-description">Use built-in scoring algorithms</span>
+                  </div>
+                </label>
+                <label className="radio-item">
+                  <input
+                    type="radio"
+                    name="scoringMode"
+                    value="config-driven"
+                    checked={scoringMode === 'config-driven'}
+                    onChange={() => setScoringMode('config-driven')}
+                  />
+                  <div className="radio-content">
+                    <span className="radio-label">Config-Driven</span>
+                    <span className="radio-description">Use configurable scoring profiles</span>
+                  </div>
+                </label>
+              </div>
+              {scoringMode === 'config-driven' && (
+                <div className="scoring-profiles">
+                  <label className="scoring-profiles-label">Active Profiles</label>
+                  <div className="checkbox-group-vertical">
+                    <label className="checkbox-item">
+                      <input
+                        type="checkbox"
+                        checked={activeProfiles.includes('industry5d')}
+                        onChange={() => toggleScoringProfile('industry5d')}
+                      />
+                      <div className="checkbox-content">
+                        <span className="checkbox-label">Industry 5D</span>
+                        <span className="checkbox-description">Standard 5-dimension quality model</span>
+                      </div>
+                    </label>
+                    <label className="checkbox-item">
+                      <input
+                        type="checkbox"
+                        checked={activeProfiles.includes('standardCompleteness')}
+                        onChange={() => toggleScoringProfile('standardCompleteness')}
+                      />
+                      <div className="checkbox-content">
+                        <span className="checkbox-label">Standard Completeness</span>
+                        <span className="checkbox-description">Focus on metadata completeness metrics</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Score Thresholds */}
             <div className="setting-section">
               <div className="setting-section-header">

@@ -1,11 +1,10 @@
-import { useState, useMemo } from 'react';
-import { Settings, RefreshCw } from 'lucide-react';
+import { useMemo } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { Card, Button, Tooltip } from '../shared';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
 import { useAssetPreviewStore } from '../../stores/assetPreviewStore';
 import { useQualityRules } from '../../stores/qualityRulesStore';
-import { ScoringSettings } from '../settings/ScoringSettings';
 import { getQualityDimensionInfo, getScoreBandInfo } from '../../constants/metadataDescriptions';
 import type { AssetWithScores } from '../../stores/scoresStore';
 import './Scorecard.css';
@@ -130,7 +129,6 @@ export function Scorecard() {
   const { contextAssets, getAssetCount } = useAssetContextStore();
   const { openPreview } = useAssetPreviewStore();
   const { calculateWeightedScore } = useQualityRules();
-  const [showSettings, setShowSettings] = useState(false);
   const trend = 4.2; // Placeholder for trend logic
 
   const effectiveCount = contextAssets.length > 0 ? getAssetCount() : assetsWithScores.length;
@@ -189,22 +187,6 @@ export function Scorecard() {
 
   return (
     <Card className="scorecard-v2" title="Health Score">
-      {/* Settings toggle */}
-      <button
-        className="scorecard-settings-btn"
-        onClick={() => setShowSettings(!showSettings)}
-        title="Scoring Settings"
-      >
-        <Settings size={16} />
-      </button>
-
-      {/* Settings panel (collapsible) */}
-      {showSettings && (
-        <div className="scorecard-settings-panel">
-          <ScoringSettings />
-        </div>
-      )}
-
       {/* Main content */}
       {scores ? (
         <div className="scorecard-content">
