@@ -2,18 +2,21 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useEffect } from 'react';
 import { ErrorBoundary } from './components/shared';
 import { Sidebar } from './components/layout/Sidebar';
+import { AssetPreviewDrawer } from './components/layout/AssetPreviewDrawer';
 import { ExecutiveDashboard } from './components/dashboard/ExecutiveDashboard';
 import { PivotBuilder } from './pages/PivotBuilder';
 import { LineageViewPage } from './pages/LineageViewPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { AssetInspectorModal } from './components/AssetInspector/AssetInspectorModal';
 import { useUIPreferences } from './stores/uiPreferencesStore';
+import { useAssetPreviewStore } from './stores/assetPreviewStore';
 import './App.css';
 
 // Note: PersistentAssetBrowser removed - now using header-based AssetBrowserPanel
 
 function App() {
   const { theme, density } = useUIPreferences();
+  const { selectedAsset, isOpen: isPreviewOpen, closePreview } = useAssetPreviewStore();
 
   // Apply theme and density to document
   useEffect(() => {
@@ -51,6 +54,13 @@ function App() {
 
           {/* Global Modals */}
           <AssetInspectorModal />
+
+          {/* Asset Preview Drawer */}
+          <AssetPreviewDrawer
+            asset={selectedAsset}
+            isOpen={isPreviewOpen}
+            onClose={closePreview}
+          />
         </div>
       </BrowserRouter>
     </ErrorBoundary>
