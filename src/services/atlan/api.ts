@@ -63,8 +63,36 @@ export interface AtlanAssetSummary {
   isAIGenerated?: boolean;
 }
 
-// Proxy server URL (runs alongside Vite dev server)
-const PROXY_URL = import.meta.env.VITE_PROXY_URL || 'http://localhost:3002';
+// ===========================================
+// PROXY MODE CONFIGURATION
+// ===========================================
+// Supports multiple deployment modes:
+//
+// 1. LOCAL DEV (default): Browser → localhost:3002/proxy → Atlan
+//    No env vars needed, just run `npm run proxy` and `npm run dev`
+//
+// 2. DOCKER: Same as local, proxy runs in container
+//    Set VITE_PROXY_HOST if proxy is on different host
+//
+// 3. APP FRAMEWORK: Browser → /api/atlan → FastAPI backend → Atlan
+//    Set VITE_APP_FRAMEWORK_MODE=true
+//    FastAPI handles auth via Atlan App Framework SDK
+//
+// Detection order:
+// 1. VITE_APP_FRAMEWORK_MODE=true → Use /api/atlan/* (FastAPI backend)
+// 2. VITE_PROXY_URL set → Use that URL directly
+// 3. Default → http://localhost:3002 (local proxy server)
+// ===========================================
+
+const APP_FRAMEWORK_MODE = import.meta.env.VITE_APP_FRAMEWORK_MODE === 'true';
+const PROXY_HOST = import.meta.env.VITE_PROXY_HOST || 'localhost';
+const PROXY_URL = import.meta.env.VITE_PROXY_URL || `http://${PROXY_HOST}:3002`;
+
+// Log mode on startup (only in dev)
+if (import.meta.env.DEV) {
+  console.log('[Atlan API] Mode:', APP_FRAMEWORK_MODE ? 'App Framework' : 'Direct Proxy');
+  console.log('[Atlan API] Proxy URL:', APP_FRAMEWORK_MODE ? '/api/atlan/*' : `${PROXY_URL}/proxy/*`);
+}
 const SAVED_BASE_URL_KEY = 'atlan_base_url';
 
 export interface AtlanApiConfig {
@@ -186,8 +214,8 @@ interface AtlanApiResponse<T> {
 }
 
 /**
- * Make an authenticated request to Atlan API via proxy
- * The proxy handles CORS by making server-side requests
+ * Make an authenticated request to Atlan API via FastAPI backend
+ * FastAPI backend proxies requests to Atlan API server-side
  * Now uses enhanced apiFetch with retry logic and timeouts
  */
 async function atlanFetch<T>(
@@ -199,10 +227,17 @@ async function atlanFetch<T>(
     return { error: 'Not configured. Call configureAtlanApi first.', status: 0 };
   }
 
-  // Route through proxy to avoid CORS
-  // endpoint like "/api/me" becomes "http://localhost:3002/proxy/api/me"
-  const proxyPath = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
-  const url = `${PROXY_URL}/proxy/${proxyPath}`;
+  // Build URL based on mode
+  let url: string;
+  if (APP_FRAMEWORK_MODE) {
+    // App Framework mode: /api/atlan/* → FastAPI backend handles auth
+    const backendPath = endpoint.startsWith('/api/') ? endpoint.slice(5) : endpoint;
+    url = `/api/atlan/${backendPath}`;
+  } else {
+    // Direct proxy mode: http://localhost:3002/proxy/* → proxy server handles auth
+    const proxyPath = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    url = `${PROXY_URL}/proxy/${proxyPath}`;
+  }
 
   // Create deduplication key from endpoint, method, and body (for POST requests)
   const method = options.method || 'GET';
@@ -244,9 +279,9 @@ async function atlanFetch<T>(
         }
       }
 
-      // Handle proxy-specific error messages
+      // Handle backend connection error messages
       if (response.error.includes('connection refused') || response.error.includes('ERR_CONNECTION_REFUSED')) {
-        response.error = 'Proxy server not running. Start it with: npm run proxy';
+        response.error = 'Backend server not running. The FastAPI backend must be running to connect to Atlan.';
       }
 
       logger.error('Atlan API request failed', {
@@ -1060,6 +1095,80 @@ export async function getAsset(guid: string, attributes: string[] = []): Promise
     description: entity.attributes?.description,
     // ... map other attributes as needed
   } as AtlanAsset;
+}
+
+// ============================================
+// WORKFLOW API
+// ============================================
+
+import type { WorkflowStatus, AuditWorkflowRequest, AuditWorkflowResult, StartWorkflowResponse } from '../../types/workflow';
+
+/**
+ * Start an audit workflow
+ */
+export async function startAudit(request: AuditWorkflowRequest): Promise<StartWorkflowResponse> {
+  const response = await fetch(`${API_BASE_URL}/audit/run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to start audit: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get workflow status
+ */
+export async function getWorkflowStatus(workflowId: string): Promise<WorkflowStatus> {
+  const response = await fetch(`${API_BASE_URL}/audit/status/${workflowId}`);
+
+  if (!response.ok) {
+    throw new Error(`Failed to get workflow status: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get workflow result
+ */
+export async function getWorkflowResult(workflowId: string): Promise<AuditWorkflowResult> {
+  const response = await fetch(`${API_BASE_URL}/audit/result/${workflowId}`);
+
+  if (!response.ok) {
+    throw new Error(`Failed to get workflow result: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Poll workflow until complete
+ */
+export async function pollWorkflowUntilComplete(
+  workflowId: string,
+  onProgress?: (status: WorkflowStatus) => void,
+  pollingInterval: number = 2000
+): Promise<AuditWorkflowResult> {
+  while (true) {
+    const status = await getWorkflowStatus(workflowId);
+    onProgress?.(status);
+
+    if (status.status === 'completed') {
+      return getWorkflowResult(workflowId);
+    } else if (status.status === 'failed') {
+      throw new Error(`Workflow failed: ${status.error || 'Unknown error'}`);
+    } else if (status.status === 'cancelled') {
+      throw new Error('Workflow was cancelled');
+    }
+
+    // Wait before polling again
+    await new Promise(resolve => setTimeout(resolve, pollingInterval));
+  }
 }
 
 // ============================================

@@ -1,0 +1,90 @@
+# ============================================================================
+# Atlan App Manifest - Metadata Quality Platform
+# Deploy to Atlan tenant using: atlan app deploy
+# ============================================================================
+
+apiVersion: apps.atlan.com/v1
+kind: AtlanApp
+metadata:
+  name: metadata-quality-platform
+  displayName: Metadata Quality Platform
+  description: Data quality scoring and analysis for metadata assets
+  version: "1.0.0"
+  icon: chart-bar  # Atlan icon name
+
+spec:
+  # Container configuration
+  container:
+    image: ${CONTAINER_REGISTRY}/metadata-quality-platform:${VERSION}
+    port: 8080
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "256Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+
+  # Health checks
+  health:
+    liveness:
+      path: /health
+      initialDelaySeconds: 10
+      periodSeconds: 30
+    readiness:
+      path: /ready
+      initialDelaySeconds: 5
+      periodSeconds: 10
+
+  # Dapr sidecar configuration
+  dapr:
+    enabled: true
+    appId: metadata-quality-platform
+    appPort: 8080
+    components:
+      - name: statestore
+        type: state.redis
+        # Uses tenant's Redis instance
+      - name: objectstore
+        type: bindings.aws.s3
+        # Uses tenant's S3 bucket
+
+  # UI integration - adds to Atlan navigation
+  ui:
+    # Sidebar entry
+    navigation:
+      - label: Quality Platform
+        path: /
+        icon: chart-bar
+        placement: sidebar
+
+    # Asset page tab (optional)
+    assetTabs:
+      - label: Quality Score
+        path: /asset/{guid}
+        assetTypes:
+          - Table
+          - Column
+          - AtlasGlossaryTerm
+
+  # Permissions required
+  permissions:
+    - atlan:assets:read
+    - atlan:assets:update  # For saving quality scores as custom metadata
+
+  # Environment variables (injected by Atlan)
+  env:
+    - name: ENVIRONMENT
+      value: production
+    - name: ATLAN_TENANT_ID
+      valueFrom:
+        tenantId: true  # Auto-injected
+    - name: ATLAN_API_KEY
+      valueFrom:
+        secret: atlan-api-key  # Tenant's internal service key
+
+  # Scaling
+  replicas:
+    min: 1
+    max: 3
+    targetCPUUtilization: 70

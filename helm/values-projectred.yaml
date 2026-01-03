@@ -1,0 +1,252 @@
+# ============================================================================
+# Metadata Quality Platform - Helm Values for projectred.atlan.com
+# Atlan App Framework - Direct Mode Deployment
+# ============================================================================
+
+global:
+  environment: production
+  tenantId: projectred
+
+# ============================================
+# Image Configuration
+# ============================================
+image:
+  repository: ghcr.io/gregmartell-atlan/metadata-quality-platform
+  tag: "v1.0.0"  # Override with Git SHA in CI/CD
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+# ============================================
+# Deployment Configuration
+# ============================================
+replicaCount: 2
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+
+# ============================================
+# Autoscaling
+# ============================================
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# ============================================
+# Networking
+# ============================================
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+
+ingress:
+  enabled: false  # Access via Atlan UI iframe, not external ingress
+  className: nginx
+  annotations: {}
+  hosts: []
+  tls: []
+
+# ============================================
+# Health Checks
+# ============================================
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# ============================================
+# Environment Variables
+# ============================================
+env:
+  # Atlan App Framework (required)
+  - name: ATLAN_TENANT_ID
+    value: "projectred"
+  - name: ENVIRONMENT
+    value: "production"
+
+  # Temporal (Atlan-managed)
+  - name: TEMPORAL_URL
+    value: "temporal.atlan-system.svc.cluster.local:7233"
+  - name: TEMPORAL_NAMESPACE
+    value: "projectred"
+  - name: TEMPORAL_TASK_QUEUE
+    value: "metadata-quality-tasks"
+
+  # Workflow timeouts
+  - name: WORKFLOW_EXECUTION_TIMEOUT_SECONDS
+    value: "14400"  # 4 hours
+  - name: ACTIVITY_TIMEOUT_SECONDS
+    value: "300"  # 5 minutes
+
+  # Dapr
+  - name: DAPR_HTTP_PORT
+    value: "3500"
+  - name: DAPR_GRPC_PORT
+    value: "50001"
+  - name: DAPR_APP_ID
+    value: "metadata-quality-platform"
+
+  # Application settings
+  - name: DEBUG
+    value: "false"
+  - name: CORS_ORIGINS
+    value: "https://projectred.atlan.com"
+  - name: MAX_ASSETS_PER_QUERY
+    value: "50000"
+
+# Note: ATLAN_API_KEY and ATLAN_BASE_URL come from Dapr secretstore
+# Set by Atlan Apps team during deployment
+
+# ============================================
+# Dapr Configuration
+# ============================================
+dapr:
+  enabled: true
+  appId: metadata-quality-platform
+  appPort: 8080
+  appProtocol: http
+  logLevel: info
+
+  components:
+    # State Store - Redis (Atlan-managed)
+    - name: statestore
+      type: state.redis
+      version: v1
+      metadata:
+        - name: redisHost
+          value: redis-master.atlan-system.svc.cluster.local:6379
+        - name: redisPassword
+          secretKeyRef:
+            name: redis-credentials
+            key: password
+        - name: enableTLS
+          value: "true"
+        - name: maxRetries
+          value: "3"
+        - name: maxRetryBackoff
+          value: "2s"
+
+    # Object Store - S3 (Atlan-managed, tenant-scoped)
+    - name: objectstore
+      type: bindings.aws.s3
+      version: v1
+      metadata:
+        - name: bucket
+          value: "projectred-metadata-quality"  # Provided by Atlan team
+        - name: region
+          value: "us-east-1"  # Confirm with Atlan team
+        - name: accessKey
+          secretKeyRef:
+            name: aws-s3-credentials
+            key: access-key
+        - name: secretKey
+          secretKeyRef:
+            name: aws-s3-credentials
+            key: secret-key
+        - name: sessionToken
+          value: ""  # Optional, for assumed roles
+
+    # Secret Store - AWS Secrets Manager (Atlan-managed)
+    - name: secretstore
+      type: secretstores.aws.secretsmanager
+      version: v1
+      metadata:
+        - name: region
+          value: "us-east-1"
+        - name: accessKey
+          secretKeyRef:
+            name: aws-secrets-manager-credentials
+            key: access-key
+        - name: secretKey
+          secretKeyRef:
+            name: aws-secrets-manager-credentials
+            key: secret-key
+
+# ============================================
+# Security
+# ============================================
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  capabilities:
+    drop:
+      - ALL
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+# ============================================
+# Monitoring & Observability
+# ============================================
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    path: /metrics
+
+# ============================================
+# Logging
+# ============================================
+logging:
+  level: INFO
+  format: json
+
+# ============================================
+# Temporal Worker (Sidecar Pattern)
+# ============================================
+worker:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  env:
+    - name: TEMPORAL_URL
+      value: "temporal.atlan-system.svc.cluster.local:7233"
+    - name: ATLAN_TENANT_ID
+      value: "projectred"
+
+# ============================================
+# Annotations
+# ============================================
+annotations:
+  app.atlan.com/name: "metadata-quality-platform"
+  app.atlan.com/version: "1.0.0"
+  app.atlan.com/owner: "data-quality-team"
+
+# ============================================
+# Node Affinity & Tolerations
+# ============================================
+nodeSelector: {}
+tolerations: []
+affinity: {}

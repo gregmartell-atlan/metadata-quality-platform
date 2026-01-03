@@ -1,0 +1,43 @@
+# ============================================================================
+# Metadata Quality Platform - Development Environment
+# Helm values for local/dev Kubernetes testing
+# ============================================================================
+
+global:
+  environment: development
+  tenantId: dev-tenant
+
+image:
+  repository: metadata-quality-platform
+  tag: "dev-latest"
+  pullPolicy: Always
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 500m
+    memory: 1Gi
+
+autoscaling:
+  enabled: false
+
+env:
+  - name: DEBUG
+    value: "true"
+  - name: CORS_ORIGINS
+    value: "*"
+  - name: MAX_ASSETS_PER_QUERY
+    value: "10000"
+
+dapr:
+  logLevel: debug
+
+monitoring:
+  enabled: false
+
+logging:
+  level: DEBUG
