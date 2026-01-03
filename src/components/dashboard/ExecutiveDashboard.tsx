@@ -3,7 +3,6 @@ import { Button } from '../shared';
 import { useState, useEffect, useCallback } from 'react';
 import { Edit3, LayoutTemplate, Save, RotateCcw, Camera, Clock } from 'lucide-react';
 import { DashboardGrid } from './DashboardGrid';
-import { AutoSizeGrid } from './AutoSizeGrid';
 import { WidgetPickerPanel } from './WidgetPickerPanel';
 import { TemplateSelectorModal } from './TemplateSelectorModal';
 import { RecentSnapshotsPanel } from './RecentSnapshotsPanel';
@@ -164,8 +163,8 @@ export function ExecutiveDashboard() {
         </div>
       )}
 
-      {/* Dashboard grid - auto-sizing in view mode, react-grid-layout in edit mode */}
-      {isEditMode ? <DashboardGrid /> : <AutoSizeGrid />}
+      {/* Dashboard grid - uses react-grid-layout for consistent positioning */}
+      <DashboardGrid />
 
       {/* Template selector modal */}
       <TemplateSelectorModal
