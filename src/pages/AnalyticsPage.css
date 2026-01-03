@@ -499,6 +499,30 @@
   margin-left: 56px;
 }
 
+/* Demo Data Banner */
+.demo-data-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-blue-50);
+  border: 1px solid var(--color-blue-200);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+  font-size: var(--font-size-sm);
+  color: var(--color-blue-700);
+}
+
+[data-theme="dark"] .demo-data-banner {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+  color: var(--color-blue-400);
+}
+
+.demo-data-banner svg {
+  flex-shrink: 0;
+}
+
 /* Impact Section - Quality Matrix & Remediation */
 .analytics-impact-section {
   display: grid;
