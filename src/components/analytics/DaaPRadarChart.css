@@ -1,0 +1,34 @@
+/* DaaP Radar Chart - Data as a Product visualization */
+
+.daap-radar-chart {
+  width: 100%;
+  background: var(--card-bg);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+}
+
+.daap-radar-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-default);
+  margin: 0 0 var(--space-4) 0;
+}
+
+.daap-radar-container {
+  width: 100%;
+  height: 350px;
+}
+
+/* Responsive sizing */
+@media (min-width: 768px) {
+  .daap-radar-container {
+    height: 400px;
+  }
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .daap-radar-chart {
+  background: var(--card-bg);
+}
