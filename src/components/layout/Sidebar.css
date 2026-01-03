@@ -153,9 +153,22 @@
   color: #ffffff;
 }
 
+/* Active state: solid background OR left border using primary blue */
 .nav-item.active {
-  background: rgba(99, 102, 241, 0.2);
+  background: rgba(59, 130, 246, 0.15);
   color: #ffffff;
+  position: relative;
+}
+
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  background: var(--color-blue-500);
+  border-radius: 0 2px 2px 0;
 }
 
 .nav-item svg {

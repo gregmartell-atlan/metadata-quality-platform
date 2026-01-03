@@ -28,7 +28,7 @@
   cursor: not-allowed;
 }
 
-/* Primary Button */
+/* Primary Button - Use only ONE per view/logical area */
 .btn-primary {
   background: var(--button-primary-bg);
   border-color: var(--button-primary-border);
@@ -36,27 +36,27 @@
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--button-primary-bg-hover);
+  background: var(--color-blue-700);
 }
 
 .btn-primary:active:not(:disabled) {
-  background: var(--button-primary-bg-active);
+  background: var(--color-blue-800);
 }
 
-/* Secondary Button */
+/* Secondary Button - White/light bg with grey border */
 .btn-secondary {
-  background: var(--button-secondary-bg);
-  border-color: var(--button-secondary-border);
-  color: var(--button-secondary-text);
+  background: var(--bg-surface);
+  border-color: var(--border-default);
+  color: var(--text-default);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: var(--button-secondary-bg-hover);
+  background: var(--bg-subtle);
   border-color: var(--border-strong);
 }
 
 .btn-secondary:active:not(:disabled) {
-  background: var(--button-secondary-bg-active);
+  background: var(--bg-muted);
 }
 
 /* Ghost Button */
@@ -71,15 +71,32 @@
   color: var(--text-default);
 }
 
-/* Danger Button */
+/* Destructive Button - Only for irreversible actions, use explicit labels */
 .btn-danger {
-  background: var(--button-danger-bg);
-  border-color: var(--button-danger-bg);
-  color: var(--button-danger-text);
+  background: var(--color-danger-500);
+  border-color: var(--color-danger-500);
+  color: #ffffff;
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: var(--button-danger-bg-hover);
+  background: var(--color-danger-600);
+  border-color: var(--color-danger-600);
+}
+
+.btn-danger:active:not(:disabled) {
+  background: var(--color-danger-700);
+  border-color: var(--color-danger-700);
+}
+
+/* Destructive secondary (outline) variant */
+.btn-danger-secondary {
+  background: transparent;
+  border-color: var(--color-danger-500);
+  color: var(--color-danger-500);
+}
+
+.btn-danger-secondary:hover:not(:disabled) {
+  background: var(--color-danger-50);
 }
 
 /* Link Button */
@@ -109,21 +126,39 @@
   min-height: 44px;
 }
 
-/* Icon Only */
+/* Icon Only - Keep 32-40px hit area even if icon is small */
 .btn-icon {
   padding: var(--space-2);
   min-width: 36px;
+  min-height: 36px;
 }
 
 .btn-icon.btn-sm {
-  padding: var(--space-1);
-  min-width: 28px;
-  min-height: 28px;
+  padding: 6px;
+  min-width: 32px;
+  min-height: 32px;
 }
 
 .btn-icon.btn-lg {
   padding: var(--space-3);
-  min-width: 44px;
+  min-width: 40px;
+  min-height: 40px;
+}
+
+/* Icon button ghost variant for compact actions (refresh, more options) */
+.btn-icon-ghost {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: var(--space-2);
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: var(--radius-sm);
+}
+
+.btn-icon-ghost:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-default);
 }
 
 /* Full Width */

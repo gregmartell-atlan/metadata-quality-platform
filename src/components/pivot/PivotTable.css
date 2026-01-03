@@ -4,17 +4,21 @@
   font-size: 13px;
 }
 
+/* Sticky headers */
 .data-table th {
-  background: var(--bg-subtle);
+  background: var(--bg-surface);
   padding: 10px 14px;
   text-align: left;
   font-weight: var(--font-weight-medium);
   color: var(--text-secondary);
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-default);
   white-space: nowrap;
   font-size: var(--font-size-xs);
   text-transform: none;
   letter-spacing: normal;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .data-table th.numeric {
@@ -25,9 +29,10 @@
   text-align: center;
 }
 
+/* No borders between cells, use row striping + subtle dividers */
 .data-table td {
   padding: 10px 14px;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: none;
   vertical-align: middle;
 }
 
@@ -41,12 +46,23 @@
   text-align: center;
 }
 
-.data-table tr:hover {
+/* Row striping for readability */
+.data-table tbody tr:nth-child(even) {
+  background: var(--bg-subtle);
+}
+
+/* Hover state */
+.data-table tbody tr:hover {
   background: var(--bg-hover);
 }
 
+/* Subtle row dividers (optional) */
+.data-table.with-dividers td {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
 .data-table tr.total-row {
-  background: var(--bg-tertiary);
+  background: var(--bg-muted);
   font-weight: 600;
 }
 

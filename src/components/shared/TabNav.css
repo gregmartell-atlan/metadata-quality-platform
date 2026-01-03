@@ -33,9 +33,11 @@
   background: var(--bg-hover);
 }
 
+/* Active tab: primary blue underline, keep visually light */
 .tab-nav-item.active {
-  color: var(--button-primary-bg);
-  border-bottom-color: var(--button-primary-bg);
+  color: var(--color-blue-600);
+  border-bottom-color: var(--color-blue-600);
+  background: transparent;
 }
 
 .tab-nav-item:focus-visible {
