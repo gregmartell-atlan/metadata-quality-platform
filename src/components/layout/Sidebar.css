@@ -83,13 +83,31 @@
   border-color: var(--border-strong);
 }
 
+/* Navigation Container */
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
+}
+
 /* Navigation Sections */
 .nav-section {
   margin-bottom: var(--space-3);
 }
 
+.nav-section-bottom {
+  margin-top: auto;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--sidebar-border);
+}
+
 .sidebar.collapsed .nav-section {
   margin-bottom: var(--space-2);
+}
+
+.sidebar.collapsed .nav-section-bottom {
+  padding-top: var(--space-2);
 }
 
 .nav-label {

@@ -13,6 +13,8 @@ const ExecutiveDashboard = lazy(() => import('./components/dashboard/ExecutiveDa
 const PivotBuilder = lazy(() => import('./pages/PivotBuilder').then(m => ({ default: m.PivotBuilder })));
 const LineageViewPage = lazy(() => import('./pages/LineageViewPage').then(m => ({ default: m.LineageViewPage })));
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const HomePage = lazy(() => import('./pages/HomePage').then(m => ({ default: m.HomePage })));
 
 // Loading fallback for lazy components
 function PageLoader() {
@@ -54,7 +56,8 @@ function App() {
           <ErrorBoundary>
             <Suspense fallback={<PageLoader />}>
               <Routes>
-                <Route path="/" element={<ExecutiveDashboard />} />
+                <Route path="/" element={<HomePage />} />
+                <Route path="/dashboard" element={<ExecutiveDashboard />} />
                 <Route path="/pivot" element={<PivotBuilder />} />
                 <Route path="/lineage" element={<LineageViewPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
@@ -62,6 +65,7 @@ function App() {
                 <Route path="/campaigns" element={<div className="page-placeholder">Campaign Tracking</div>} />
                 <Route path="/trends" element={<div className="page-placeholder">Quality Trends</div>} />
                 <Route path="/accountability" element={<div className="page-placeholder">Accountability</div>} />
+                <Route path="/settings" element={<SettingsPage />} />
               </Routes>
             </Suspense>
           </ErrorBoundary>

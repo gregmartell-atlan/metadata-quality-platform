@@ -1,0 +1,154 @@
+/**
+ * AutoSizeGrid - Masonry-style CSS Grid layout
+ * Cards auto-size based on content, responsive breakpoints
+ */
+
+.auto-size-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: var(--space-4);
+  padding: var(--space-6);
+  align-items: start; /* Cards align to top, not stretch */
+}
+
+/* Span classes for different widget widths */
+.auto-grid-item.span-full {
+  grid-column: span 12;
+}
+
+.auto-grid-item.span-wide {
+  grid-column: span 8;
+}
+
+.auto-grid-item.span-half {
+  grid-column: span 6;
+}
+
+.auto-grid-item.span-third {
+  grid-column: span 4;
+}
+
+.auto-grid-item.span-quarter {
+  grid-column: span 3;
+}
+
+/* Widget containers auto-size to content */
+.auto-grid-item {
+  min-height: 0; /* Allow shrinking */
+}
+
+/* Remove any fixed heights from widgets in auto mode */
+.auto-grid-item .dashboard-widget,
+.auto-grid-item .dashboard-widget-container {
+  height: auto !important;
+  min-height: auto;
+}
+
+/* Cards should size to their content */
+.auto-grid-item .card,
+.auto-grid-item .scorecard-v2,
+.auto-grid-item .stats-row,
+.auto-grid-item .heatmap-card,
+.auto-grid-item .trend-card,
+.auto-grid-item .campaign-card,
+.auto-grid-item .tasks-card,
+.auto-grid-item .owner-pivot {
+  height: auto;
+  min-height: min-content;
+}
+
+/* Card bodies should not scroll, show full content */
+.auto-grid-item .card-body {
+  overflow: visible;
+  max-height: none;
+}
+
+/* Charts and visualizations - constrain to reasonable max heights */
+.auto-grid-item .chart-container,
+.auto-grid-item .recharts-responsive-container {
+  max-height: 300px;
+}
+
+/* Tables can scroll if needed but have a max */
+.auto-grid-item table {
+  max-height: 400px;
+}
+
+.auto-grid-item .card-body:has(table) {
+  overflow-y: auto;
+  max-height: 450px;
+}
+
+/* Scorecard specific - maintain compact sizing */
+.auto-grid-item[data-widget-type="scorecard"] {
+  grid-column: span 3;
+}
+
+/* Stats row - full width */
+.auto-grid-item[data-widget-type="stats-row"] {
+  grid-column: span 9;
+}
+
+/* Heatmap - needs more width */
+.auto-grid-item[data-widget-type="heatmap"] {
+  grid-column: span 9;
+}
+
+/* Owner pivot - full width */
+.auto-grid-item[data-widget-type="owner-pivot"] {
+  grid-column: span 12;
+}
+
+/* Medium breakpoint */
+@media (max-width: 1200px) {
+  .auto-grid-item.span-wide {
+    grid-column: span 12;
+  }
+
+  .auto-grid-item.span-half {
+    grid-column: span 6;
+  }
+
+  .auto-grid-item.span-third {
+    grid-column: span 6;
+  }
+
+  .auto-grid-item.span-quarter {
+    grid-column: span 4;
+  }
+
+  .auto-grid-item[data-widget-type="scorecard"] {
+    grid-column: span 4;
+  }
+
+  .auto-grid-item[data-widget-type="stats-row"] {
+    grid-column: span 12;
+  }
+
+  .auto-grid-item[data-widget-type="heatmap"] {
+    grid-column: span 12;
+  }
+}
+
+/* Small breakpoint - stack everything */
+@media (max-width: 768px) {
+  .auto-size-grid {
+    grid-template-columns: 1fr;
+    padding: var(--space-4);
+  }
+
+  .auto-grid-item.span-full,
+  .auto-grid-item.span-wide,
+  .auto-grid-item.span-half,
+  .auto-grid-item.span-third,
+  .auto-grid-item.span-quarter {
+    grid-column: span 1;
+  }
+
+  .auto-grid-item[data-widget-type="scorecard"],
+  .auto-grid-item[data-widget-type="stats-row"],
+  .auto-grid-item[data-widget-type="heatmap"],
+  .auto-grid-item[data-widget-type="owner-pivot"] {
+    grid-column: span 1;
+  }
+}
