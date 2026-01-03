@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Card } from '../shared';
+import { Card, Tooltip, InfoTooltip } from '../shared';
 import { useScoresStore } from '../../stores/scoresStore';
 import { useUIPreferences } from '../../stores/uiPreferencesStore';
+import {
+  getQualityDimensionInfo,
+  getScoreBandInfo,
+  getPivotDimensionInfo,
+} from '../../constants/metadataDescriptions';
 import './Heatmap.css';
 
 type PivotDimension = 'domain' | 'owner' | 'schema' | 'connection' | 'tag' | 'certification' | 'classification' | 'assetType';
@@ -146,13 +151,49 @@ export function Heatmap() {
         <table className="heatmap">
           <thead>
             <tr>
-              <th>{getDimensionLabel()}</th>
-              <th>Completeness</th>
-              <th>Accuracy</th>
-              <th>Timeliness</th>
-              <th>Consistency</th>
-              <th>Usability</th>
-              <th>Overall</th>
+              <th>
+                <Tooltip
+                  content={
+                    <div className="heatmap-dimension-tooltip">
+                      <strong>{getPivotDimensionInfo(pivotDimension)?.name || getDimensionLabel()}</strong>
+                      <p>{getPivotDimensionInfo(pivotDimension)?.description || 'Pivot dimension'}</p>
+                    </div>
+                  }
+                  position="bottom"
+                  maxWidth={250}
+                >
+                  <span className="heatmap-header-label">{getDimensionLabel()}</span>
+                </Tooltip>
+              </th>
+              {(['completeness', 'accuracy', 'timeliness', 'consistency', 'usability', 'overall'] as const).map((dim) => {
+                const dimInfo = getQualityDimensionInfo(dim);
+                return (
+                  <th key={dim}>
+                    <Tooltip
+                      content={
+                        <div className="heatmap-quality-tooltip">
+                          <strong>{dimInfo?.name}</strong>
+                          <p>{dimInfo?.description}</p>
+                          {dimInfo?.factors && dim !== 'overall' && (
+                            <div className="heatmap-quality-factors">
+                              <span>Key factors:</span>
+                              <ul>
+                                {dimInfo.factors.map((f, i) => (
+                                  <li key={i}>{f}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      }
+                      position="bottom"
+                      maxWidth={280}
+                    >
+                      <span className="heatmap-header-label">{dimInfo?.name}</span>
+                    </Tooltip>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
@@ -166,32 +207,61 @@ export function Heatmap() {
               pivotData.map((item) => (
                 <tr key={item.key}>
                   <td>{item.key}</td>
-                  <td>
-                    <span className={`heatmap-cell ${getScoreClass(item.scores.completeness)}`}>
-                      {item.scores.completeness}
-                    </span>
+                  {(['completeness', 'accuracy', 'timeliness', 'consistency', 'usability'] as const).map((dim) => {
+                    const score = item.scores[dim];
+                    const bandInfo = getScoreBandInfo(score);
+                    const dimInfo = getQualityDimensionInfo(dim);
+                    return (
+                      <td key={dim}>
+                        <Tooltip
+                          content={
+                            <div className="heatmap-cell-tooltip">
+                              <div className="heatmap-cell-tooltip-header">
+                                <span>{item.key}</span>
+                                <span>×</span>
+                                <span>{dimInfo?.name}</span>
+                              </div>
+                              <div className="heatmap-cell-tooltip-score">
+                                <span className="score-value">{score}</span>
+                                <span className={`score-band score-band-${getScoreClass(score)}`}>
+                                  {bandInfo.name}
+                                </span>
+                              </div>
+                              <p className="heatmap-cell-tooltip-desc">{bandInfo.description}</p>
+                              <div className="heatmap-cell-tooltip-action">{bandInfo.action}</div>
+                            </div>
+                          }
+                          position="top"
+                          maxWidth={280}
+                        >
+                          <span className={`heatmap-cell ${getScoreClass(score)}`}>
+                            {score}
+                          </span>
+                        </Tooltip>
+                      </td>
+                    );
+                  })}
+                  <td className="heatmap-row-avg">
+                    <Tooltip
+                      content={
+                        <div className="heatmap-overall-tooltip">
+                          <strong>{item.key} - Overall Score</strong>
+                          <p>Weighted average of all quality dimensions for assets in this group.</p>
+                          <div className="heatmap-overall-breakdown">
+                            <div>Completeness: {item.scores.completeness}</div>
+                            <div>Accuracy: {item.scores.accuracy}</div>
+                            <div>Timeliness: {item.scores.timeliness}</div>
+                            <div>Consistency: {item.scores.consistency}</div>
+                            <div>Usability: {item.scores.usability}</div>
+                          </div>
+                        </div>
+                      }
+                      position="left"
+                      maxWidth={250}
+                    >
+                      <span className="heatmap-overall-score">{item.scores.overall}</span>
+                    </Tooltip>
                   </td>
-                  <td>
-                    <span className={`heatmap-cell ${getScoreClass(item.scores.accuracy)}`}>
-                      {item.scores.accuracy}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`heatmap-cell ${getScoreClass(item.scores.timeliness)}`}>
-                      {item.scores.timeliness}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`heatmap-cell ${getScoreClass(item.scores.consistency)}`}>
-                      {item.scores.consistency}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`heatmap-cell ${getScoreClass(item.scores.usability)}`}>
-                      {item.scores.usability}
-                    </span>
-                  </td>
-                  <td className="heatmap-row-avg">{item.scores.overall}</td>
                 </tr>
               ))
             )}

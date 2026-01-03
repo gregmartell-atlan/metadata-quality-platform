@@ -28,7 +28,155 @@
   }
 }
 
+/* Header with info tooltip */
+.daap-radar-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.daap-radar-header .daap-radar-title {
+  margin: 0;
+}
+
+/* Custom Tooltip */
+.daap-tooltip {
+  min-width: 220px;
+  max-width: 280px;
+  padding: var(--space-3);
+  background: var(--color-gray-900);
+  color: #ffffff;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  box-shadow: var(--shadow-lg);
+}
+
+.daap-tooltip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.daap-tooltip-dimension {
+  font-weight: var(--font-weight-semibold);
+}
+
+.daap-tooltip-band {
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+}
+
+.daap-band-excellent {
+  background: var(--score-excellent);
+  color: #000;
+}
+
+.daap-band-good {
+  background: var(--score-good);
+  color: #000;
+}
+
+.daap-band-fair {
+  background: var(--score-fair);
+  color: #000;
+}
+
+.daap-band-poor {
+  background: var(--score-poor);
+  color: #000;
+}
+
+.daap-band-critical {
+  background: var(--score-critical);
+  color: #fff;
+}
+
+.daap-tooltip-score {
+  margin-bottom: var(--space-2);
+}
+
+.daap-tooltip-value {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+}
+
+.daap-tooltip-desc {
+  margin: var(--space-2) 0;
+  color: var(--color-gray-300);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.daap-tooltip-action {
+  padding: var(--space-2);
+  background: rgba(59, 130, 246, 0.1);
+  border-left: 2px solid var(--color-blue-400);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-blue-300);
+}
+
+/* Info Tooltip Content */
+.daap-info-tooltip {
+  min-width: 280px;
+}
+
+.daap-info-tooltip strong {
+  display: block;
+  margin-bottom: var(--space-2);
+}
+
+.daap-info-tooltip p {
+  margin: var(--space-2) 0;
+  color: var(--color-gray-300);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.daap-info-dimensions {
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-gray-700);
+  font-size: var(--font-size-xs);
+}
+
+.daap-info-dimensions span {
+  display: block;
+  color: var(--color-gray-400);
+  margin-bottom: var(--space-2);
+}
+
+.daap-info-dimensions ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.daap-info-dimensions li {
+  color: var(--color-gray-300);
+}
+
+.daap-info-dimensions li strong {
+  color: var(--color-blue-400);
+  display: inline;
+  margin-bottom: 0;
+}
+
 /* Dark mode adjustments */
 [data-theme="dark"] .daap-radar-chart {
   background: var(--card-bg);
+}
+
+[data-theme="dark"] .daap-tooltip {
+  background: var(--color-gray-800);
+  border: 1px solid var(--color-gray-700);
 }

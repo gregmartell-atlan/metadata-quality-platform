@@ -149,3 +149,169 @@ export function getFieldInfo(field: string): MetadataFieldInfo | undefined {
 export function getDimensionInfo(dimension: string) {
   return daapDimensions[dimension];
 }
+
+/**
+ * Quality Dimension Descriptions
+ *
+ * Describes the data quality dimensions used in scoring and heatmaps
+ */
+export interface QualityDimensionInfo {
+  name: string;
+  description: string;
+  factors: string[];
+  color: string;
+}
+
+export const qualityDimensions: Record<string, QualityDimensionInfo> = {
+  completeness: {
+    name: 'Completeness',
+    description: 'Measures how fully populated the metadata is for an asset. High completeness means all important fields have values.',
+    factors: ['Description present', 'Owner assigned', 'Tags applied', 'Glossary terms linked'],
+    color: 'var(--color-blue-500)',
+  },
+  accuracy: {
+    name: 'Accuracy',
+    description: 'Measures the correctness and precision of metadata values. High accuracy means metadata reflects the true state of the data.',
+    factors: ['Owner is active user', 'Classifications match content', 'Description is up-to-date'],
+    color: 'var(--color-success-500)',
+  },
+  timeliness: {
+    name: 'Timeliness',
+    description: 'Measures how current and up-to-date the metadata is. High timeliness means metadata is regularly reviewed and updated.',
+    factors: ['Last modified recently', 'Description reviewed', 'Freshness of lineage'],
+    color: 'var(--color-warning-500)',
+  },
+  consistency: {
+    name: 'Consistency',
+    description: 'Measures uniformity of metadata across similar assets. High consistency means naming conventions and standards are followed.',
+    factors: ['Follows naming standards', 'Uses approved tags', 'Matches schema patterns'],
+    color: '#8b5cf6',
+  },
+  usability: {
+    name: 'Usability',
+    description: 'Measures how easy it is for users to understand and use the asset. High usability means users can self-serve without assistance.',
+    factors: ['README present', 'Column descriptions', 'Examples provided', 'Query samples'],
+    color: '#ec4899',
+  },
+  overall: {
+    name: 'Overall',
+    description: 'A weighted average of all quality dimensions, providing a single score for the asset\'s metadata health.',
+    factors: ['Completeness', 'Accuracy', 'Timeliness', 'Consistency', 'Usability'],
+    color: 'var(--text-default)',
+  },
+};
+
+export function getQualityDimensionInfo(dimension: string): QualityDimensionInfo | undefined {
+  return qualityDimensions[dimension.toLowerCase()];
+}
+
+/**
+ * Score Band Descriptions
+ *
+ * Describes what each score range means for data quality
+ */
+export interface ScoreBandInfo {
+  name: string;
+  range: string;
+  description: string;
+  action: string;
+  color: string;
+}
+
+export const scoreBands: Record<string, ScoreBandInfo> = {
+  critical: {
+    name: 'Critical',
+    range: '0-24',
+    description: 'Assets with severely deficient metadata. These require immediate attention as they pose risks to data governance.',
+    action: 'Prioritize adding basic metadata: description, owner, and classification.',
+    color: 'var(--score-critical)',
+  },
+  poor: {
+    name: 'Poor',
+    range: '25-49',
+    description: 'Assets with inadequate metadata coverage. Users will struggle to understand and trust these assets.',
+    action: 'Focus on completing core fields and adding documentation.',
+    color: 'var(--score-poor)',
+  },
+  fair: {
+    name: 'Fair',
+    range: '50-74',
+    description: 'Assets with basic metadata in place but room for improvement. Usable but not ideal for self-service.',
+    action: 'Add glossary terms, improve descriptions, and verify accuracy.',
+    color: 'var(--score-fair)',
+  },
+  good: {
+    name: 'Good',
+    range: '75-100',
+    description: 'Assets with comprehensive, well-maintained metadata. Ready for self-service discovery and trusted use.',
+    action: 'Maintain quality and consider for certification.',
+    color: 'var(--score-good)',
+  },
+  excellent: {
+    name: 'Excellent',
+    range: '80-100',
+    description: 'Assets with exceptional metadata quality. These are model examples of well-documented data products.',
+    action: 'Certify and use as templates for other assets.',
+    color: 'var(--score-excellent)',
+  },
+};
+
+export function getScoreBandInfo(score: number): ScoreBandInfo {
+  if (score >= 80) return scoreBands.excellent;
+  if (score >= 75) return scoreBands.good;
+  if (score >= 50) return scoreBands.fair;
+  if (score >= 25) return scoreBands.poor;
+  return scoreBands.critical;
+}
+
+export function getScoreBandByName(name: string): ScoreBandInfo | undefined {
+  return scoreBands[name.toLowerCase()];
+}
+
+/**
+ * Pivot Dimension Descriptions
+ *
+ * Describes pivot row/column dimensions
+ */
+export const pivotDimensions: Record<string, { name: string; description: string }> = {
+  owner: {
+    name: 'Owner',
+    description: 'Groups assets by their assigned owner (user or team). Helps identify accountability and ownership gaps.',
+  },
+  ownerGroup: {
+    name: 'Owner Group',
+    description: 'Groups assets by team/group ownership. Shows which teams have the most assets and their quality.',
+  },
+  tag: {
+    name: 'Tag',
+    description: 'Groups assets by applied tags. Useful for seeing quality by business domain or use case.',
+  },
+  certification: {
+    name: 'Certification Status',
+    description: 'Groups assets by their certification state (Certified, Draft, Deprecated). Shows trust level distribution.',
+  },
+  classification: {
+    name: 'Classification',
+    description: 'Groups assets by data sensitivity (PII, Confidential, etc.). Critical for compliance monitoring.',
+  },
+  assetType: {
+    name: 'Asset Type',
+    description: 'Groups assets by type (Table, View, Dashboard, etc.). Helps compare quality across different asset categories.',
+  },
+  schema: {
+    name: 'Schema',
+    description: 'Groups assets by database schema. Useful for identifying schemas that need metadata attention.',
+  },
+  connection: {
+    name: 'Connection',
+    description: 'Groups assets by data source connection. Shows quality distribution across different platforms.',
+  },
+  domain: {
+    name: 'Domain',
+    description: 'Groups assets by business domain. Helps track quality by organizational area.',
+  },
+};
+
+export function getPivotDimensionInfo(dimension: string) {
+  return pivotDimensions[dimension];
+}

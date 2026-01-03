@@ -233,6 +233,203 @@
   margin: 0;
 }
 
+/* Interactive dimension bars */
+.dimension-bar {
+  cursor: help;
+  padding: var(--space-2);
+  margin: calc(-1 * var(--space-2));
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.dimension-bar:hover {
+  background: var(--bg-subtle);
+}
+
+/* Gauge wrapper for tooltip */
+.gauge-wrapper {
+  cursor: help;
+}
+
+.score-trend {
+  cursor: help;
+}
+
+/* Dimension Tooltip Styles */
+.dimension-tooltip {
+  min-width: 220px;
+}
+
+.dimension-tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.dimension-tooltip-icon {
+  font-size: var(--font-size-lg);
+}
+
+.dimension-tooltip-header strong {
+  font-size: var(--font-size-sm);
+}
+
+.dimension-tooltip-desc {
+  margin: var(--space-2) 0;
+  color: var(--color-gray-300);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.dimension-tooltip-score {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-3) 0;
+  padding: var(--space-2);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+}
+
+.dimension-tooltip-value {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+}
+
+.dimension-tooltip-band {
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+}
+
+.dimension-band-excellent {
+  background: var(--score-excellent);
+  color: #000;
+}
+
+.dimension-band-good {
+  background: var(--score-good);
+  color: #000;
+}
+
+.dimension-band-fair {
+  background: var(--score-fair);
+  color: #000;
+}
+
+.dimension-band-poor {
+  background: var(--score-poor);
+  color: #000;
+}
+
+.dimension-band-critical {
+  background: var(--score-critical);
+  color: #fff;
+}
+
+.dimension-tooltip-factors {
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-gray-700);
+  font-size: var(--font-size-xs);
+}
+
+.dimension-tooltip-factors span {
+  display: block;
+  color: var(--color-gray-400);
+  margin-bottom: var(--space-1);
+}
+
+.dimension-tooltip-factors ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.dimension-tooltip-factors li {
+  padding: 2px 0;
+  padding-left: var(--space-3);
+  position: relative;
+  color: var(--color-gray-300);
+}
+
+.dimension-tooltip-factors li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--color-blue-400);
+}
+
+/* Gauge Tooltip Styles */
+.gauge-tooltip {
+  min-width: 220px;
+}
+
+.gauge-tooltip strong {
+  display: block;
+  margin-bottom: var(--space-2);
+}
+
+.gauge-tooltip p {
+  margin: var(--space-2) 0;
+  color: var(--color-gray-300);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.gauge-tooltip-band {
+  margin: var(--space-3) 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-300);
+}
+
+.gauge-band {
+  display: inline-block;
+  font-weight: var(--font-weight-medium);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  font-size: 10px;
+  margin-left: var(--space-2);
+}
+
+.gauge-band-excellent {
+  background: var(--score-excellent);
+  color: #000;
+}
+
+.gauge-band-good {
+  background: var(--score-good);
+  color: #000;
+}
+
+.gauge-band-fair {
+  background: var(--score-fair);
+  color: #000;
+}
+
+.gauge-band-poor {
+  background: var(--score-poor);
+  color: #000;
+}
+
+.gauge-band-critical {
+  background: var(--score-critical);
+  color: #fff;
+}
+
+.gauge-tooltip-action {
+  padding: var(--space-2);
+  background: rgba(59, 130, 246, 0.1);
+  border-left: 2px solid var(--color-blue-400);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-blue-300);
+}
+
 /* Responsive */
 @media (max-width: 1200px) {
   .gauge-value {

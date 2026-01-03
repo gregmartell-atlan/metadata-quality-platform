@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
 import { Settings, RefreshCw } from 'lucide-react';
-import { Card, Button } from '../shared';
+import { Card, Button, Tooltip, InfoTooltip } from '../shared';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
 import { ScoringSettings } from '../settings/ScoringSettings';
+import { getQualityDimensionInfo, getScoreBandInfo } from '../../constants/metadataDescriptions';
 import './Scorecard.css';
 
 // Circular gauge component
@@ -65,7 +66,7 @@ function CircularGauge({ value, size = 160 }: { value: number; size?: number }) 
 }
 
 // Progress bar for dimension scores
-function DimensionBar({ label, value, icon }: { label: string; value: number; icon: string }) {
+function DimensionBar({ label, value, icon, dimensionKey }: { label: string; value: number; icon: string; dimensionKey: string }) {
   const getColor = (score: number) => {
     if (score >= 80) return 'var(--score-excellent, #22c55e)';
     if (score >= 60) return 'var(--score-good, #84cc16)';
@@ -74,23 +75,56 @@ function DimensionBar({ label, value, icon }: { label: string; value: number; ic
     return 'var(--score-critical, #ef4444)';
   };
 
+  const dimInfo = getQualityDimensionInfo(dimensionKey);
+  const bandInfo = getScoreBandInfo(value);
+
   return (
-    <div className="dimension-bar">
-      <div className="dimension-header">
-        <span className="dimension-icon">{icon}</span>
-        <span className="dimension-name">{label}</span>
-        <span className="dimension-value" style={{ color: getColor(value) }}>{value}</span>
+    <Tooltip
+      content={
+        <div className="dimension-tooltip">
+          <div className="dimension-tooltip-header">
+            <span className="dimension-tooltip-icon">{icon}</span>
+            <strong>{dimInfo?.name || label}</strong>
+          </div>
+          <p className="dimension-tooltip-desc">{dimInfo?.description}</p>
+          <div className="dimension-tooltip-score">
+            <span className="dimension-tooltip-value">{value}</span>
+            <span className={`dimension-tooltip-band dimension-band-${bandInfo.name.toLowerCase()}`}>
+              {bandInfo.name}
+            </span>
+          </div>
+          {dimInfo?.factors && (
+            <div className="dimension-tooltip-factors">
+              <span>Key factors:</span>
+              <ul>
+                {dimInfo.factors.map((f, i) => (
+                  <li key={i}>{f}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      }
+      position="right"
+      maxWidth={280}
+    >
+      <div className="dimension-bar">
+        <div className="dimension-header">
+          <span className="dimension-icon">{icon}</span>
+          <span className="dimension-name">{label}</span>
+          <span className="dimension-value" style={{ color: getColor(value) }}>{value}</span>
+        </div>
+        <div className="dimension-track">
+          <div
+            className="dimension-fill"
+            style={{
+              width: `${value}%`,
+              backgroundColor: getColor(value)
+            }}
+          />
+        </div>
       </div>
-      <div className="dimension-track">
-        <div
-          className="dimension-fill"
-          style={{
-            width: `${value}%`,
-            backgroundColor: getColor(value)
-          }}
-        />
-      </div>
-    </div>
+    </Tooltip>
   );
 }
 
@@ -163,22 +197,43 @@ export function Scorecard() {
         <div className="scorecard-content">
           {/* Circular gauge */}
           <div className="scorecard-gauge-section">
-            <CircularGauge value={overallScore} />
+            <Tooltip
+              content={
+                <div className="gauge-tooltip">
+                  <strong>Overall Health Score</strong>
+                  <p>A weighted average of all quality dimensions. This score indicates the overall metadata health of your selected assets.</p>
+                  <div className="gauge-tooltip-band">
+                    Status: <span className={`gauge-band gauge-band-${getScoreBandInfo(overallScore).name.toLowerCase()}`}>
+                      {getScoreBandInfo(overallScore).name}
+                    </span>
+                  </div>
+                  <div className="gauge-tooltip-action">{getScoreBandInfo(overallScore).action}</div>
+                </div>
+              }
+              position="right"
+              maxWidth={280}
+            >
+              <div className="gauge-wrapper">
+                <CircularGauge value={overallScore} />
+              </div>
+            </Tooltip>
             <div className="gauge-meta">
-              <span className={`score-trend ${trend >= 0 ? 'up' : 'down'}`}>
-                {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}%
-              </span>
+              <Tooltip content="Percent change compared to the previous month's average score">
+                <span className={`score-trend ${trend >= 0 ? 'up' : 'down'}`}>
+                  {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}%
+                </span>
+              </Tooltip>
               <span className="trend-label">vs last month</span>
             </div>
           </div>
 
           {/* Dimension bars */}
           <div className="scorecard-dimensions">
-            <DimensionBar label="Completeness" value={scores.completeness} icon="📝" />
-            <DimensionBar label="Accuracy" value={scores.accuracy} icon="🎯" />
-            <DimensionBar label="Timeliness" value={scores.timeliness} icon="⏱️" />
-            <DimensionBar label="Consistency" value={scores.consistency} icon="🔗" />
-            <DimensionBar label="Usability" value={scores.usability} icon="✨" />
+            <DimensionBar label="Completeness" value={scores.completeness} icon="📝" dimensionKey="completeness" />
+            <DimensionBar label="Accuracy" value={scores.accuracy} icon="🎯" dimensionKey="accuracy" />
+            <DimensionBar label="Timeliness" value={scores.timeliness} icon="⏱️" dimensionKey="timeliness" />
+            <DimensionBar label="Consistency" value={scores.consistency} icon="🔗" dimensionKey="consistency" />
+            <DimensionBar label="Usability" value={scores.usability} icon="✨" dimensionKey="usability" />
           </div>
 
           {/* Asset count and refresh */}

@@ -13,8 +13,10 @@ import {
   PolarAngleAxis,
   PolarRadiusAxis,
   ResponsiveContainer,
-  Tooltip,
+  Tooltip as RechartsTooltip,
 } from 'recharts';
+import { InfoTooltip } from '../shared';
+import { getDimensionInfo, getScoreBandInfo } from '../../constants/metadataDescriptions';
 import type { RequirementsMatrix } from '../../types/requirements';
 import './DaaPRadarChart.css';
 
@@ -82,9 +84,63 @@ export function DaaPRadarChart({ matrix }: DaaPRadarChartProps) {
     { subject: 'Reusable', score: calculateScore('Reusable'), fullMark: 100 },
   ];
 
+  // Custom tooltip content with dimension descriptions
+  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: { subject: string; score: number } }> }) => {
+    if (active && payload && payload.length) {
+      const { subject, score } = payload[0].payload;
+      const dimensionInfo = getDimensionInfo(subject);
+      const bandInfo = getScoreBandInfo(score);
+
+      return (
+        <div className="daap-tooltip">
+          <div className="daap-tooltip-header">
+            <span className="daap-tooltip-dimension">{subject}</span>
+            <span className={`daap-tooltip-band daap-band-${bandInfo.name.toLowerCase()}`}>
+              {bandInfo.name}
+            </span>
+          </div>
+          <div className="daap-tooltip-score">
+            <span className="daap-tooltip-value">{score}%</span>
+          </div>
+          {dimensionInfo && (
+            <p className="daap-tooltip-desc">{dimensionInfo.description}</p>
+          )}
+          <div className="daap-tooltip-action">{bandInfo.action}</div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="daap-radar-chart">
-      <h3 className="daap-radar-title">Data as a Product Score</h3>
+      <div className="daap-radar-header">
+        <h3 className="daap-radar-title">Data as a Product Score</h3>
+        <InfoTooltip
+          content={
+            <div className="daap-info-tooltip">
+              <strong>Data as a Product (DaaP)</strong>
+              <p>
+                This radar chart shows compliance across the 7 dimensions of treating data as a product.
+                Higher scores indicate better alignment with DaaP principles.
+              </p>
+              <div className="daap-info-dimensions">
+                <span>The 7 dimensions are:</span>
+                <ul>
+                  <li><strong>Discoverable</strong> - Easy to find and search</li>
+                  <li><strong>Addressable</strong> - Uniquely identifiable</li>
+                  <li><strong>Trustworthy</strong> - Reliable with lineage</li>
+                  <li><strong>Self-describing</strong> - Well documented</li>
+                  <li><strong>Interoperable</strong> - Standards-compliant</li>
+                  <li><strong>Secure</strong> - Properly classified</li>
+                  <li><strong>Reusable</strong> - Ready for multiple consumers</li>
+                </ul>
+              </div>
+            </div>
+          }
+          position="bottom"
+        />
+      </div>
       <div className="daap-radar-container">
         <ResponsiveContainer width="100%" height="100%">
           <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
@@ -105,19 +161,7 @@ export function DaaPRadarChart({ matrix }: DaaPRadarChartProps) {
               fill="var(--color-blue-500)"
               fillOpacity={0.3}
             />
-            <Tooltip
-              contentStyle={{
-                borderRadius: 'var(--radius-md)',
-                border: 'none',
-                boxShadow: 'var(--shadow-lg)',
-                background: 'var(--bg-surface)',
-              }}
-              itemStyle={{
-                color: 'var(--text-default)',
-                fontWeight: 600,
-              }}
-              formatter={(value: number) => [`${value}%`, 'Score']}
-            />
+            <RechartsTooltip content={<CustomTooltip />} />
           </RadarChart>
         </ResponsiveContainer>
       </div>

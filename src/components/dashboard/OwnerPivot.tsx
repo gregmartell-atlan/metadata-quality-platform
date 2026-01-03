@@ -1,8 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Card } from '../shared';
+import { Card, Tooltip, InfoTooltip } from '../shared';
 import { ScoreBadge } from '../shared';
 import { useScoresStore } from '../../stores/scoresStore';
 import { useUIPreferences } from '../../stores/uiPreferencesStore';
+import {
+  getScoreBandByName,
+  getQualityDimensionInfo,
+  getPivotDimensionInfo,
+} from '../../constants/metadataDescriptions';
 import './OwnerPivot.css';
 
 type RowDimension = 'owner' | 'tag' | 'certification' | 'classification' | 'assetType' | 'schema' | 'connection';
@@ -168,12 +173,22 @@ export function OwnerPivot() {
         <div className="pivot-shelf">
           <div className="pivot-shelf-label">Measures</div>
           <div className="pivot-shelf-items">
-            <span className="pivot-chip">
-              Asset Count
-            </span>
-            <span className="pivot-chip">
-              Avg Score
-            </span>
+            <Tooltip
+              content="Count of assets in each score band for this group"
+              position="top"
+            >
+              <span className="pivot-chip">
+                Asset Count
+              </span>
+            </Tooltip>
+            <Tooltip
+              content="Average score across all assets in this group"
+              position="top"
+            >
+              <span className="pivot-chip">
+                Avg Score
+              </span>
+            </Tooltip>
           </div>
         </div>
       </div>
@@ -182,13 +197,99 @@ export function OwnerPivot() {
           <table className="pivot-table">
             <thead>
               <tr>
-                <th>{getRowLabel()}</th>
-                <th className="measure">Critical (0-24)</th>
-                <th className="measure">Poor (25-49)</th>
-                <th className="measure">Fair (50-74)</th>
-                <th className="measure">Good (75-100)</th>
-                <th className="measure">Total Assets</th>
-                <th className="measure">Avg Score</th>
+                <th>
+                  <Tooltip
+                    content={
+                      <div className="pivot-dimension-tooltip">
+                        <strong>{getPivotDimensionInfo(rowDimension)?.name || getRowLabel()}</strong>
+                        <p>{getPivotDimensionInfo(rowDimension)?.description || 'Group dimension for rows'}</p>
+                      </div>
+                    }
+                    position="bottom"
+                    maxWidth={250}
+                  >
+                    <span className="pivot-header-label">{getRowLabel()}</span>
+                  </Tooltip>
+                </th>
+                <th className="measure">
+                  <Tooltip
+                    content={
+                      <div className="score-band-tooltip">
+                        <strong>{getScoreBandByName('critical')?.name} ({getScoreBandByName('critical')?.range})</strong>
+                        <p>{getScoreBandByName('critical')?.description}</p>
+                        <div className="score-band-action">{getScoreBandByName('critical')?.action}</div>
+                      </div>
+                    }
+                    position="bottom"
+                    maxWidth={280}
+                  >
+                    <span className="pivot-header-label score-critical">Critical (0-24)</span>
+                  </Tooltip>
+                </th>
+                <th className="measure">
+                  <Tooltip
+                    content={
+                      <div className="score-band-tooltip">
+                        <strong>{getScoreBandByName('poor')?.name} ({getScoreBandByName('poor')?.range})</strong>
+                        <p>{getScoreBandByName('poor')?.description}</p>
+                        <div className="score-band-action">{getScoreBandByName('poor')?.action}</div>
+                      </div>
+                    }
+                    position="bottom"
+                    maxWidth={280}
+                  >
+                    <span className="pivot-header-label score-poor">Poor (25-49)</span>
+                  </Tooltip>
+                </th>
+                <th className="measure">
+                  <Tooltip
+                    content={
+                      <div className="score-band-tooltip">
+                        <strong>{getScoreBandByName('fair')?.name} ({getScoreBandByName('fair')?.range})</strong>
+                        <p>{getScoreBandByName('fair')?.description}</p>
+                        <div className="score-band-action">{getScoreBandByName('fair')?.action}</div>
+                      </div>
+                    }
+                    position="bottom"
+                    maxWidth={280}
+                  >
+                    <span className="pivot-header-label score-fair">Fair (50-74)</span>
+                  </Tooltip>
+                </th>
+                <th className="measure">
+                  <Tooltip
+                    content={
+                      <div className="score-band-tooltip">
+                        <strong>{getScoreBandByName('good')?.name} ({getScoreBandByName('good')?.range})</strong>
+                        <p>{getScoreBandByName('good')?.description}</p>
+                        <div className="score-band-action">{getScoreBandByName('good')?.action}</div>
+                      </div>
+                    }
+                    position="bottom"
+                    maxWidth={280}
+                  >
+                    <span className="pivot-header-label score-good">Good (75-100)</span>
+                  </Tooltip>
+                </th>
+                <th className="measure">
+                  <Tooltip content="Total number of assets in this group" position="bottom">
+                    <span className="pivot-header-label">Total Assets</span>
+                  </Tooltip>
+                </th>
+                <th className="measure">
+                  <Tooltip
+                    content={
+                      <div className="quality-dimension-tooltip">
+                        <strong>Average {getQualityDimensionInfo(columnDimension)?.name} Score</strong>
+                        <p>{getQualityDimensionInfo(columnDimension)?.description}</p>
+                      </div>
+                    }
+                    position="bottom"
+                    maxWidth={280}
+                  >
+                    <span className="pivot-header-label">Avg Score</span>
+                  </Tooltip>
+                </th>
               </tr>
             </thead>
             <tbody>
