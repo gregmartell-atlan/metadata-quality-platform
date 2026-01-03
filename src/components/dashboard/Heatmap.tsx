@@ -9,6 +9,7 @@ import {
   getScoreBandInfo,
   getPivotDimensionInfo,
 } from '../../constants/metadataDescriptions';
+import { getScoreClass } from '../../utils/scoreThresholds';
 import './Heatmap.css';
 
 type PivotDimension = 'domain' | 'owner' | 'schema' | 'connection' | 'tag' | 'certification' | 'classification' | 'assetType';
@@ -97,13 +98,6 @@ export function Heatmap() {
     if (assets.length > 0) {
       openPreview(assets[0].asset);
     }
-  };
-  const getScoreClass = (score: number): string => {
-    if (score >= 80) return 'excellent';
-    if (score >= 60) return 'good';
-    if (score >= 40) return 'fair';
-    if (score >= 20) return 'poor';
-    return 'critical';
   };
 
   const getDimensionLabel = () => {

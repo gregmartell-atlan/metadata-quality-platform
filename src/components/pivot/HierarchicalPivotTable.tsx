@@ -5,6 +5,7 @@ import type { AtlanAsset } from '../../services/atlan/types';
 import { calculateMeasure } from '../../utils/pivotMeasures';
 import { getDimensionIcon, getDimensionLabel } from '../../utils/pivotDimensions';
 import { formatMeasure, getMeasureLabel } from '../../utils/pivotMeasures';
+import { getScoreClass } from '../../utils/scoreThresholds';
 import './HierarchicalPivotTable.css';
 
 interface HierarchicalPivotTableProps {
@@ -19,14 +20,6 @@ interface TreeNode extends HierarchicalPivotRow {
   childRows: PivotTableData['rows'];
   level: number;
   isParent: boolean;
-}
-
-function getScoreClass(score: number): string {
-  if (score >= 80) return 'excellent';
-  if (score >= 60) return 'good';
-  if (score >= 40) return 'fair';
-  if (score >= 20) return 'poor';
-  return 'critical';
 }
 
 function getConnectionIcon(connName: string): React.ReactNode {

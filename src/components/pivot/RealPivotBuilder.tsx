@@ -14,26 +14,8 @@ import { Button, showToast } from '../shared';
 import type { RowDimension, Measure } from '../../types/pivot';
 import { getDimensionLabel, getDimensionIcon } from '../../utils/pivotDimensions';
 import { getMeasureLabel } from '../../utils/pivotMeasures';
+import { getScoreClass, getHeatClass } from '../../utils/scoreThresholds';
 import './DemoPivots.css';
-
-const getScoreClass = (score: number): string => {
-  if (score >= 80) return 'excellent';
-  if (score >= 60) return 'good';
-  if (score >= 40) return 'fair';
-  if (score >= 20) return 'poor';
-  return 'critical';
-};
-
-const getHeatClass = (score: number): string => {
-  if (score >= 90) return 'h-90';
-  if (score >= 80) return 'h-80';
-  if (score >= 70) return 'h-70';
-  if (score >= 60) return 'h-60';
-  if (score >= 50) return 'h-50';
-  if (score >= 40) return 'h-40';
-  if (score >= 30) return 'h-30';
-  return 'h-20';
-};
 
 const getConnectionIcon = (connName: string): string => {
   const lower = connName.toLowerCase();

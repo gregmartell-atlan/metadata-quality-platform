@@ -39,3 +39,17 @@ export function getScoreLabel(score: number): string {
 export function getScoreClass(score: number): string {
   return getScoreBand(score);
 }
+
+/**
+ * Get heatmap CSS class for a score (10-point granularity)
+ */
+export function getHeatClass(score: number): string {
+  if (score >= 90) return 'h-90';
+  if (score >= 80) return 'h-80';
+  if (score >= 70) return 'h-70';
+  if (score >= 60) return 'h-60';
+  if (score >= 50) return 'h-50';
+  if (score >= 40) return 'h-40';
+  if (score >= 30) return 'h-30';
+  return 'h-20';
+}
