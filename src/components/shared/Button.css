@@ -1,41 +1,149 @@
+/* Atlantis Button Component */
+
 .btn {
-  padding: var(--gap-sm) var(--gap-md);
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid var(--border-default);
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
   display: inline-flex;
   align-items: center;
-  gap: var(--gap-xs);
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: 1px solid transparent;
+  white-space: nowrap;
+  min-height: 36px;
 }
 
-.btn:hover {
-  background: var(--bg-hover);
-  border-color: var(--accent-primary);
-  color: var(--text-primary);
+.btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Primary Button */
 .btn-primary {
-  background: var(--accent-primary);
-  color: var(--bg-primary);
-  border-color: var(--accent-primary);
+  background: var(--button-primary-bg);
+  border-color: var(--button-primary-border);
+  color: var(--button-primary-text);
 }
 
-.btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--glow-primary);
+.btn-primary:hover:not(:disabled) {
+  background: var(--button-primary-bg-hover);
 }
 
+.btn-primary:active:not(:disabled) {
+  background: var(--button-primary-bg-active);
+}
+
+/* Secondary Button */
+.btn-secondary {
+  background: var(--button-secondary-bg);
+  border-color: var(--button-secondary-border);
+  color: var(--button-secondary-text);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--button-secondary-bg-hover);
+  border-color: var(--border-strong);
+}
+
+.btn-secondary:active:not(:disabled) {
+  background: var(--button-secondary-bg-active);
+}
+
+/* Ghost Button */
 .btn-ghost {
-  background: none;
+  background: var(--button-ghost-bg);
+  border-color: transparent;
+  color: var(--button-ghost-text);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--button-ghost-bg-hover);
+  color: var(--text-default);
+}
+
+/* Danger Button */
+.btn-danger {
+  background: var(--button-danger-bg);
+  border-color: var(--button-danger-bg);
+  color: var(--button-danger-text);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--button-danger-bg-hover);
+}
+
+/* Link Button */
+.btn-link {
+  background: transparent;
   border: none;
+  color: var(--text-link);
+  padding: 0;
+  min-height: auto;
 }
 
-.btn-ghost:hover {
-  background: var(--bg-hover);
+.btn-link:hover:not(:disabled) {
+  color: var(--text-link-hover);
+  text-decoration: underline;
 }
 
+/* Size Variants */
+.btn-sm {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-sm);
+  min-height: 28px;
+}
+
+.btn-lg {
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--font-size-lg);
+  min-height: 44px;
+}
+
+/* Icon Only */
+.btn-icon {
+  padding: var(--space-2);
+  min-width: 36px;
+}
+
+.btn-icon.btn-sm {
+  padding: var(--space-1);
+  min-width: 28px;
+  min-height: 28px;
+}
+
+.btn-icon.btn-lg {
+  padding: var(--space-3);
+  min-width: 44px;
+}
+
+/* Full Width */
+.btn-full {
+  width: 100%;
+}
+
+/* Button Icon */
+.btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.btn-sm svg {
+  width: 14px;
+  height: 14px;
+}
+
+.btn-lg svg {
+  width: 18px;
+  height: 18px;
+}

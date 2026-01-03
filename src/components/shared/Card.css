@@ -1,30 +1,37 @@
+/* Atlantis Card Component */
+
 .card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--card-shadow);
   overflow: hidden;
-  animation: fadeIn 0.4s ease-out;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--gap-md);
+  padding: var(--space-4);
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .card-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-default);
+  margin: 0;
+}
+
+.card-subtitle {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
 }
 
 .card-actions {
   display: flex;
-  gap: var(--gap-sm);
+  gap: var(--space-2);
 }
 
 .card-action {
@@ -32,9 +39,9 @@
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -42,21 +49,76 @@
 
 .card-action:hover {
   background: var(--bg-hover);
-  color: var(--text-primary);
+  color: var(--text-default);
 }
 
 .card-body {
-  padding: var(--gap-md);
+  padding: var(--space-4);
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.card-body-compact {
+  padding: var(--space-3);
 }
 
+.card-footer {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-subtle);
+}
+
+/* Card Variants */
+.card-elevated {
+  box-shadow: var(--shadow-md);
+}
+
+.card-flat {
+  box-shadow: none;
+}
+
+.card-interactive {
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.card-interactive:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+/* Card with status indicator */
+.card-status-success {
+  border-left: 3px solid var(--color-success-500);
+}
+
+.card-status-warning {
+  border-left: 3px solid var(--color-warning-500);
+}
+
+.card-status-danger {
+  border-left: 3px solid var(--color-danger-500);
+}
+
+.card-status-info {
+  border-left: 3px solid var(--color-blue-500);
+}
+
+/* Skeleton loading state */
+.card-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-subtle) 25%,
+    var(--bg-muted) 50%,
+    var(--bg-subtle) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
