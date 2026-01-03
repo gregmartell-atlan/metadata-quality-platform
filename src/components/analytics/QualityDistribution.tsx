@@ -16,7 +16,7 @@ import {
   Cell,
 } from 'recharts';
 import { InfoTooltip } from '../shared';
-import { getScoreBand, getScoreLabel, SCORE_THRESHOLDS } from '../../utils/scoreThresholds';
+import { useQualityRules } from '../../stores/qualityRulesStore';
 import type { AssetWithScores } from '../../stores/scoresStore';
 import './QualityDistribution.css';
 
@@ -41,18 +41,22 @@ const BAND_COLORS: Record<string, string> = {
   critical: 'var(--color-red-500)',
 };
 
-const BAND_RANGES: Record<string, string> = {
-  excellent: `${SCORE_THRESHOLDS.EXCELLENT}-100`,
-  good: `${SCORE_THRESHOLDS.GOOD}-${SCORE_THRESHOLDS.EXCELLENT - 1}`,
-  fair: `${SCORE_THRESHOLDS.FAIR}-${SCORE_THRESHOLDS.GOOD - 1}`,
-  poor: `${SCORE_THRESHOLDS.POOR}-${SCORE_THRESHOLDS.FAIR - 1}`,
-  critical: `0-${SCORE_THRESHOLDS.POOR - 1}`,
-};
-
 export const QualityDistribution = memo(function QualityDistribution({
   assets,
   dimension = 'overall',
 }: QualityDistributionProps) {
+  const { rules, getScoreBand, getScoreLabel } = useQualityRules();
+  const { thresholds } = rules;
+
+  // Compute band ranges dynamically based on configured thresholds
+  const bandRanges: Record<string, string> = useMemo(() => ({
+    excellent: `${thresholds.excellent}-100`,
+    good: `${thresholds.good}-${thresholds.excellent - 1}`,
+    fair: `${thresholds.fair}-${thresholds.good - 1}`,
+    poor: `${thresholds.poor}-${thresholds.fair - 1}`,
+    critical: `0-${thresholds.poor - 1}`,
+  }), [thresholds]);
+
   const distributionData = useMemo(() => {
     const bands: Record<string, number> = {
       excellent: 0,
@@ -75,9 +79,9 @@ export const QualityDistribution = memo(function QualityDistribution({
       count: bands[band],
       percentage: Math.round((bands[band] / total) * 100),
       color: BAND_COLORS[band],
-      range: BAND_RANGES[band],
+      range: bandRanges[band],
     }));
-  }, [assets, dimension]);
+  }, [assets, dimension, getScoreBand, getScoreLabel, bandRanges]);
 
   const totalAssets = assets.length;
   const healthScore = useMemo(() => {
@@ -121,11 +125,11 @@ export const QualityDistribution = memo(function QualityDistribution({
                 A healthy catalog should have most assets in the Excellent and Good categories.
               </p>
               <ul>
-                <li><span className="band excellent">Excellent</span> 80-100: Production ready</li>
-                <li><span className="band good">Good</span> 60-79: Minor improvements needed</li>
-                <li><span className="band fair">Fair</span> 40-59: Moderate work required</li>
-                <li><span className="band poor">Poor</span> 20-39: Significant gaps</li>
-                <li><span className="band critical">Critical</span> 0-19: Urgent attention needed</li>
+                <li><span className="band excellent">Excellent</span> {bandRanges.excellent}: Production ready</li>
+                <li><span className="band good">Good</span> {bandRanges.good}: Minor improvements needed</li>
+                <li><span className="band fair">Fair</span> {bandRanges.fair}: Moderate work required</li>
+                <li><span className="band poor">Poor</span> {bandRanges.poor}: Significant gaps</li>
+                <li><span className="band critical">Critical</span> {bandRanges.critical}: Urgent attention needed</li>
               </ul>
             </div>
           }

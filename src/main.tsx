@@ -5,6 +5,7 @@ import App from './App.tsx'
 import { AssetStoreProvider } from './stores/assetStore'
 import { ScoresStoreProvider } from './stores/scoresStore'
 import { ScoringSettingsProvider } from './stores/scoringSettingsStore'
+import { QualityRulesProvider } from './stores/qualityRulesStore'
 import { ErrorBoundary } from './components/shared'
 import { ToastContainer, useToasts, removeToast } from './components/shared/Toast'
 import { AutoSnapshotProvider } from './components/providers/AutoSnapshotProvider'
@@ -33,15 +34,17 @@ function AppWithToasts() {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <ScoringSettingsProvider>
-        <AssetStoreProvider>
-          <ScoresStoreProvider>
-            <AutoSnapshotProvider>
-              <AppWithToasts />
-            </AutoSnapshotProvider>
-          </ScoresStoreProvider>
-        </AssetStoreProvider>
-      </ScoringSettingsProvider>
+      <QualityRulesProvider>
+        <ScoringSettingsProvider>
+          <AssetStoreProvider>
+            <ScoresStoreProvider>
+              <AutoSnapshotProvider>
+                <AppWithToasts />
+              </AutoSnapshotProvider>
+            </ScoresStoreProvider>
+          </AssetStoreProvider>
+        </ScoringSettingsProvider>
+      </QualityRulesProvider>
     </ErrorBoundary>
   </StrictMode>,
 )

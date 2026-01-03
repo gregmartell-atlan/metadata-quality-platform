@@ -4,6 +4,7 @@
  * Replaces the drawer-based settings with a dedicated page
  */
 
+import { useRef } from 'react';
 import { AppHeader } from '../components/layout/AppHeader';
 import { Card } from '../components/shared';
 import {
@@ -18,11 +19,46 @@ import {
   ShieldCheck,
   Rows3,
   BarChart3,
+  Sliders,
+  Download,
+  Upload,
+  Scale,
+  CheckSquare,
 } from 'lucide-react';
 import { useUIPreferences, type CertificationStatus } from '../stores/uiPreferencesStore';
+import {
+  useQualityRules,
+  DEFAULT_THRESHOLDS,
+  DEFAULT_FIELD_REQUIREMENTS,
+  DEFAULT_DIMENSION_WEIGHTS,
+  type RequirementLevel,
+  type FieldRequirements,
+} from '../stores/qualityRulesStore';
 import './SettingsPage.css';
 
+// Field labels for display
+const FIELD_LABELS: Record<keyof FieldRequirements, string> = {
+  description: 'Description',
+  owner: 'Owner',
+  tags: 'Tags',
+  terms: 'Business Terms',
+  lineage: 'Lineage',
+  certificate: 'Certification',
+  classifications: 'Classifications',
+  readme: 'README',
+  domain: 'Domain',
+};
+
+const REQUIREMENT_OPTIONS: { value: RequirementLevel; label: string }[] = [
+  { value: 'required', label: 'Required' },
+  { value: 'recommended', label: 'Recommended' },
+  { value: 'optional', label: 'Optional' },
+  { value: 'hidden', label: 'Hidden' },
+];
+
 export function SettingsPage() {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const {
     // Display
     density,
@@ -57,6 +93,46 @@ export function SettingsPage() {
     // Reset
     resetToDefaults,
   } = useUIPreferences();
+
+  const {
+    rules,
+    setThresholds,
+    setFieldRequirements,
+    setDimensionWeights,
+    resetToDefaults: resetQualityRules,
+    exportRules,
+    importRules,
+  } = useQualityRules();
+
+  const handleExportRules = () => {
+    const json = exportRules();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'quality-rules.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportRules = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      const success = importRules(content);
+      if (!success) {
+        alert('Failed to import rules. Please check the file format.');
+      }
+    };
+    reader.readAsText(file);
+    // Reset the input so the same file can be selected again
+    e.target.value = '';
+  };
+
+  const totalWeight = Object.values(rules.dimensionWeights).reduce((a, b) => a + b, 0);
 
   const toggleCertificationStatus = (status: CertificationStatus) => {
     if (globalCertificationFilter.includes(status)) {
@@ -162,6 +238,258 @@ export function SettingsPage() {
                   />
                   <span className="toggle-slider" />
                 </label>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Quality Rules Section */}
+        <Card className="settings-card">
+          <div className="settings-card-header">
+            <Sliders size={20} />
+            <div>
+              <h3>Quality Scoring Rules</h3>
+              <p>Configure how quality scores are calculated</p>
+            </div>
+            <div className="settings-card-actions">
+              <button
+                className="settings-icon-button"
+                onClick={handleExportRules}
+                title="Export Rules"
+              >
+                <Download size={16} />
+              </button>
+              <button
+                className="settings-icon-button"
+                onClick={() => fileInputRef.current?.click()}
+                title="Import Rules"
+              >
+                <Upload size={16} />
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                onChange={handleImportRules}
+                style={{ display: 'none' }}
+              />
+            </div>
+          </div>
+          <div className="settings-card-body">
+            {/* Score Thresholds */}
+            <div className="setting-section">
+              <div className="setting-section-header">
+                <Scale size={16} />
+                <span>Score Thresholds</span>
+              </div>
+              <p className="setting-section-description">
+                Define the boundaries for quality score bands (Excellent &gt; Good &gt; Fair &gt; Poor &gt; Critical)
+              </p>
+              <div className="threshold-grid">
+                <div className="threshold-item">
+                  <label>Excellent</label>
+                  <div className="threshold-input-wrapper">
+                    <span className="threshold-prefix">≥</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={rules.thresholds.excellent}
+                      onChange={(e) =>
+                        setThresholds({
+                          ...rules.thresholds,
+                          excellent: Math.min(100, Math.max(0, parseInt(e.target.value, 10) || 0)),
+                        })
+                      }
+                      className="threshold-input"
+                    />
+                  </div>
+                  <div
+                    className="threshold-preview"
+                    style={{ background: 'var(--score-excellent)' }}
+                  />
+                </div>
+                <div className="threshold-item">
+                  <label>Good</label>
+                  <div className="threshold-input-wrapper">
+                    <span className="threshold-prefix">≥</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={rules.thresholds.good}
+                      onChange={(e) =>
+                        setThresholds({
+                          ...rules.thresholds,
+                          good: Math.min(100, Math.max(0, parseInt(e.target.value, 10) || 0)),
+                        })
+                      }
+                      className="threshold-input"
+                    />
+                  </div>
+                  <div
+                    className="threshold-preview"
+                    style={{ background: 'var(--score-good)' }}
+                  />
+                </div>
+                <div className="threshold-item">
+                  <label>Fair</label>
+                  <div className="threshold-input-wrapper">
+                    <span className="threshold-prefix">≥</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={rules.thresholds.fair}
+                      onChange={(e) =>
+                        setThresholds({
+                          ...rules.thresholds,
+                          fair: Math.min(100, Math.max(0, parseInt(e.target.value, 10) || 0)),
+                        })
+                      }
+                      className="threshold-input"
+                    />
+                  </div>
+                  <div
+                    className="threshold-preview"
+                    style={{ background: 'var(--score-fair)' }}
+                  />
+                </div>
+                <div className="threshold-item">
+                  <label>Poor</label>
+                  <div className="threshold-input-wrapper">
+                    <span className="threshold-prefix">≥</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={rules.thresholds.poor}
+                      onChange={(e) =>
+                        setThresholds({
+                          ...rules.thresholds,
+                          poor: Math.min(100, Math.max(0, parseInt(e.target.value, 10) || 0)),
+                        })
+                      }
+                      className="threshold-input"
+                    />
+                  </div>
+                  <div
+                    className="threshold-preview"
+                    style={{ background: 'var(--score-poor)' }}
+                  />
+                </div>
+                <div className="threshold-item">
+                  <label>Critical</label>
+                  <div className="threshold-input-wrapper">
+                    <span className="threshold-prefix">&lt;</span>
+                    <span className="threshold-value">{rules.thresholds.poor}</span>
+                  </div>
+                  <div
+                    className="threshold-preview"
+                    style={{ background: 'var(--score-critical)' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Field Requirements */}
+            <div className="setting-section">
+              <div className="setting-section-header">
+                <CheckSquare size={16} />
+                <span>Field Requirements</span>
+              </div>
+              <p className="setting-section-description">
+                Set which metadata fields are required, recommended, or optional for quality scoring
+              </p>
+              <div className="field-requirements-grid">
+                {(Object.keys(FIELD_LABELS) as Array<keyof FieldRequirements>).map((field) => (
+                  <div key={field} className="field-requirement-row">
+                    <span className="field-requirement-label">{FIELD_LABELS[field]}</span>
+                    <select
+                      value={rules.fieldRequirements[field]}
+                      onChange={(e) =>
+                        setFieldRequirements({
+                          ...rules.fieldRequirements,
+                          [field]: e.target.value as RequirementLevel,
+                        })
+                      }
+                      className={`field-requirement-select requirement-${rules.fieldRequirements[field]}`}
+                    >
+                      {REQUIREMENT_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Dimension Weights */}
+            <div className="setting-section">
+              <div className="setting-section-header">
+                <BarChart3 size={16} />
+                <span>Dimension Weights</span>
+                <span className={`weight-total ${totalWeight === 100 ? 'valid' : 'invalid'}`}>
+                  Total: {totalWeight}%
+                </span>
+              </div>
+              <p className="setting-section-description">
+                Adjust the importance of each quality dimension in the overall score calculation
+              </p>
+              <div className="dimension-weights-grid">
+                {(['completeness', 'accuracy', 'timeliness', 'consistency', 'usability'] as const).map(
+                  (dim) => (
+                    <div key={dim} className="dimension-weight-row">
+                      <label className="dimension-weight-label">
+                        {dim.charAt(0).toUpperCase() + dim.slice(1)}
+                      </label>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={rules.dimensionWeights[dim]}
+                        onChange={(e) =>
+                          setDimensionWeights({
+                            ...rules.dimensionWeights,
+                            [dim]: parseInt(e.target.value, 10),
+                          })
+                        }
+                        className="dimension-weight-slider"
+                      />
+                      <span className="dimension-weight-value">{rules.dimensionWeights[dim]}%</span>
+                    </div>
+                  )
+                )}
+              </div>
+              {totalWeight !== 100 && (
+                <p className="weight-warning">
+                  Weights should total 100% for accurate scoring. Current total: {totalWeight}%
+                </p>
+              )}
+            </div>
+
+            {/* Reset Quality Rules */}
+            <div className="setting-row">
+              <div className="setting-info">
+                <RotateCcw size={16} />
+                <div>
+                  <label>Reset Quality Rules</label>
+                  <span>Restore scoring rules to defaults</span>
+                </div>
+              </div>
+              <div className="setting-control">
+                <button
+                  className="secondary-button"
+                  onClick={() => {
+                    if (confirm('Reset quality rules to defaults?')) {
+                      resetQualityRules();
+                    }
+                  }}
+                >
+                  Reset Rules
+                </button>
               </div>
             </div>
           </div>

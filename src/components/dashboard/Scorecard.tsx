@@ -4,6 +4,7 @@ import { Card, Button, Tooltip } from '../shared';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
 import { useAssetPreviewStore } from '../../stores/assetPreviewStore';
+import { useQualityRules } from '../../stores/qualityRulesStore';
 import { ScoringSettings } from '../settings/ScoringSettings';
 import { getQualityDimensionInfo, getScoreBandInfo } from '../../constants/metadataDescriptions';
 import type { AssetWithScores } from '../../stores/scoresStore';
@@ -11,26 +12,11 @@ import './Scorecard.css';
 
 // Circular gauge component
 function CircularGauge({ value, size = 160 }: { value: number; size?: number }) {
+  const { getScoreColor, getScoreLabel } = useQualityRules();
   const strokeWidth = 12;
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const offset = circumference - (value / 100) * circumference;
-
-  const getColor = (score: number) => {
-    if (score >= 80) return 'var(--score-excellent, #22c55e)';
-    if (score >= 60) return 'var(--score-good, #84cc16)';
-    if (score >= 40) return 'var(--score-fair, #eab308)';
-    if (score >= 20) return 'var(--score-poor, #f97316)';
-    return 'var(--score-critical, #ef4444)';
-  };
-
-  const getLabel = (score: number) => {
-    if (score >= 80) return 'Excellent';
-    if (score >= 60) return 'Good';
-    if (score >= 40) return 'Fair';
-    if (score >= 20) return 'Poor';
-    return 'Critical';
-  };
 
   return (
     <div className="circular-gauge" style={{ width: size, height: size }}>
@@ -50,7 +36,7 @@ function CircularGauge({ value, size = 160 }: { value: number; size?: number }) 
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={getColor(value)}
+          stroke={getScoreColor(value)}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -60,8 +46,8 @@ function CircularGauge({ value, size = 160 }: { value: number; size?: number }) 
         />
       </svg>
       <div className="gauge-content">
-        <div className="gauge-value" style={{ color: getColor(value) }}>{value}</div>
-        <div className="gauge-label">{getLabel(value)}</div>
+        <div className="gauge-value" style={{ color: getScoreColor(value) }}>{value}</div>
+        <div className="gauge-label">{getScoreLabel(value)}</div>
       </div>
     </div>
   );
@@ -81,14 +67,7 @@ function DimensionBar({
   dimensionKey: string;
   onClick?: () => void;
 }) {
-  const getColor = (score: number) => {
-    if (score >= 80) return 'var(--score-excellent, #22c55e)';
-    if (score >= 60) return 'var(--score-good, #84cc16)';
-    if (score >= 40) return 'var(--score-fair, #eab308)';
-    if (score >= 20) return 'var(--score-poor, #f97316)';
-    return 'var(--score-critical, #ef4444)';
-  };
-
+  const { getScoreColor } = useQualityRules();
   const dimInfo = getQualityDimensionInfo(dimensionKey);
   const bandInfo = getScoreBandInfo(value);
 
@@ -130,14 +109,14 @@ function DimensionBar({
         <div className="dimension-header">
           <span className="dimension-icon">{icon}</span>
           <span className="dimension-name">{label}</span>
-          <span className="dimension-value" style={{ color: getColor(value) }}>{value}</span>
+          <span className="dimension-value" style={{ color: getScoreColor(value) }}>{value}</span>
         </div>
         <div className="dimension-track">
           <div
             className="dimension-fill"
             style={{
               width: `${value}%`,
-              backgroundColor: getColor(value)
+              backgroundColor: getScoreColor(value)
             }}
           />
         </div>
@@ -150,6 +129,7 @@ export function Scorecard() {
   const { setAssetsWithScores, assetsWithScores } = useScoresStore();
   const { contextAssets, getAssetCount } = useAssetContextStore();
   const { openPreview } = useAssetPreviewStore();
+  const { calculateWeightedScore } = useQualityRules();
   const [showSettings, setShowSettings] = useState(false);
   const trend = 4.2; // Placeholder for trend logic
 
@@ -199,9 +179,7 @@ export function Scorecard() {
     };
   }, [assetsWithScores]);
 
-  const overallScore = scores
-    ? Math.round((scores.completeness + scores.accuracy + scores.timeliness + scores.consistency + scores.usability) / 5)
-    : 0;
+  const overallScore = scores ? calculateWeightedScore(scores) : 0;
 
   const refreshScores = () => {
     if (contextAssets.length > 0) {

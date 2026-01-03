@@ -9,7 +9,7 @@ import { memo, useMemo } from 'react';
 import { TrendingUp, TrendingDown, Minus, ArrowRight } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts';
 import { InfoTooltip } from '../shared';
-import { getScoreBand } from '../../utils/scoreThresholds';
+import { useQualityRules } from '../../stores/qualityRulesStore';
 import type { AssetWithScores } from '../../stores/scoresStore';
 import './TrendSparklines.css';
 
@@ -46,6 +46,8 @@ export const TrendSparklines = memo(function TrendSparklines({
   assets,
   periods = 7,
 }: TrendSparklinesProps) {
+  const { getScoreBand } = useQualityRules();
+
   // Calculate current averages and simulate historical trend data
   const trends = useMemo(() => {
     if (assets.length === 0) return [];

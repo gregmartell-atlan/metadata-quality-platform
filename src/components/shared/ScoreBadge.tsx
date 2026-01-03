@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { getScoreBand, getScoreLabel } from '../../utils/scoreThresholds';
+import { useQualityRules } from '../../stores/qualityRulesStore';
 import './ScoreBadge.css';
 
 interface ScoreBadgeProps {
@@ -8,6 +8,8 @@ interface ScoreBadgeProps {
 }
 
 export const ScoreBadge = memo(function ScoreBadge({ score, showLabel = false }: ScoreBadgeProps) {
+  const { getScoreBand, getScoreLabel } = useQualityRules();
+
   return (
     <span className={`score-badge ${getScoreBand(score)}`}>
       {score}
