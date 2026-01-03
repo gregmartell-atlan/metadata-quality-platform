@@ -73,15 +73,25 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-muted);
-  opacity: 0.6;
-  transition: opacity var(--transition-fast), color var(--transition-fast);
+  width: 18px;
+  height: 18px;
+  color: var(--color-blue-400);
+  background: var(--state-info-bg);
+  border-radius: var(--radius-full);
+  opacity: 1;
+  transition: all var(--transition-fast);
   cursor: help;
 }
 
 .info-tooltip-icon:hover {
-  opacity: 1;
-  color: var(--color-blue-500);
+  background: var(--color-blue-500);
+  color: #ffffff;
+  transform: scale(1.1);
+}
+
+.info-tooltip-icon svg {
+  width: 12px;
+  height: 12px;
 }
 
 /* Metadata Tooltip */

@@ -433,6 +433,67 @@
   color: #ffffff;
 }
 
+/* Stat Card Tooltip with Calculation Details */
+.stat-card-tooltip {
+  min-width: 280px;
+}
+
+.stat-card-tooltip strong {
+  display: block;
+  margin-bottom: var(--space-2);
+}
+
+.stat-card-tooltip p {
+  margin: 0 0 var(--space-3) 0;
+  color: var(--color-gray-300);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.stat-card-tooltip-calc {
+  background: rgba(255, 255, 255, 0.05);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  border-left: 2px solid var(--color-blue-400);
+}
+
+.tooltip-calc-label {
+  display: block;
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-gray-400);
+  margin-bottom: var(--space-2);
+}
+
+.tooltip-calc-formula {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-300);
+  margin-bottom: var(--space-2);
+  padding: var(--space-2);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-sm);
+}
+
+.tooltip-calc-result {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.tooltip-calc-value {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: #ffffff;
+}
+
+.tooltip-calc-breakdown {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-400);
+}
+
 /* Responsive sidebar adjustment */
 .app:has(.sidebar.collapsed) .analytics-page {
   margin-left: 56px;

@@ -85,30 +85,53 @@ export function AnalyticsPage() {
           {/* Summary Stats */}
           <div className="analytics-stats-section">
             {/* Overall Completeness */}
-            <div className="stat-card stat-card-primary">
-              <div className="stat-card-header">
-                <BarChart3 size={18} />
-                <span>Overall Completeness</span>
-                <InfoTooltip
-                  content={
-                    <div>
-                      <strong>What is Overall Completeness?</strong>
-                      <p style={{ margin: '8px 0 0 0' }}>
-                        The average metadata coverage across all fields and asset types.
-                        Higher percentages indicate better documentation of your data assets.
-                      </p>
+            <Tooltip
+              content={
+                <div className="stat-card-tooltip">
+                  <strong>Overall Completeness</strong>
+                  <p>The average metadata coverage across all fields and asset types.</p>
+                  <div className="stat-card-tooltip-calc">
+                    <span className="tooltip-calc-label">Calculation:</span>
+                    <div className="tooltip-calc-formula">
+                      Sum of all field coverages ÷ Number of tracked fields
                     </div>
-                  }
-                />
+                    <div className="tooltip-calc-result">
+                      <span className="tooltip-calc-value">{overallCompleteness}%</span>
+                      <span className="tooltip-calc-breakdown">
+                        ({fieldCoverage.length} fields tracked)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              }
+              position="bottom"
+              maxWidth={320}
+            >
+              <div className="stat-card stat-card-primary">
+                <div className="stat-card-header">
+                  <BarChart3 size={18} />
+                  <span>Overall Completeness</span>
+                  <InfoTooltip
+                    content={
+                      <div>
+                        <strong>What is Overall Completeness?</strong>
+                        <p style={{ margin: '8px 0 0 0' }}>
+                          The average metadata coverage across all fields and asset types.
+                          Higher percentages indicate better documentation of your data assets.
+                        </p>
+                      </div>
+                    }
+                  />
+                </div>
+                <div className="stat-card-value">{overallCompleteness}%</div>
+                <div className="stat-card-progress">
+                  <div
+                    className="stat-card-progress-fill"
+                    style={{ width: `${overallCompleteness}%` }}
+                  />
+                </div>
               </div>
-              <div className="stat-card-value">{overallCompleteness}%</div>
-              <div className="stat-card-progress">
-                <div
-                  className="stat-card-progress-fill"
-                  style={{ width: `${overallCompleteness}%` }}
-                />
-              </div>
-            </div>
+            </Tooltip>
 
             {/* Top Gaps */}
             <div className="stat-card">
