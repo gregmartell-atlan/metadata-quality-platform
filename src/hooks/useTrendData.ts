@@ -165,11 +165,14 @@ export function useTrendComparison(
 
         const calcAverage = (data: DailyAggregation[]) => {
           if (data.length === 0) return null;
-          const totalScore = data.reduce((sum, d) => sum + d.scores.overall, 0);
-          const totalAssets = data.reduce((sum, d) => sum + d.totalAssets, 0);
+          // Single-pass aggregation
+          const totals = data.reduce(
+            (acc, d) => ({ score: acc.score + d.scores.overall, assets: acc.assets + d.totalAssets }),
+            { score: 0, assets: 0 }
+          );
           return {
-            avgScore: Math.round(totalScore / data.length),
-            avgAssets: Math.round(totalAssets / data.length),
+            avgScore: Math.round(totals.score / data.length),
+            avgAssets: Math.round(totals.assets / data.length),
           };
         };
 

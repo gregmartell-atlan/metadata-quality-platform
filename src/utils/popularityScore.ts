@@ -123,3 +123,33 @@ export function hasPopularityData(asset: AtlanAsset): boolean {
     asset.starredCount
   );
 }
+
+/**
+ * Popularity info computed in a single pass
+ * Use this when you need multiple popularity attributes to avoid redundant calculations
+ */
+export interface PopularityInfo {
+  score: number;
+  isHot: boolean;
+  isWarm: boolean;
+  label: 'Hot' | 'Warm' | 'Normal';
+  display: number;
+}
+
+/**
+ * Get all popularity info in a single calculation
+ * More efficient than calling individual functions separately
+ */
+export function getPopularityInfo(asset: AtlanAsset): PopularityInfo {
+  const score = calculatePopularityScore(asset);
+  const isHot = score > HOT_THRESHOLD;
+  const isWarm = score > WARM_THRESHOLD && !isHot;
+
+  return {
+    score,
+    isHot,
+    isWarm,
+    label: isHot ? 'Hot' : isWarm ? 'Warm' : 'Normal',
+    display: Math.round(score * 10 * 10) / 10,
+  };
+}
