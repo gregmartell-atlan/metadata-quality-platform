@@ -16,11 +16,34 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
+.card-header-borderless {
+  border-bottom: none;
+}
+
 .card-title {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--text-default);
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.card-title-icon {
+  color: var(--text-muted);
+  font-size: var(--font-size-base);
+}
+
+.card-info-icon {
+  color: var(--text-muted);
+  cursor: help;
+  opacity: 0.6;
+  transition: opacity var(--transition-fast);
+}
+
+.card-info-icon:hover {
+  opacity: 1;
 }
 
 .card-subtitle {
@@ -31,7 +54,38 @@
 
 .card-actions {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-1);
+}
+
+/* Toggle button group (# %) */
+.card-toggle-group {
+  display: flex;
+  align-items: center;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+}
+
+.card-toggle-btn {
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.card-toggle-btn:hover {
+  color: var(--text-default);
+}
+
+.card-toggle-btn.active {
+  background: var(--bg-surface);
+  color: var(--text-default);
+  box-shadow: var(--shadow-xs);
 }
 
 .card-action {

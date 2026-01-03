@@ -9,14 +9,14 @@
 /* Main Content Area */
 .main-content {
   flex: 1;
-  margin-left: 240px;
+  margin-left: 220px;
   min-height: 100vh;
   transition: margin-left var(--transition-slow);
 }
 
 /* Adjust when sidebar is collapsed */
 .app:has(.sidebar.collapsed) .main-content {
-  margin-left: 64px;
+  margin-left: 56px;
 }
 
 /* Page Container */
@@ -86,7 +86,7 @@
 /* Page placeholder */
 .page-placeholder {
   flex: 1;
-  margin-left: 240px;
+  margin-left: 220px;
   padding: var(--space-6);
   display: flex;
   align-items: center;
@@ -97,7 +97,7 @@
 }
 
 .app:has(.sidebar.collapsed) .page-placeholder {
-  margin-left: 64px;
+  margin-left: 56px;
 }
 
 /* Loading States */
