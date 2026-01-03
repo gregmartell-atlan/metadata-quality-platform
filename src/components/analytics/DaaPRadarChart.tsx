@@ -116,10 +116,14 @@ export function DaaPRadarChart({ matrix }: DaaPRadarChartProps) {
     { subject: 'Reusable', score: dimensionBreakdowns['Reusable'].score, fullMark: 100 },
   ];
 
-  // Custom tooltip content with dimension descriptions and breakdown
-  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: { subject: string; score: number } }> }) => {
-    if (active && payload && payload.length) {
-      const { subject, score } = payload[0].payload;
+  // Custom tooltip renderer for Recharts
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const renderCustomTooltip = (props: any) => {
+    const { active, payload } = props;
+    if (active && payload && payload.length > 0) {
+      const dataPoint = payload[0].payload;
+      const subject = dataPoint.subject;
+      const score = dataPoint.score;
       const dimensionInfo = getDimensionInfo(subject);
       const bandInfo = getScoreBandInfo(score);
       const breakdown = dimensionBreakdowns[subject];
@@ -209,7 +213,7 @@ export function DaaPRadarChart({ matrix }: DaaPRadarChartProps) {
               fill="var(--color-blue-500)"
               fillOpacity={0.3}
             />
-            <RechartsTooltip content={<CustomTooltip />} />
+            <RechartsTooltip content={renderCustomTooltip} />
           </RadarChart>
         </ResponsiveContainer>
       </div>
