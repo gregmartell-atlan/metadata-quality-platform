@@ -29,6 +29,7 @@ export function AutoSnapshotProvider({
   const { initialize, shouldAutoSnapshot, recordAutoSnapshot, saveAssetGUIDs } = useSessionStore();
   const lastDataHashRef = useRef<string | null>(null);
   const isInitializedRef = useRef(false);
+  const isProcessingRef = useRef(false);
 
   // Initialize session store on mount
   useEffect(() => {
@@ -46,13 +47,18 @@ export function AutoSnapshotProvider({
     // Create hash to detect data changes
     const dataHash = `${assetsWithScores.length}-${stats.assetsWithDescriptions}-${stats.certifiedAssets}-${stats.assetsWithOwners}`;
 
-    // Skip if already processed
+    // Skip if already processed or currently processing
     if (lastDataHashRef.current === dataHash) return;
+    if (isProcessingRef.current) return;
+
+    let cancelled = false;
 
     const captureAndPersist = async () => {
+      isProcessingRef.current = true;
       try {
         // Check if enough time has passed for auto-snapshot
         const shouldCapture = await shouldAutoSnapshot();
+        if (cancelled) return;
 
         if (shouldCapture) {
           logger.info('[AutoSnapshotProvider] Capturing daily aggregation...');
@@ -65,6 +71,7 @@ export function AutoSnapshotProvider({
 
           // Save to trend data
           await storageService.addDailyAggregation(aggregation);
+          if (cancelled) return;
 
           // Record snapshot time
           await recordAutoSnapshot();
@@ -76,19 +83,31 @@ export function AutoSnapshotProvider({
           });
         }
 
+        if (cancelled) return;
+
         // Save asset GUIDs for session restore
         const guids = assetsWithScores.map((a) => a.asset.guid);
         await saveAssetGUIDs(guids);
 
-        // Update hash
-        lastDataHashRef.current = dataHash;
+        // Update hash only if not cancelled
+        if (!cancelled) {
+          lastDataHashRef.current = dataHash;
+        }
 
       } catch (error) {
-        logger.error('[AutoSnapshotProvider] Failed to capture snapshot:', error);
+        if (!cancelled) {
+          logger.error('[AutoSnapshotProvider] Failed to capture snapshot:', error);
+        }
+      } finally {
+        isProcessingRef.current = false;
       }
     };
 
-    captureAndPersist();
+    void captureAndPersist();
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     assetsWithScores,
     stats,
