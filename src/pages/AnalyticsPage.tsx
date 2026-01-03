@@ -5,9 +5,12 @@
  */
 
 import { useState } from 'react';
+import { Download, BarChart3, AlertTriangle, Lightbulb } from 'lucide-react';
 import { AppHeader } from '../components/layout/AppHeader';
-import { DaaPRadarChart } from '../components/analytics';
-import { Card } from '../components/shared';
+import { DaaPRadarChart, CoverageHeatmap } from '../components/analytics';
+import { Card, Button } from '../components/shared';
+import { useFieldCoverage, getOverallCompleteness, getTopGaps } from '../hooks/useFieldCoverage';
+import { exportAnalyticsReport } from '../utils/analyticsExport';
 import type { RequirementsMatrix } from '../types/requirements';
 import './AnalyticsPage.css';
 
@@ -51,100 +54,90 @@ const sampleMatrix: RequirementsMatrix = {
   ],
 };
 
-// DaaP dimension descriptions
-const daapDimensions = [
-  {
-    name: 'Discoverable',
-    description: 'Assets can be easily found via search, tags, and glossary terms',
-    fields: ['description', 'owners', 'tags', 'terms'],
-    color: 'var(--color-blue-500)',
-  },
-  {
-    name: 'Addressable',
-    description: 'Assets have clear, unique identifiers and location paths',
-    fields: ['qualifiedName', 'connection', 'database', 'schema'],
-    color: 'var(--color-success-500)',
-  },
-  {
-    name: 'Trustworthy',
-    description: 'Assets have lineage, certification, and quality indicators',
-    fields: ['lineage', 'certificate', 'quality'],
-    color: 'var(--color-warning-500)',
-  },
-  {
-    name: 'Self-describing',
-    description: 'Assets have rich metadata and documentation',
-    fields: ['readme', 'columns', 'dataTypes'],
-    color: '#8b5cf6',
-  },
-  {
-    name: 'Interoperable',
-    description: 'Assets follow standards and can integrate with other systems',
-    fields: ['standards', 'formats'],
-    color: '#ec4899',
-  },
-  {
-    name: 'Secure',
-    description: 'Assets have proper classification and access controls',
-    fields: ['classifications', 'access'],
-    color: '#f97316',
-  },
-  {
-    name: 'Reusable',
-    description: 'Assets are documented for reuse across teams',
-    fields: ['usage', 'popularity', 'consumers'],
-    color: '#06b6d4',
-  },
-];
-
 export function AnalyticsPage() {
   const [matrix] = useState<RequirementsMatrix>(sampleMatrix);
+  const fieldCoverage = useFieldCoverage();
+  const overallCompleteness = getOverallCompleteness(fieldCoverage);
+  const topGaps = getTopGaps(fieldCoverage, 3);
+
+  const handleExport = () => {
+    exportAnalyticsReport(matrix, fieldCoverage);
+  };
 
   return (
     <div className="analytics-page">
-      <AppHeader title="DaaP Analytics" subtitle="Data as a Product compliance overview" />
+      <AppHeader title="DaaP Analytics" subtitle="Data as a Product compliance overview">
+        <Button variant="secondary" onClick={handleExport}>
+          <Download size={16} />
+          Export Report
+        </Button>
+      </AppHeader>
 
       <div className="analytics-content">
-        <div className="analytics-grid">
-          {/* Main radar chart */}
-          <div className="analytics-chart-section">
+        {/* Top Row: Radar Chart & Summary Stats */}
+        <div className="analytics-top-grid">
+          {/* Radar Chart */}
+          <div className="analytics-radar-section">
             <DaaPRadarChart matrix={matrix} />
           </div>
 
-          {/* Dimension breakdown */}
-          <div className="analytics-dimensions-section">
-            <Card>
-              <div className="card-header">
-                <h3 className="card-title">DaaP Dimensions</h3>
+          {/* Summary Stats */}
+          <div className="analytics-stats-section">
+            {/* Overall Completeness */}
+            <div className="stat-card stat-card-primary">
+              <div className="stat-card-header">
+                <BarChart3 size={18} />
+                <span>Overall Completeness</span>
               </div>
-              <div className="card-body">
-                <div className="dimension-list">
-                  {daapDimensions.map((dim) => (
-                    <div key={dim.name} className="dimension-item">
-                      <div
-                        className="dimension-indicator"
-                        style={{ background: dim.color }}
-                      />
-                      <div className="dimension-info">
-                        <div className="dimension-name">{dim.name}</div>
-                        <div className="dimension-description">{dim.description}</div>
-                        <div className="dimension-fields">
-                          {dim.fields.map((field) => (
-                            <span key={field} className="dimension-field">
-                              {field}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div className="stat-card-value">{overallCompleteness}%</div>
+              <div className="stat-card-progress">
+                <div
+                  className="stat-card-progress-fill"
+                  style={{ width: `${overallCompleteness}%` }}
+                />
               </div>
-            </Card>
+            </div>
+
+            {/* Top Gaps */}
+            <div className="stat-card">
+              <div className="stat-card-header">
+                <AlertTriangle size={18} />
+                <span>Top Gaps</span>
+              </div>
+              <ul className="gap-list">
+                {topGaps.map((field) => (
+                  <li key={field.field} className="gap-item">
+                    <span className="gap-field">{field.field}</span>
+                    <span className="gap-value">{Math.round(field.percentage)}%</span>
+                  </li>
+                ))}
+                {topGaps.length === 0 && (
+                  <li className="gap-item gap-empty">No data available</li>
+                )}
+              </ul>
+            </div>
+
+            {/* AI Recommendation */}
+            <div className="stat-card stat-card-recommendation">
+              <div className="stat-card-header">
+                <Lightbulb size={18} />
+                <span>AI Recommendation</span>
+              </div>
+              <p className="recommendation-text">
+                Based on your current coverage, focusing on{' '}
+                <strong>Descriptions</strong> and <strong>Owners</strong> for your Tables
+                would yield the highest impact on your Data Trust score.
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Requirements summary */}
+        {/* Coverage Heatmap */}
+        <div className="analytics-heatmap-section">
+          <CoverageHeatmap coverage={fieldCoverage} />
+        </div>
+
+        {/* Requirements Matrix Table */}
         <div className="analytics-requirements">
           <Card>
             <div className="card-header">
