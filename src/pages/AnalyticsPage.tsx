@@ -148,7 +148,7 @@ const sampleAssetsData = generateSampleAssets();
 
 export function AnalyticsPage() {
   const [matrix] = useState<RequirementsMatrix>(sampleMatrix);
-  const fieldCoverage = useFieldCoverage();
+  const { coverage: fieldCoverage, isDemo: isCoverageDemo, assetCount } = useFieldCoverage();
   const overallCompleteness = getOverallCompleteness(fieldCoverage);
   const topGaps = getTopGaps(fieldCoverage, 3);
   const { assetsWithScores: storeAssets } = useScoresStore();
@@ -159,6 +159,9 @@ export function AnalyticsPage() {
   const assetsWithScores = useMemo(() => {
     return isUsingDemoData ? sampleAssetsData : storeAssets;
   }, [isUsingDemoData, storeAssets]);
+
+  // Determine if we're showing demo data anywhere
+  const showingDemoData = isUsingDemoData || isCoverageDemo;
 
   const handleExport = () => {
     exportAnalyticsReport(matrix, fieldCoverage);
@@ -316,17 +319,29 @@ export function AnalyticsPage() {
           <CoverageHeatmap coverage={fieldCoverage} />
         </div>
 
+        {/* Demo Data Banner - shows once at top if any section is using demo data */}
+        {showingDemoData && (
+          <div className="demo-data-banner">
+            <Info size={16} />
+            <span>
+              Showing sample data for demonstration. Drag assets from the Asset Browser to see real metrics.
+            </span>
+          </div>
+        )}
+
+        {/* Real Data Summary - shows when we have real assets */}
+        {!showingDemoData && assetCount > 0 && (
+          <div className="real-data-banner">
+            <BarChart3 size={16} />
+            <span>
+              Analyzing <strong>{assetCount}</strong> assets from your Atlan workspace.
+            </span>
+          </div>
+        )}
+
         {/* Quality Impact & Remediation */}
         {assetsWithScores.length > 0 && (
           <>
-            {isUsingDemoData && (
-              <div className="demo-data-banner">
-                <Info size={16} />
-                <span>
-                  Showing sample data for demonstration. Drag assets from the Asset Browser to see real metrics.
-                </span>
-              </div>
-            )}
             <div className="analytics-impact-section">
               <QualityImpactMatrix assets={assetsWithScores} onAssetClick={handleAssetClick} />
               <RemediationPrioritizer assets={assetsWithScores} onAssetClick={handleAssetClick} />
