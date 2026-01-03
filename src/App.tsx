@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useEffect, lazy, Suspense } from 'react';
-import { ErrorBoundary } from './components/shared';
+import { ErrorBoundary, GlobalSearch, useGlobalSearch } from './components/shared';
 import { Sidebar } from './components/layout/Sidebar';
 import { AssetPreviewDrawer } from './components/layout/AssetPreviewDrawer';
 import { AssetInspectorModal } from './components/AssetInspector/AssetInspectorModal';
@@ -31,6 +31,7 @@ function PageLoader() {
 function App() {
   const { theme, density } = useUIPreferences();
   const { selectedAsset, isOpen: isPreviewOpen, closePreview } = useAssetPreviewStore();
+  const { isOpen: isSearchOpen, closeSearch } = useGlobalSearch();
 
   // Apply theme and density to document
   useEffect(() => {
@@ -79,6 +80,9 @@ function App() {
             isOpen={isPreviewOpen}
             onClose={closePreview}
           />
+
+          {/* Global Search (Cmd/Ctrl + K) */}
+          <GlobalSearch isOpen={isSearchOpen} onClose={closeSearch} />
         </div>
       </BrowserRouter>
     </ErrorBoundary>
