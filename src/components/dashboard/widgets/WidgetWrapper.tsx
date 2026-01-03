@@ -4,10 +4,11 @@
  */
 
 import { useState, useMemo, memo, type ReactNode } from 'react';
-import { GripVertical, Settings, X, RefreshCw } from 'lucide-react';
+import { GripVertical, Settings, X, RefreshCw, Pin, PinOff } from 'lucide-react';
 import { Card } from '../../shared/Card';
 import { getWidgetsByCategory, type WidgetMetadata } from './registry';
 import { useDashboardLayoutStore } from '../../../stores/dashboardLayoutStore';
+import { usePinnedWidgetsStore } from '../../../stores/pinnedWidgetsStore';
 
 interface WidgetWrapperProps {
   title: string;
@@ -32,6 +33,18 @@ export const WidgetWrapper = memo(function WidgetWrapper({
 }: WidgetWrapperProps) {
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const { currentLayouts, updateLayout } = useDashboardLayoutStore();
+  const { isPinned, pinWidget, unpinWidget } = usePinnedWidgetsStore();
+
+  const widgetIsPinned = widgetType ? isPinned(widgetType) : false;
+
+  const handleTogglePin = () => {
+    if (!widgetType) return;
+    if (widgetIsPinned) {
+      unpinWidget(widgetType);
+    } else {
+      pinWidget(widgetType);
+    }
+  };
 
   // Memoize widget grouping - only compute when type selector is shown
   const widgetsByCategory = useMemo(() => {
@@ -79,25 +92,46 @@ export const WidgetWrapper = memo(function WidgetWrapper({
         </div>
       }
       actions={
-        isEditMode ? (
-          <div className="widget-actions" style={{ display: 'flex', gap: '4px', position: 'relative' }}>
-            {/* Change widget type button */}
+        <div className="widget-actions" style={{ display: 'flex', gap: '4px', position: 'relative' }}>
+          {/* Pin to home button - always visible */}
+          {widgetType && (
             <button
-              onClick={() => setShowTypeSelector(!showTypeSelector)}
+              onClick={handleTogglePin}
               className="widget-action-btn"
-              title="Change widget type"
+              title={widgetIsPinned ? 'Unpin from Home' : 'Pin to Home'}
               style={{
-                background: showTypeSelector ? 'var(--bg-hover)' : 'transparent',
+                background: widgetIsPinned ? 'var(--bg-selected)' : 'transparent',
                 border: 'none',
-                color: 'var(--text-muted)',
+                color: widgetIsPinned ? 'var(--button-primary-bg)' : 'var(--text-muted)',
                 cursor: 'pointer',
                 padding: '4px',
                 borderRadius: '4px',
                 display: 'flex'
               }}
             >
-              <RefreshCw size={14} />
+              {widgetIsPinned ? <PinOff size={14} /> : <Pin size={14} />}
             </button>
+          )}
+
+          {isEditMode && (
+            <>
+              {/* Change widget type button */}
+              <button
+                onClick={() => setShowTypeSelector(!showTypeSelector)}
+                className="widget-action-btn"
+                title="Change widget type"
+                style={{
+                  background: showTypeSelector ? 'var(--bg-hover)' : 'transparent',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  borderRadius: '4px',
+                  display: 'flex'
+                }}
+              >
+                <RefreshCw size={14} />
+              </button>
 
             {/* Widget type dropdown */}
             {showTypeSelector && (
@@ -201,8 +235,9 @@ export const WidgetWrapper = memo(function WidgetWrapper({
                 <X size={14} />
               </button>
             )}
-          </div>
-        ) : undefined
+            </>
+          )}
+        </div>
       }
     >
       {children}

@@ -5,6 +5,7 @@ import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
 import { useAssetPreviewStore } from '../../stores/assetPreviewStore';
 import { useQualityRules } from '../../stores/qualityRulesStore';
+import { useQualitySnapshotStore } from '../../stores/qualitySnapshotStore';
 import { getQualityDimensionInfo, getScoreBandInfo } from '../../constants/metadataDescriptions';
 import type { AssetWithScores } from '../../stores/scoresStore';
 import './Scorecard.css';
@@ -129,7 +130,7 @@ export function Scorecard() {
   const { contextAssets, getAssetCount } = useAssetContextStore();
   const { openPreview } = useAssetPreviewStore();
   const { calculateWeightedScore } = useQualityRules();
-  const trend = 4.2; // Placeholder for trend logic
+  const { snapshots } = useQualitySnapshotStore();
 
   const effectiveCount = contextAssets.length > 0 ? getAssetCount() : assetsWithScores.length;
 
@@ -179,6 +180,22 @@ export function Scorecard() {
 
   const overallScore = scores ? calculateWeightedScore(scores) : 0;
 
+  // Calculate trend from snapshots (compare to most recent snapshot)
+  const trend = useMemo(() => {
+    if (snapshots.length === 0 || overallScore === 0) return null;
+
+    // Get the most recent snapshot
+    const recentSnapshot = snapshots[0];
+    if (!recentSnapshot?.overallScores?.overall) return null;
+
+    // Calculate percent change
+    const previousScore = recentSnapshot.overallScores.overall;
+    if (previousScore === 0) return null;
+
+    const change = ((overallScore - previousScore) / previousScore) * 100;
+    return Math.round(change * 10) / 10; // Round to 1 decimal
+  }, [snapshots, overallScore]);
+
   const refreshScores = () => {
     if (contextAssets.length > 0) {
       setAssetsWithScores(contextAssets);
@@ -213,12 +230,18 @@ export function Scorecard() {
               </div>
             </Tooltip>
             <div className="gauge-meta">
-              <Tooltip content="Percent change compared to the previous month's average score">
-                <span className={`score-trend ${trend >= 0 ? 'up' : 'down'}`}>
-                  {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}%
-                </span>
-              </Tooltip>
-              <span className="trend-label">vs last month</span>
+              {trend !== null ? (
+                <>
+                  <Tooltip content="Percent change compared to the most recent snapshot">
+                    <span className={`score-trend ${trend >= 0 ? 'up' : 'down'}`}>
+                      {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}%
+                    </span>
+                  </Tooltip>
+                  <span className="trend-label">vs last snapshot</span>
+                </>
+              ) : (
+                <span className="trend-label">No previous snapshot</span>
+              )}
             </div>
           </div>
 

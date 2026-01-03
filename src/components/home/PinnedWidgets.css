@@ -1,0 +1,92 @@
+/**
+ * PinnedWidgets Styles
+ */
+
+.pinned-widgets-section .section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pinned-widgets-section .section-title svg {
+  color: var(--button-primary-bg);
+}
+
+.pinned-widgets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: var(--space-4);
+}
+
+.pinned-widget-container {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.pinned-widget-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.pinned-widget-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-default);
+}
+
+.pinned-widget-unpin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.pinned-widget-unpin:hover {
+  background: var(--bg-hover);
+  color: var(--color-red-500);
+}
+
+.pinned-widget-content {
+  flex: 1;
+  min-height: 200px;
+  max-height: 400px;
+  overflow: auto;
+}
+
+/* Override dashboard widget styles for home page context */
+.pinned-widget-content .dashboard-widget {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.pinned-widget-content .widget-header {
+  display: none;
+}
+
+.pinned-widget-content .widget-actions {
+  display: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .pinned-widgets-grid {
+    grid-template-columns: 1fr;
+  }
+}

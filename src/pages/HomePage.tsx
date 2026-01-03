@@ -7,6 +7,7 @@
 import { Link } from 'react-router-dom';
 import { AppHeader } from '../components/layout/AppHeader';
 import { Card } from '../components/shared';
+import { PinnedWidgets } from '../components/home/PinnedWidgets';
 import {
   LayoutDashboard,
   Table2,
@@ -133,6 +134,9 @@ export function HomePage() {
             </div>
           </div>
         </div>
+
+        {/* Pinned Widgets Section */}
+        <PinnedWidgets />
 
         {/* Quick Actions Grid */}
         <section className="home-section">

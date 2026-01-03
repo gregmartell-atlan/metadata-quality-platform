@@ -4,7 +4,7 @@
  */
 
 import { useMemo } from 'react';
-import { GitBranch, ArrowUp, ArrowDown, AlertCircle } from 'lucide-react';
+import { GitBranch, AlertCircle } from 'lucide-react';
 import { WidgetWrapper } from './WidgetWrapper';
 import type { WidgetProps } from './registry';
 import { useScoresStore } from '../../../stores/scoresStore';
@@ -13,23 +13,20 @@ export function LineageCoverageWidget({ widgetId, widgetType, isEditMode }: Widg
   const { assetsWithScores } = useScoresStore();
 
   const lineageStats = useMemo(() => {
-    const withLineage = assetsWithScores.filter(a => a.__hasLineage).length;
+    // Count assets with lineage flag set
+    const withLineage = assetsWithScores.filter(a => {
+      // Access __hasLineage from the asset or metadata depending on structure
+      const asset = a as any;
+      return asset.__hasLineage === true || asset.asset?.__hasLineage === true;
+    }).length;
     const total = assetsWithScores.length;
     const coverage = total > 0 ? Math.round((withLineage / total) * 100) : 0;
-
-    // Mock upstream/downstream counts (in production, get from lineage API)
-    const withUpstream = Math.floor(withLineage * 0.7);
-    const withDownstream = Math.floor(withLineage * 0.8);
-    const bidirectional = Math.floor(withLineage * 0.5);
 
     return {
       withLineage,
       withoutLineage: total - withLineage,
       total,
-      coverage,
-      withUpstream,
-      withDownstream,
-      bidirectional
+      coverage
     };
   }, [assetsWithScores]);
 
@@ -80,28 +77,27 @@ export function LineageCoverageWidget({ widgetId, widgetType, isEditMode }: Widg
           </div>
         </div>
 
-        {/* Upstream/Downstream breakdown */}
+        {/* Stats breakdown */}
         <div style={{ display: 'flex', gap: '12px' }}>
           <div style={{ flex: 1, padding: '12px', background: 'var(--bg-tertiary)', borderRadius: '6px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-              <ArrowUp size={14} color="var(--accent-primary)" />
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Upstream</span>
-            </div>
-            <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{lineageStats.withUpstream}</div>
-          </div>
-          <div style={{ flex: 1, padding: '12px', background: 'var(--bg-tertiary)', borderRadius: '6px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-              <ArrowDown size={14} color="var(--accent-secondary)" />
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Downstream</span>
-            </div>
-            <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{lineageStats.withDownstream}</div>
-          </div>
-          <div style={{ flex: 1, padding: '12px', background: 'var(--bg-tertiary)', borderRadius: '6px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
               <GitBranch size={14} color="var(--score-excellent)" />
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Both</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Connected</span>
             </div>
-            <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{lineageStats.bidirectional}</div>
+            <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{lineageStats.withLineage}</div>
+          </div>
+          <div style={{ flex: 1, padding: '12px', background: 'var(--bg-tertiary)', borderRadius: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+              <AlertCircle size={14} color="var(--score-critical)" />
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Orphaned</span>
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{lineageStats.withoutLineage}</div>
+          </div>
+          <div style={{ flex: 1, padding: '12px', background: 'var(--bg-tertiary)', borderRadius: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Total</span>
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{lineageStats.total}</div>
           </div>
         </div>
       </div>
