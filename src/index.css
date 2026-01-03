@@ -140,12 +140,14 @@
   --focus-ring: 0 0 0 3px rgba(34, 91, 210, 0.15);
   --focus-ring-danger: 0 0 0 3px rgba(239, 68, 68, 0.15);
 
-  /* Sidebar */
-  --sidebar-bg: #ffffff;
-  --sidebar-border: var(--color-gray-200);
-  --sidebar-item-hover: var(--color-gray-100);
-  --sidebar-item-active-bg: var(--color-blue-50);
-  --sidebar-item-active-text: var(--color-blue-600);
+  /* Sidebar - Atlan dark navy style */
+  --sidebar-bg: #1a1a2e;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-text: rgba(255, 255, 255, 0.7);
+  --sidebar-text-muted: rgba(255, 255, 255, 0.5);
+  --sidebar-item-hover: rgba(255, 255, 255, 0.08);
+  --sidebar-item-active-bg: rgba(59, 130, 246, 0.25);
+  --sidebar-item-active-text: #ffffff;
 
   /* Card */
   --card-bg: #ffffff;
