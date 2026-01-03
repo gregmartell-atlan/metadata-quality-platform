@@ -8,7 +8,7 @@
 import { useMemo, memo, useState } from 'react';
 import { ChevronDown, ChevronUp, Users, AlertTriangle } from 'lucide-react';
 import { InfoTooltip } from '../shared';
-import { getScoreBand, getScoreClass } from '../../utils/scoreThresholds';
+import { getScoreClass } from '../../utils/scoreThresholds';
 import type { AssetWithScores } from '../../stores/scoresStore';
 import './OwnerAccountability.css';
 
@@ -122,14 +122,11 @@ export const OwnerAccountability = memo(function OwnerAccountability({
   // Find critical owners (overall < 40)
   const criticalOwners = ownerData.filter((o) => o.overall < 40);
 
-  const SortIcon = ({ field }: { field: SortField }) =>
-    sortField === field ? (
-      sortDirection === 'asc' ? (
-        <ChevronUp size={12} />
-      ) : (
-        <ChevronDown size={12} />
-      )
-    ) : null;
+  // Render sort icon inline to avoid creating components during render
+  const renderSortIcon = (field: SortField) => {
+    if (sortField !== field) return null;
+    return sortDirection === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />;
+  };
 
   return (
     <div className="owner-accountability">
@@ -164,16 +161,16 @@ export const OwnerAccountability = memo(function OwnerAccountability({
             <tr>
               <th className="owner-col" onClick={() => handleSort('owner')}>
                 <span>Owner</span>
-                <SortIcon field="owner" />
+                {renderSortIcon('owner')}
               </th>
               <th className="count-col" onClick={() => handleSort('assetCount')}>
                 <span>Assets</span>
-                <SortIcon field="assetCount" />
+                {renderSortIcon('assetCount')}
               </th>
               {DIMENSIONS.map((dim) => (
                 <th key={dim} className="score-col" onClick={() => handleSort(dim)}>
                   <span>{DIMENSION_LABELS[dim]}</span>
-                  <SortIcon field={dim} />
+                  {renderSortIcon(dim)}
                 </th>
               ))}
             </tr>
