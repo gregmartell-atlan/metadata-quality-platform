@@ -5,13 +5,15 @@
  */
 
 import { useState } from 'react';
-import { Download, BarChart3, AlertTriangle, Lightbulb, HelpCircle } from 'lucide-react';
+import { Download, BarChart3, AlertTriangle, Lightbulb } from 'lucide-react';
 import { AppHeader } from '../components/layout/AppHeader';
-import { DaaPRadarChart, CoverageHeatmap } from '../components/analytics';
+import { DaaPRadarChart, CoverageHeatmap, QualityImpactMatrix, RemediationPrioritizer } from '../components/analytics';
 import { Card, Button, Tooltip, InfoTooltip } from '../components/shared';
 import { useFieldCoverage, getOverallCompleteness, getTopGaps } from '../hooks/useFieldCoverage';
-import { getFieldInfo, getDimensionInfo } from '../constants/metadataDescriptions';
+import { getFieldInfo } from '../constants/metadataDescriptions';
 import { exportAnalyticsReport } from '../utils/analyticsExport';
+import { useScoresStore } from '../stores/scoresStore';
+import { useAssetInspectorStore } from '../stores/assetInspectorStore';
 import type { RequirementsMatrix } from '../types/requirements';
 import './AnalyticsPage.css';
 
@@ -60,9 +62,15 @@ export function AnalyticsPage() {
   const fieldCoverage = useFieldCoverage();
   const overallCompleteness = getOverallCompleteness(fieldCoverage);
   const topGaps = getTopGaps(fieldCoverage, 3);
+  const { assetsWithScores } = useScoresStore();
+  const { openInspector } = useAssetInspectorStore();
 
   const handleExport = () => {
     exportAnalyticsReport(matrix, fieldCoverage);
+  };
+
+  const handleAssetClick = (asset: typeof assetsWithScores[0]) => {
+    openInspector(asset.asset);
   };
 
   return (
@@ -209,6 +217,14 @@ export function AnalyticsPage() {
         <div className="analytics-heatmap-section">
           <CoverageHeatmap coverage={fieldCoverage} />
         </div>
+
+        {/* Quality Impact & Remediation - only show if we have assets */}
+        {assetsWithScores.length > 0 && (
+          <div className="analytics-impact-section">
+            <QualityImpactMatrix assets={assetsWithScores} onAssetClick={handleAssetClick} />
+            <RemediationPrioritizer assets={assetsWithScores} onAssetClick={handleAssetClick} />
+          </div>
+        )}
 
         {/* Requirements Matrix Table */}
         <div className="analytics-requirements">

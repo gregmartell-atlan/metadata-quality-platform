@@ -1,0 +1,211 @@
+/* Quality Impact Matrix Styles */
+
+.quality-impact-matrix {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.matrix-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.matrix-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.matrix-title h3 {
+  margin: 0;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-default);
+}
+
+.matrix-alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-red-50);
+  border: 1px solid var(--color-red-200);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  color: var(--color-red-700);
+}
+
+[data-theme="dark"] .matrix-alert {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: var(--color-red-400);
+}
+
+.matrix-content {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.matrix-chart {
+  flex: 1;
+  position: relative;
+  min-height: 300px;
+}
+
+.matrix-quadrant-labels {
+  position: absolute;
+  inset: 20px;
+  pointer-events: none;
+}
+
+.quadrant-label {
+  position: absolute;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.quadrant-label.top-left {
+  top: 10px;
+  left: 30px;
+  color: var(--color-red-500);
+}
+
+.quadrant-label.top-right {
+  top: 10px;
+  right: 10px;
+  color: var(--color-green-500);
+}
+
+.quadrant-label.bottom-left {
+  bottom: 30px;
+  left: 30px;
+  color: var(--color-gray-500);
+}
+
+.quadrant-label.bottom-right {
+  bottom: 30px;
+  right: 10px;
+  color: var(--color-blue-500);
+}
+
+.matrix-legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 160px;
+}
+
+.matrix-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.matrix-legend-item:hover {
+  background: var(--bg-hover);
+  border-color: var(--quad-color);
+}
+
+.matrix-legend-item.selected {
+  background: var(--bg-hover);
+  border-color: var(--quad-color);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--quad-color) 20%, transparent);
+}
+
+.legend-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+}
+
+.legend-content {
+  flex: 1;
+}
+
+.legend-name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-default);
+}
+
+.legend-count {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+/* Tooltip */
+.matrix-tooltip {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  box-shadow: var(--shadow-lg);
+  min-width: 140px;
+}
+
+.matrix-tooltip-name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-default);
+  margin-bottom: var(--space-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.matrix-tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-1);
+}
+
+.matrix-tooltip-value {
+  font-weight: var(--font-weight-medium);
+  color: var(--text-default);
+}
+
+.matrix-tooltip-quadrant {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-default);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .matrix-content {
+    flex-direction: column;
+  }
+
+  .matrix-legend {
+    flex-direction: row;
+    flex-wrap: wrap;
+    min-width: unset;
+  }
+
+  .matrix-legend-item {
+    flex: 1 1 calc(50% - var(--space-1));
+  }
+}

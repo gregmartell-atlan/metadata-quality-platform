@@ -498,3 +498,17 @@
 .app:has(.sidebar.collapsed) .analytics-page {
   margin-left: 56px;
 }
+
+/* Impact Section - Quality Matrix & Remediation */
+.analytics-impact-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+
+@media (max-width: 1400px) {
+  .analytics-impact-section {
+    grid-template-columns: 1fr;
+  }
+}
