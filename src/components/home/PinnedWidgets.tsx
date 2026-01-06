@@ -7,7 +7,6 @@ import { useMemo } from 'react';
 import { Pin, X } from 'lucide-react';
 import { usePinnedWidgetsStore } from '../../stores/pinnedWidgetsStore';
 import { getWidgetMetadata } from '../dashboard/widgets/registry';
-import { Card } from '../shared';
 import './PinnedWidgets.css';
 
 export function PinnedWidgets() {

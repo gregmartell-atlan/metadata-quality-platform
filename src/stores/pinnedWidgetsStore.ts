@@ -12,7 +12,7 @@ import { persist } from 'zustand/middleware';
 export interface PinnedWidget {
   widgetType: string;
   pinnedAt: number;
-  config?: Record<string, any>;
+  config?: Record<string, unknown>;
 }
 
 /**
@@ -23,7 +23,7 @@ interface PinnedWidgetsState {
   maxPinned: number;
 
   // Actions
-  pinWidget: (widgetType: string, config?: Record<string, any>) => void;
+  pinWidget: (widgetType: string, config?: Record<string, unknown>) => void;
   unpinWidget: (widgetType: string) => void;
   isPinned: (widgetType: string) => boolean;
   reorderPinned: (fromIndex: number, toIndex: number) => void;

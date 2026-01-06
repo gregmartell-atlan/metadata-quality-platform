@@ -15,9 +15,8 @@ export function LineageCoverageWidget({ widgetId, widgetType, isEditMode }: Widg
   const lineageStats = useMemo(() => {
     // Count assets with lineage flag set
     const withLineage = assetsWithScores.filter(a => {
-      // Access __hasLineage from the asset or metadata depending on structure
-      const asset = a as any;
-      return asset.__hasLineage === true || asset.asset?.__hasLineage === true;
+      // Access __hasLineage from the asset property
+      return a.asset?.__hasLineage === true;
     }).length;
     const total = assetsWithScores.length;
     const coverage = total > 0 ? Math.round((withLineage / total) * 100) : 0;
