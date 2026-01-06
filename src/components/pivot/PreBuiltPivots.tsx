@@ -106,8 +106,8 @@ export function PreBuiltPivots() {
     });
   }, [contextAssets, selectedAssets, sourceAssets, context, getAssetCount]);
   
-  // State for configurable pivot
-  const [rowDimensions, setRowDimensions] = useState<RowDimension[]>(['connection', 'type']);
+  // State for configurable pivot - include full hierarchy: connection → database → schema → type
+  const [rowDimensions, setRowDimensions] = useState<RowDimension[]>(['connection', 'database', 'schema', 'type']);
   const [measures, setMeasures] = useState<Measure[]>(['assetCount', 'descriptionCoverage', 'ownerCoverage', 'avgCompleteness']);
   const [measureDisplayModes, setMeasureDisplayModes] = useState<Map<Measure, MeasureDisplayMode>>(new Map());
 
@@ -327,7 +327,7 @@ export function PreBuiltPivots() {
     
     const pivot = buildDynamicPivot(
       sourceAssets,
-      ['connection'],
+      ['connection', 'database', 'schema'],
       ['assetCount', 'hasUpstream', 'hasDownstream', 'fullLineage', 'orphaned'],
       undefined,
       scoresMap
@@ -345,23 +345,33 @@ export function PreBuiltPivots() {
   const lineageRows = useMemo(() => {
     if (!lineagePivot) return [];
     const rows: (string | React.ReactNode)[][] = [];
-    
+
     lineagePivot.rows.forEach((row) => {
       const connection = row.dimensionValues.connection || 'Unknown';
+      const database = row.dimensionValues.database || '—';
+      const schema = row.dimensionValues.schema || '—';
       const assetGuids = row.assetGuids;
       const groupAssets = sourceAssets.filter((a) => assetGuids.includes(a.guid));
-      
+
       const hasUpstream = calculateMeasure('hasUpstream', groupAssets);
       const hasDownstream = calculateMeasure('hasDownstream', groupAssets);
       const fullLineage = calculateMeasure('fullLineage', groupAssets);
       const orphaned = calculateMeasure('orphaned', groupAssets);
       const total = groupAssets.length;
       const coverage = total > 0 ? Math.round(((total - orphaned) / total) * 100) : 0;
-      
+
       const cells: (string | React.ReactNode)[] = [
         <span key="conn" className="dim-cell">
           <span className="dim-icon connection">{getConnectionIcon(connection)}</span>
           {connection}
+        </span>,
+        <span key="db" className="dim-cell">
+          <Database size={14} style={{ opacity: 0.6, marginRight: 4 }} />
+          {database}
+        </span>,
+        <span key="schema" className="dim-cell">
+          <Table size={14} style={{ opacity: 0.6, marginRight: 4 }} />
+          {schema}
         </span>,
         <span key="total" className="numeric">{total}</span>,
         <div key="upstream" className="bar-cell">
@@ -402,6 +412,8 @@ export function PreBuiltPivots() {
 
     rows.push([
       <strong key="total-label">Total</strong>,
+      <span key="total-db"></span>,
+      <span key="total-schema"></span>,
       <span key="total-assets" className="numeric"><strong>{totalAssets}</strong></span>,
       <strong key="total-upstream">{avgUpstream}%</strong>,
       <strong key="total-downstream">{avgDownstream}%</strong>,
@@ -705,6 +717,8 @@ export function PreBuiltPivots() {
           <PivotTable
             headers={[
               'Connection',
+              'Database',
+              'Schema',
               'Total',
               'Has Upstream',
               'Has Downstream',

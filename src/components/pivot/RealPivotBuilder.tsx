@@ -43,7 +43,7 @@ export function RealPivotBuilder(props: RealPivotBuilderProps = {}) {
   const [hierarchyFilter, setHierarchyFilter] = useState<HierarchyFilterType>({
     level: 'connection',
   });
-  const [rowDimensions, setRowDimensions] = useState<RowDimension[]>(['connection', 'type']);
+  const [rowDimensions, setRowDimensions] = useState<RowDimension[]>(['connection', 'database', 'schema', 'type']);
   const [measures, setMeasures] = useState<Measure[]>(['assetCount', 'completeness', 'accuracy', 'overall']);
 
   // Use context assets if available, fallback to selectedAssets for backward compatibility
