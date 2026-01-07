@@ -9,7 +9,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MessageCircle, Sparkles, ArrowRight, Loader2 } from 'lucide-react';
-import { getConnectors } from '../../services/atlan/api';
+import { getConnectors, isConfigured } from '../../services/atlan/api';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
 import { loadAssetsForContext, generateContextLabel } from '../../utils/assetContextLoader';
@@ -33,8 +33,12 @@ export function SmartQuestions() {
   const { setContext, setLoading } = useAssetContextStore();
   const { stats } = useScoresStore();
 
-  // Load connectors on mount
+  // Load connectors on mount (only if API is configured)
   useEffect(() => {
+    if (!isConfigured()) {
+      setIsLoading(false);
+      return;
+    }
     getConnectors()
       .then(setConnectors)
       .catch(console.error)

@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { Snowflake, Database, Link2, ArrowRight, Loader2, RefreshCw } from 'lucide-react';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
-import { getConnectors } from '../../services/atlan/api';
+import { getConnectors, isConfigured } from '../../services/atlan/api';
 import { loadAssetsForContext, generateContextLabel } from '../../utils/assetContextLoader';
 import type { ConnectorInfo } from '../../services/atlan/api';
 import './ConnectionCards.css';
@@ -44,8 +44,12 @@ export function ConnectionCards() {
     return scores;
   }, [assetsWithScores]);
 
-  // Load connectors on mount
+  // Load connectors on mount (only if API is configured)
   useEffect(() => {
+    if (!isConfigured()) {
+      setIsLoading(false);
+      return;
+    }
     getConnectors()
       .then(setConnectors)
       .catch(console.error)
