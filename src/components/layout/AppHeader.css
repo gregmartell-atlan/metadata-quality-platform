@@ -217,6 +217,31 @@
   color: var(--text-default);
 }
 
+/* Context Drop Zone (compact drop target for drag-and-drop) */
+.context-drop-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 2px dashed var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.context-drop-zone:hover {
+  border-color: var(--border-default);
+  color: var(--text-default);
+}
+
+.context-drop-zone.drag-over {
+  border-color: var(--button-primary-bg);
+  background: color-mix(in srgb, var(--button-primary-bg) 10%, transparent);
+  color: var(--button-primary-bg);
+}
+
 /* Context Dropdown */
 .context-dropdown {
   position: absolute;

@@ -1,0 +1,262 @@
+/* Connection Cards - Home page connection overview */
+
+.connection-cards-section {
+  margin-bottom: var(--space-6);
+}
+
+.connection-cards-section .section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.connection-cards-section .section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-default);
+  margin: 0;
+}
+
+.connection-cards-section .refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.connection-cards-section .refresh-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-default);
+  color: var(--text-default);
+}
+
+.connection-cards-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-8);
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.connection-cards-loading .spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Cards Grid */
+.connection-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+/* Individual Card */
+.connection-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: all var(--transition-fast);
+}
+
+.connection-card:hover {
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-md);
+}
+
+/* Score-based border accent */
+.connection-card.excellent {
+  border-left: 3px solid var(--state-success-text);
+}
+
+.connection-card.good {
+  border-left: 3px solid var(--score-good);
+}
+
+.connection-card.fair {
+  border-left: 3px solid var(--state-warning-text);
+}
+
+.connection-card.poor {
+  border-left: 3px solid var(--state-danger-text);
+}
+
+/* Card Header */
+.connection-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.connection-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.connection-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.connection-name {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-default);
+  margin: 0 0 var(--space-1) 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.connection-count {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+/* Card Body */
+.connection-card-body {
+  padding: var(--space-4);
+  flex: 1;
+}
+
+.score-display {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.score-value {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-default);
+}
+
+.score-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+
+.score-bar {
+  height: 4px;
+  background: var(--bg-subtle);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: var(--space-2);
+}
+
+.score-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width var(--transition-normal);
+}
+
+.score-bar-fill.excellent {
+  background: var(--state-success-text);
+}
+
+.score-bar-fill.good {
+  background: var(--score-good);
+}
+
+.score-bar-fill.fair {
+  background: var(--state-warning-text);
+}
+
+.score-bar-fill.poor {
+  background: var(--state-danger-text);
+}
+
+.critical-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  background: var(--state-danger-bg);
+  border: 1px solid var(--state-danger-border);
+  border-radius: var(--radius-sm);
+  color: var(--state-danger-text);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.no-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.no-score span:first-child {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  margin-bottom: var(--space-1);
+}
+
+.no-score-hint {
+  font-size: var(--font-size-xs);
+  opacity: 0.8;
+}
+
+/* Explore Button */
+.explore-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3);
+  background: var(--button-primary-bg);
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--button-primary-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.explore-btn:hover:not(:disabled) {
+  background: var(--button-primary-bg-hover);
+}
+
+.explore-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.explore-btn .spin {
+  animation: spin 1s linear infinite;
+}

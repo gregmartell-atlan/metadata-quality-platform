@@ -14,7 +14,8 @@ export {
   SkeletonTable,
   SkeletonChart,
 } from './LoadingState';
-export { GlobalSearch, useGlobalSearch } from './GlobalSearch';
+export { GlobalSearch } from './GlobalSearch';
+export { useGlobalSearch } from '../../hooks/useGlobalSearch';
 export {
   DashboardFilters,
   useDashboardFilters,

@@ -8,13 +8,14 @@ import { Link } from 'react-router-dom';
 import { AppHeader } from '../components/layout/AppHeader';
 import { Card } from '../components/shared';
 import { PinnedWidgets } from '../components/home/PinnedWidgets';
+import { ConnectionCards } from '../components/home/ConnectionCards';
+import { SmartQuestions } from '../components/home/SmartQuestions';
 import {
   LayoutDashboard,
   Table2,
   GitBranch,
   Radar,
   TrendingUp,
-  Users,
   Target,
   AlertCircle,
   CheckCircle2,
@@ -134,6 +135,12 @@ export function HomePage() {
             </div>
           </div>
         </div>
+
+        {/* Smart Questions - Natural language prompts */}
+        <SmartQuestions />
+
+        {/* Connection Cards - Quick access to explore connections */}
+        <ConnectionCards />
 
         {/* Pinned Widgets Section */}
         <PinnedWidgets />

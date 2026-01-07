@@ -1,4 +1,5 @@
 import { AppHeader } from '../layout/AppHeader';
+import { BreadcrumbNav } from '../layout/BreadcrumbNav';
 import { Button } from '../shared';
 import { useState, useEffect, useCallback } from 'react';
 import { Edit3, LayoutTemplate, Save, RotateCcw, Camera, Clock } from 'lucide-react';
@@ -155,6 +156,9 @@ export function ExecutiveDashboard() {
           Refresh
         </Button>
       </AppHeader>
+
+      {/* Breadcrumb navigation for context */}
+      <BreadcrumbNav />
 
       {/* Edit mode banner */}
       {isEditMode && (

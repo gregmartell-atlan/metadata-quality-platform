@@ -8,8 +8,11 @@
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Search, X, Clock, FileText, Database, User, Tag, ArrowRight } from 'lucide-react';
+import { Search, X, Clock, Database, ArrowRight, Server, Layers, Home, LayoutDashboard, Table2, GitBranch, Radar, Settings } from 'lucide-react';
 import { useScoresStore } from '../../stores/scoresStore';
+import { useAssetContextStore } from '../../stores/assetContextStore';
+import { getConnectors, getDatabases, getSchemas } from '../../services/atlan/api';
+import { loadAssetsForContext, generateContextLabel } from '../../utils/assetContextLoader';
 import { useNavigate } from 'react-router-dom';
 import './GlobalSearch.css';
 
@@ -18,11 +21,11 @@ const MAX_RECENT_SEARCHES = 5;
 
 interface SearchResult {
   id: string;
-  type: 'asset' | 'page' | 'action';
+  type: 'asset' | 'page' | 'action' | 'connection' | 'database' | 'schema' | 'recent';
   title: string;
   subtitle?: string;
   icon: React.ReactNode;
-  action: () => void;
+  action: () => void | Promise<void>;
 }
 
 interface GlobalSearchProps {
@@ -36,9 +39,13 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [connections, setConnections] = useState<SearchResult[]>([]);
+  const [databases, setDatabases] = useState<SearchResult[]>([]);
+  const [schemas, setSchemas] = useState<SearchResult[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
   const { assetsWithScores } = useScoresStore();
+  const { setContext, setLoading, contextHistory } = useAssetContextStore();
   const navigate = useNavigate();
 
   // Load recent searches from localStorage
@@ -46,7 +53,7 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        setRecentSearches(JSON.parse(stored));
+        setRecentSearches(JSON.parse(stored)); // eslint-disable-line react-hooks/set-state-in-effect
       }
     } catch {
       // Ignore localStorage errors
@@ -57,10 +64,117 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus();
-      setQuery('');
+      setQuery(''); // eslint-disable-line react-hooks/set-state-in-effect
       setSelectedIndex(0);
     }
   }, [isOpen]);
+
+  // Load context data (connections, databases, schemas)
+  const loadContextData = useCallback(async () => {
+    try {
+      const connectors = await getConnectors();
+      const connItems: SearchResult[] = connectors.map(conn => ({
+        id: `conn-${conn.id}`,
+        type: 'connection',
+        title: conn.name,
+        subtitle: `${conn.assetCount.toLocaleString()} assets`,
+        icon: <Server size={16} />,
+        action: async () => {
+          setLoading(true);
+          onClose();
+          try {
+            const label = generateContextLabel('connection', { connectionName: conn.name });
+            const assets = await loadAssetsForContext('connection', { connectionName: conn.name });
+            setContext('connection', { connectionName: conn.name }, label, assets);
+            navigate('/dashboard');
+          } catch (err) {
+            console.error('Failed to load connection:', err);
+          }
+          setLoading(false);
+        }
+      }));
+      setConnections(connItems);
+
+      // Load databases and schemas for top connections
+      const allDatabases: SearchResult[] = [];
+      const allSchemas: SearchResult[] = [];
+
+      for (const conn of connectors.slice(0, 3)) {
+        try {
+          const dbs = await getDatabases(conn.qualifiedName);
+          dbs.forEach(db => {
+            allDatabases.push({
+              id: `db-${db.guid}`,
+              type: 'database',
+              title: db.name,
+              subtitle: conn.name,
+              icon: <Database size={16} />,
+              action: async () => {
+                setLoading(true);
+                onClose();
+                try {
+                  const params = { connectionName: conn.name, databaseName: db.name };
+                  const label = generateContextLabel('database', params);
+                  const assets = await loadAssetsForContext('database', params);
+                  setContext('database', params, label, assets);
+                  navigate('/dashboard');
+                } catch (err) {
+                  console.error('Failed to load database:', err);
+                }
+                setLoading(false);
+              }
+            });
+          });
+
+          // Load schemas for top databases
+          for (const db of dbs.slice(0, 2)) {
+            try {
+              const schemaList = await getSchemas(db.qualifiedName);
+              schemaList.forEach(schema => {
+                allSchemas.push({
+                  id: `schema-${schema.guid}`,
+                  type: 'schema',
+                  title: schema.name,
+                  subtitle: `${conn.name} / ${db.name}`,
+                  icon: <Layers size={16} />,
+                  action: async () => {
+                    setLoading(true);
+                    onClose();
+                    try {
+                      const params = { connectionName: conn.name, databaseName: db.name, schemaName: schema.name };
+                      const label = generateContextLabel('schema', params);
+                      const assets = await loadAssetsForContext('schema', params);
+                      setContext('schema', params, label, assets);
+                      navigate('/dashboard');
+                    } catch (err) {
+                      console.error('Failed to load schema:', err);
+                    }
+                    setLoading(false);
+                  }
+                });
+              });
+            } catch {
+              // Skip schema loading errors
+            }
+          }
+        } catch {
+          // Skip connection loading errors
+        }
+      }
+
+      setDatabases(allDatabases);
+      setSchemas(allSchemas);
+    } catch (err) {
+      console.error('Failed to load context data:', err);
+    }
+  }, [setContext, setLoading, onClose, navigate]);
+
+  // Load connections/databases/schemas when modal opens
+  useEffect(() => {
+    if (isOpen && connections.length === 0) {
+      loadContextData(); // eslint-disable-line react-hooks/set-state-in-effect
+    }
+  }, [isOpen, connections.length, loadContextData]);
 
   // Save search to recent
   const saveRecentSearch = useCallback((search: string) => {
@@ -85,60 +199,128 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
       type: 'page',
       title: 'Home',
       subtitle: 'Dashboard overview',
-      icon: <FileText size={16} />,
-      action: () => navigate('/'),
+      icon: <Home size={16} />,
+      action: () => { onClose(); navigate('/'); },
     },
     {
       id: 'page-dashboard',
       type: 'page',
       title: 'Executive Dashboard',
       subtitle: 'Quality metrics and KPIs',
-      icon: <FileText size={16} />,
-      action: () => navigate('/dashboard'),
+      icon: <LayoutDashboard size={16} />,
+      action: () => { onClose(); navigate('/dashboard'); },
     },
     {
       id: 'page-analytics',
       type: 'page',
       title: 'DaaP Analytics',
       subtitle: 'Data as a Product insights',
-      icon: <FileText size={16} />,
-      action: () => navigate('/analytics'),
+      icon: <Radar size={16} />,
+      action: () => { onClose(); navigate('/analytics'); },
     },
     {
       id: 'page-pivot',
       type: 'page',
       title: 'Pivot Builder',
       subtitle: 'Custom pivot tables',
-      icon: <FileText size={16} />,
-      action: () => navigate('/pivot'),
+      icon: <Table2 size={16} />,
+      action: () => { onClose(); navigate('/pivot'); },
     },
     {
       id: 'page-lineage',
       type: 'page',
       title: 'Lineage Explorer',
       subtitle: 'Data lineage visualization',
-      icon: <FileText size={16} />,
-      action: () => navigate('/lineage'),
+      icon: <GitBranch size={16} />,
+      action: () => { onClose(); navigate('/lineage'); },
     },
     {
       id: 'page-settings',
       type: 'page',
       title: 'Settings',
       subtitle: 'Application preferences',
-      icon: <FileText size={16} />,
-      action: () => navigate('/settings'),
+      icon: <Settings size={16} />,
+      action: () => { onClose(); navigate('/settings'); },
     },
-  ], [navigate]);
+  ], [navigate, onClose]);
 
-  // Search results
+  // Recent context history
+  const recentContextItems: SearchResult[] = useMemo(() => {
+    return (contextHistory || []).slice(0, 5).map((hist, idx) => ({
+      id: `recent-ctx-${idx}`,
+      type: 'recent' as const,
+      title: hist.label,
+      subtitle: `Recent ${hist.type}`,
+      icon: <Clock size={16} />,
+      action: async () => {
+        setLoading(true);
+        onClose();
+        try {
+          const assets = await loadAssetsForContext(hist.type, hist.params);
+          setContext(hist.type, hist.params, hist.label, assets);
+          navigate('/dashboard');
+        } catch (err) {
+          console.error('Failed to load recent context:', err);
+        }
+        setLoading(false);
+      }
+    }));
+  }, [contextHistory, setContext, setLoading, navigate, onClose]);
+
+  // Search results - combines pages, connections, databases, schemas, assets
   const results = useMemo(() => {
-    const searchResults: SearchResult[] = [];
     const lowerQuery = query.toLowerCase().trim();
 
+    // Helper to filter items
+    const filterFn = (item: SearchResult) =>
+      item.title.toLowerCase().includes(lowerQuery) ||
+      (item.subtitle?.toLowerCase().includes(lowerQuery) || false);
+
     if (!lowerQuery) {
-      // Show recent searches and pages when no query
-      return pages.slice(0, 4);
+      // No query: show recent context, pages, then connections
+      const combined: SearchResult[] = [];
+
+      // Add recent context items first
+      if (recentContextItems.length > 0) {
+        combined.push(...recentContextItems.slice(0, 3));
+      }
+
+      // Add pages
+      combined.push(...pages.slice(0, 4));
+
+      // Add connections
+      if (connections.length > 0) {
+        combined.push(...connections.slice(0, 3));
+      }
+
+      return combined;
     }
+
+    // With query: search across all categories
+    const searchResults: SearchResult[] = [];
+
+    // Search recent context
+    recentContextItems.filter(filterFn).forEach(item => searchResults.push(item));
+
+    // Search pages
+    pages.filter(filterFn).forEach(item => {
+      searchResults.push({
+        ...item,
+        action: () => {
+          saveRecentSearch(query);
+          item.action();
+        },
+      });
+    });
+
+    // Search connections
+    connections.filter(filterFn).slice(0, 5).forEach(item => searchResults.push(item));
+
+    // Search databases
+    databases.filter(filterFn).slice(0, 5).forEach(item => searchResults.push(item));
+
+    // Search schemas
+    schemas.filter(filterFn).slice(0, 5).forEach(item => searchResults.push(item));
 
     // Search assets
     assetsWithScores.forEach((item) => {
@@ -158,7 +340,6 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
           subtitle: `${item.metadata.assetType} • ${item.metadata.connection}`,
           icon: <Database size={16} />,
           action: () => {
-            // Could open asset inspector or navigate
             saveRecentSearch(query);
             onClose();
           },
@@ -166,25 +347,8 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
       }
     });
 
-    // Search pages
-    pages.forEach((page) => {
-      if (
-        page.title.toLowerCase().includes(lowerQuery) ||
-        page.subtitle?.toLowerCase().includes(lowerQuery)
-      ) {
-        searchResults.push({
-          ...page,
-          action: () => {
-            saveRecentSearch(query);
-            page.action();
-            onClose();
-          },
-        });
-      }
-    });
-
-    return searchResults.slice(0, 10);
-  }, [query, assetsWithScores, pages, saveRecentSearch, onClose]);
+    return searchResults.slice(0, 15);
+  }, [query, assetsWithScores, pages, connections, databases, schemas, recentContextItems, saveRecentSearch, onClose]);
 
   // Keyboard navigation
   const handleKeyDown = useCallback(
@@ -225,7 +389,7 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
 
   // Reset selection when query changes
   useEffect(() => {
-    setSelectedIndex(0);
+    setSelectedIndex(0); // eslint-disable-line react-hooks/set-state-in-effect
   }, [query]);
 
   if (!isOpen) return null;
@@ -308,35 +472,4 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
       </div>
     </div>
   );
-}
-
-/**
- * Hook to manage global search state and keyboard shortcut
- */
-export function useGlobalSearch() {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const openSearch = useCallback(() => setIsOpen(true), []);
-  const closeSearch = useCallback(() => setIsOpen(false), []);
-  const toggleSearch = useCallback(() => setIsOpen((prev) => !prev), []);
-
-  // Global keyboard shortcut (Cmd/Ctrl + K)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        toggleSearch();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [toggleSearch]);
-
-  return {
-    isOpen,
-    openSearch,
-    closeSearch,
-    toggleSearch,
-  };
 }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, ConfirmModal } from '../components/shared';
 import { AppHeader } from '../components/layout/AppHeader';
+import { BreadcrumbNav } from '../components/layout/BreadcrumbNav';
 import { DemoPivots } from '../components/pivot/DemoPivots';
 import { RealPivotBuilder } from '../components/pivot/RealPivotBuilder';
 import { PreBuiltPivots } from '../components/pivot/PreBuiltPivots';
@@ -82,6 +83,8 @@ export function PivotBuilder() {
         </Button>
         <Button variant="secondary">Export</Button>
       </AppHeader>
+
+      <BreadcrumbNav />
 
       <div className="pivot-content">
         <div className="tabs">

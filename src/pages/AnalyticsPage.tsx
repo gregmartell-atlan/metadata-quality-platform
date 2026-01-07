@@ -7,6 +7,7 @@
 import { useState, useMemo } from 'react';
 import { Download, BarChart3, AlertTriangle, Lightbulb, Info } from 'lucide-react';
 import { AppHeader } from '../components/layout/AppHeader';
+import { BreadcrumbNav } from '../components/layout/BreadcrumbNav';
 import { DaaPRadarChart, CoverageHeatmap, QualityImpactMatrix, RemediationPrioritizer } from '../components/analytics';
 import { Card, Button, Tooltip, InfoTooltip } from '../components/shared';
 import { useFieldCoverage, getOverallCompleteness, getTopGaps } from '../hooks/useFieldCoverage';
@@ -182,6 +183,8 @@ export function AnalyticsPage() {
           Export Report
         </Button>
       </AppHeader>
+
+      <BreadcrumbNav />
 
       <div className="analytics-content">
         {/* Top Row: Radar Chart & Summary Stats */}

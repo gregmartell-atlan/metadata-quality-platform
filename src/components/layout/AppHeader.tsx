@@ -14,6 +14,7 @@ import { sanitizeError } from '../../utils/sanitize';
 import { logger } from '../../utils/logger';
 import { AssetBrowserPanel } from './AssetBrowserPanel';
 import { GlobalSettingsDrawer } from './GlobalSettingsDrawer';
+import { QuickContextSwitcher } from './QuickContextSwitcher';
 import type { AtlanAsset } from '../../services/atlan/types';
 import type { AssetContextType, AssetContextFilters } from '../../stores/assetContextStore';
 import './AppHeader.css';
@@ -250,71 +251,18 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
             <span>Browse</span>
           </button>
 
-          {/* Context Bar */}
+          {/* Quick Context Switcher */}
+          <QuickContextSwitcher />
+
+          {/* Context Drop Zone (for drag-and-drop) */}
           <div
-            className={`context-bar ${isDraggingOver ? 'drag-over' : ''} ${context ? 'has-context' : ''}`}
+            className={`context-drop-zone ${isDraggingOver ? 'drag-over' : ''}`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
+            title="Drop assets here to set context"
           >
-            {isLoading ? (
-              <div className="context-loading">
-                <Loader2 size={14} className="spinning" />
-                <span>Loading...</span>
-              </div>
-            ) : context ? (
-              <>
-                <BarChart3 size={14} className="context-icon" />
-                <span className="context-label">{contextLabel}</span>
-                {assetCount > 0 && <span className="context-count">({assetCount.toLocaleString()})</span>}
-                <button className="context-clear" onClick={clearContext} title="Clear context">
-                  <X size={12} />
-                </button>
-              </>
-            ) : (
-              <>
-                <Download size={14} className="context-icon" />
-                <span className="context-placeholder">Drop assets here or select context</span>
-              </>
-            )}
-
-            {/* Context Menu Trigger */}
-            <button
-              className="context-menu-btn"
-              onClick={() => setShowContextMenu(!showContextMenu)}
-              title="Select context"
-            >
-              <ChevronDown size={14} />
-            </button>
-
-            {/* Context Dropdown */}
-            {showContextMenu && (
-              <div className="context-dropdown">
-                <button className="context-option" onClick={handleSelectAllAssets}>
-                  <Globe size={14} />
-                  <span>All Assets</span>
-                </button>
-                {availableConnectors.map(connector => (
-                  <button
-                    key={connector.id}
-                    className="context-option"
-                    onClick={() => handleSelectConnection(connector.name)}
-                  >
-                    <Link2 size={14} />
-                    <span>{connector.name}</span>
-                  </button>
-                ))}
-                {context && (
-                  <>
-                    <div className="context-divider" />
-                    <button className="context-option danger" onClick={() => { clearContext(); setShowContextMenu(false); }}>
-                      <X size={14} />
-                      <span>Clear Context</span>
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
+            <Download size={14} />
           </div>
 
           {error && (
