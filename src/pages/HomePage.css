@@ -56,10 +56,10 @@
   letter-spacing: 0;
 }
 
-/* Hero Stats Row - Dashboard Metrics */
+/* Hero Stats Row - Dashboard Metrics - Auto-arrange */
 .hero-stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1.25rem;
   animation: fadeInUp 0.4s ease;
 }
