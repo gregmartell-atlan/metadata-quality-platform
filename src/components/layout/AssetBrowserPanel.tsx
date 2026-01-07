@@ -4,7 +4,7 @@
  * Renders the AssetBrowser in a dropdown panel that expands from the header.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { X, FolderOpen, Search, List, Zap } from 'lucide-react';
 import { AssetBrowser } from '../AssetBrowser';
 import { AssetCommandCenter } from '../AssetBrowser/AssetCommandCenter';
@@ -21,6 +21,13 @@ export function AssetBrowserPanel({ isOpen, onClose }: AssetBrowserPanelProps) {
   const [viewMode, setViewMode] = useState<'tree' | 'command'>('tree'); // Start with tree to load assets
   const [loadedAssets, setLoadedAssets] = useState<any[]>([]);
   const { toggleAsset, isSelected } = useAssetStore();
+
+  // Force tree mode when panel first opens to ensure assets load immediately
+  useEffect(() => {
+    if (isOpen && viewMode === 'command' && loadedAssets.length === 0) {
+      setViewMode('tree');
+    }
+  }, [isOpen, viewMode, loadedAssets.length]);
 
   if (!isOpen) return null;
 
