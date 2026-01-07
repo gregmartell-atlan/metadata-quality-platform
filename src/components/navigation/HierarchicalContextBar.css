@@ -7,30 +7,16 @@
   display: flex;
   align-items: center;
   gap: 20px;
-  padding: 16px 24px;
-  background: linear-gradient(to bottom, #ffffff 0%, #fafbfc 100%);
-  border-bottom: 1px solid var(--border-subtle);
+  padding: 0 var(--space-6);
+  background: transparent; /* No background - inherit from header */
+  border: none; /* No border - header has the border */
   position: relative;
-  z-index: 100;
+  flex: 1;
+  min-width: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
 }
 
-/* Subtle left accent when context active - integrated with header */
-.hierarchical-context-bar::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: transparent;
-  transition: background 200ms ease;
-}
-
-.hierarchical-context-bar:has(.breadcrumb-trigger.selected)::before {
-  background: linear-gradient(to bottom, var(--color-blue-500) 0%, var(--color-blue-600) 100%);
-}
+/* No special indicators - the blue gradient buttons themselves show active state */
 
 .context-breadcrumbs {
   display: flex;

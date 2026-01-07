@@ -3,23 +3,24 @@
 .app-header {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-6);
+  justify-content: space-between;
+  gap: var(--space-6);
+  padding: 0; /* Remove padding - let children control spacing */
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
   position: sticky;
   top: 0;
   z-index: 100;
-  min-height: 56px;
+  min-height: 72px;
 }
 
-/* Left Section: Connection + Context */
+/* Left Section: Context Bar (takes full left space) */
 .app-header-left {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  align-items: stretch;
   flex: 1;
   min-width: 0;
+  height: 100%;
 }
 
 /* Connection Button */
@@ -302,8 +303,12 @@
 
 /* Center Section: Title */
 .app-header-center {
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 var(--space-6);
   flex-shrink: 0;
+  height: 100%;
 }
 
 .app-header-center h1 {
@@ -311,20 +316,24 @@
   font-weight: var(--font-weight-semibold);
   color: var(--text-default);
   margin: 0;
+  line-height: 1.2;
 }
 
 .app-header-center p {
   font-size: var(--font-size-xs);
   color: var(--text-muted);
-  margin: 2px 0 0 0;
+  margin: 4px 0 0 0;
+  line-height: 1.2;
 }
 
 /* Right Section: Actions */
 .app-header-right {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
+  padding: 0 var(--space-6);
   flex-shrink: 0;
+  height: 100%;
 }
 
 /* Modal Overlay */
