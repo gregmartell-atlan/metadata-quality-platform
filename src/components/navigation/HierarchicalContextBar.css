@@ -16,39 +16,21 @@
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
 }
 
+/* Active state indicator - subtle glow on bar */
+.hierarchical-context-bar:has(.breadcrumb-trigger.selected) {
+  background: linear-gradient(to bottom, #f0f7ff 0%, #fafbfc 100%);
+  border-bottom-color: var(--color-blue-200);
+}
+
 /* Context indicator - integrated badge */
 .hierarchical-context-bar::before {
   content: '';
   display: none;
 }
 
+/* Remove problematic ::after badge - causes overlap */
 .hierarchical-context-bar:has(.breadcrumb-trigger.selected)::after {
-  content: 'CONTEXT APPLIED';
-  position: absolute;
-  right: 140px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--color-blue-600);
-  padding: 3px 8px;
-  background: var(--color-blue-50);
-  border: 1px solid var(--color-blue-200);
-  border-radius: 4px;
-  text-transform: uppercase;
-  animation: contextBadgeFadeIn 300ms ease-out;
-}
-
-@keyframes contextBadgeFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-50%) translateX(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(-50%) translateX(0);
-  }
+  display: none;
 }
 
 .context-breadcrumbs {
@@ -101,8 +83,12 @@
 }
 
 .breadcrumb-trigger:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+  color: var(--text-muted);
+  pointer-events: none; /* Ensure no clicks during loading */
 }
 
 /* Selected state - filled with blue accent */
@@ -164,8 +150,9 @@
 }
 
 .breadcrumb-spinner {
-  animation: spin 1s linear infinite;
-  color: var(--accent-primary);
+  animation: spin 0.8s linear infinite;
+  color: var(--color-blue-500);
+  opacity: 0.7;
 }
 
 @keyframes spin {
@@ -385,9 +372,10 @@
 
 .breadcrumb-divider {
   width: 1px;
-  height: 20px;
-  background: var(--border-subtle);
-  margin: 0 8px;
+  height: 24px;
+  background: var(--color-blue-200);
+  margin: 0 12px;
+  opacity: 0.6;
 }
 
 .asset-count-badge {
