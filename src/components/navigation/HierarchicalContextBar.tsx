@@ -43,6 +43,43 @@ interface DropdownItem {
   icon?: React.ReactNode;
 }
 
+// Helper to transform fullEntity to AtlanAsset format for inspector
+function transformEntityForInspector(entity: any): any {
+  if (!entity) return null;
+
+  const e = entity;
+  return {
+    guid: e.guid,
+    typeName: e.typeName,
+    name: e.attributes?.name || e.name,
+    qualifiedName: e.attributes?.qualifiedName || e.qualifiedName,
+    connectionName: e.attributes?.connectionName || e.attributes?.connectorName,
+    connectionQualifiedName: e.attributes?.connectionQualifiedName,
+    // Governance
+    description: e.attributes?.description,
+    userDescription: e.attributes?.userDescription,
+    ownerUsers: e.attributes?.ownerUsers,
+    ownerGroups: e.attributes?.ownerGroups,
+    certificateStatus: e.attributes?.certificateStatus,
+    certificateStatusMessage: e.attributes?.certificateStatusMessage,
+    certificateUpdatedAt: e.attributes?.certificateUpdatedAt,
+    certificateUpdatedBy: e.attributes?.certificateUpdatedBy,
+    classificationNames: e.attributes?.classificationNames,
+    atlanTags: e.classifications?.map((tag: any) => ({
+      typeName: tag.typeName,
+      propagate: tag.propagate,
+    })),
+    meanings: e.attributes?.meanings,
+    assignedTerms: e.attributes?.assignedTerms,
+    domainGUIDs: e.attributes?.domainGUIDs,
+    // Technical
+    createTime: e.attributes?.createTime,
+    updateTime: e.attributes?.updateTime,
+    createdBy: e.attributes?.createdBy,
+    updatedBy: e.attributes?.updatedBy,
+  };
+}
+
 export function HierarchicalContextBar() {
   const { context, contextAssets, setContext, setLoading } = useAssetContextStore();
   const { openInspector } = useAssetInspectorStore();
@@ -57,6 +94,7 @@ export function HierarchicalContextBar() {
   const [schemas, setSchemas] = useState<DropdownItem[]>([]);
 
   // Full entities for inspector
+  const [connectionEntities, setConnectionEntities] = useState<Map<string, any>>(new Map());
   const [databaseEntities, setDatabaseEntities] = useState<Map<string, any>>(new Map());
   const [schemaEntities, setSchemaEntities] = useState<Map<string, any>>(new Map());
 
@@ -71,7 +109,17 @@ export function HierarchicalContextBar() {
   // Load connections on mount
   useEffect(() => {
     getConnectors()
-      .then(setConnections)
+      .then(conns => {
+        // Store full entities for inspector
+        const entitiesMap = new Map();
+        conns.forEach(conn => {
+          if (conn.fullEntity) {
+            entitiesMap.set(conn.name, conn.fullEntity);
+          }
+        });
+        setConnectionEntities(entitiesMap);
+        setConnections(conns);
+      })
       .catch(console.error);
   }, []);
 
@@ -287,20 +335,38 @@ export function HierarchicalContextBar() {
               </div>
               <div className="dropdown-items">
                 {connections.map(conn => (
-                  <button
-                    key={conn.id}
-                    className={`dropdown-item ${selectedConnection === conn.name ? 'selected' : ''}`}
-                    onClick={() => handleSelectConnection(conn.name)}
-                  >
-                    {getConnectionIcon(conn.name)}
-                    <span className="item-name">{conn.name}</span>
-                    {conn.assetCount !== undefined && (
-                      <span className="item-count">{conn.assetCount.toLocaleString()}</span>
+                  <div key={conn.id} className="dropdown-item-wrapper">
+                    <button
+                      className={`dropdown-item ${selectedConnection === conn.name ? 'selected' : ''}`}
+                      onClick={() => handleSelectConnection(conn.name)}
+                    >
+                      {getConnectionIcon(conn.name)}
+                      <span className="item-name">{conn.name}</span>
+                      {conn.assetCount !== undefined && (
+                        <span className="item-count">{conn.assetCount.toLocaleString()}</span>
+                      )}
+                      {selectedConnection === conn.name && (
+                        <Check size={14} className="item-check" />
+                      )}
+                    </button>
+                    {/* Info button to open inspector */}
+                    {connectionEntities.has(conn.name) && (
+                      <button
+                        className="item-info-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const entity = connectionEntities.get(conn.name);
+                          if (entity) {
+                            const transformed = transformEntityForInspector(entity);
+                            openInspector(transformed);
+                          }
+                        }}
+                        title="View connection details"
+                      >
+                        <Info size={14} />
+                      </button>
                     )}
-                    {selectedConnection === conn.name && (
-                      <Check size={14} className="item-check" />
-                    )}
-                  </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -369,7 +435,10 @@ export function HierarchicalContextBar() {
                           onClick={(e) => {
                             e.stopPropagation();
                             const entity = databaseEntities.get(db.id);
-                            if (entity) openInspector(entity);
+                            if (entity) {
+                              const transformed = transformEntityForInspector(entity);
+                              openInspector(transformed);
+                            }
                           }}
                           title="View database details"
                         >
@@ -446,7 +515,10 @@ export function HierarchicalContextBar() {
                           onClick={(e) => {
                             e.stopPropagation();
                             const entity = schemaEntities.get(sch.id);
-                            if (entity) openInspector(entity);
+                            if (entity) {
+                              const transformed = transformEntityForInspector(entity);
+                              openInspector(transformed);
+                            }
                           }}
                           title="View schema details"
                         >

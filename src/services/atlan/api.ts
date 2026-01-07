@@ -1281,6 +1281,7 @@ export interface ConnectorInfo {
   icon?: string;
   assetCount: number;
   isActive: boolean;
+  fullEntity?: any; // Full Atlan entity for inspector
 }
 
 /**
@@ -1336,6 +1337,43 @@ export async function getConnectors(): Promise<ConnectorInfo[]> {
 
   const buckets = response?.aggregations?.connectors?.buckets;
   if (buckets && buckets.length > 0) {
+    // Fetch actual Connection entities for full metadata
+    const connectionEntities = await search({
+      dsl: {
+        size: 50,
+        query: {
+          bool: {
+            must: [
+              { term: { '__typeName.keyword': 'Connection' } },
+              {
+                terms: {
+                  'connectorName': buckets.map((b: any) => b.key)
+                }
+              }
+            ],
+            must_not: [{ term: { '__state': 'DELETED' } }],
+          },
+        },
+      },
+      attributes: [
+        'name', 'qualifiedName', 'connectorName', 'connectorType',
+        'description', 'userDescription',
+        'ownerUsers', 'ownerGroups',
+        'certificateStatus', 'certificateStatusMessage',
+        'classificationNames', 'atlanTags',
+        'meanings', 'assignedTerms',
+        'createTime', 'updateTime',
+      ],
+    });
+
+    const entityMap = new Map();
+    connectionEntities?.entities?.forEach((e: any) => {
+      const connName = e.attributes.connectorName as string;
+      if (connName) {
+        entityMap.set(connName, e);
+      }
+    });
+
     const result = buckets
       .filter((bucket: { key: string; doc_count: number }) => bucket.doc_count > 0)
       .map((bucket: { key: string; doc_count: number }) => ({
@@ -1343,6 +1381,7 @@ export async function getConnectors(): Promise<ConnectorInfo[]> {
         name: bucket.key,
         assetCount: bucket.doc_count,
         isActive: true,
+        fullEntity: entityMap.get(bucket.key), // Add full entity for inspector
       }));
     setCache(cacheKey, result);
     return result;
