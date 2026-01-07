@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
-import { getConnectors, getDatabases, getSchemas } from '../../services/atlan/api';
+import { getConnectors, getDatabases, getSchemas, isConfigured } from '../../services/atlan/api';
 import { loadAssetsForContext, generateContextLabel } from '../../utils/assetContextLoader';
 import type { ConnectorInfo, HierarchyItem } from '../../services/atlan/api';
 import './QuickContextSwitcher.css';
@@ -95,9 +95,9 @@ export function QuickContextSwitcher() {
     return scores;
   }, [assetsWithScores]);
 
-  // Load connectors when dropdown opens
+  // Load connectors when dropdown opens (only if API is configured)
   useEffect(() => {
-    if (!isOpen || connectors.length > 0 || isLoadingConnectors) return;
+    if (!isOpen || connectors.length > 0 || isLoadingConnectors || !isConfigured()) return;
 
     let cancelled = false;
     setIsLoadingConnectors(true); // eslint-disable-line react-hooks/set-state-in-effect
