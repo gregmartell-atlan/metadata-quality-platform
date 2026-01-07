@@ -15,6 +15,7 @@ import { logger } from '../../utils/logger';
 import { AssetBrowserPanel } from './AssetBrowserPanel';
 import { GlobalSettingsDrawer } from './GlobalSettingsDrawer';
 import { QuickContextSwitcher } from './QuickContextSwitcher';
+import { HierarchicalContextBar } from '../navigation/HierarchicalContextBar';
 import type { AtlanAsset } from '../../services/atlan/types';
 import type { AssetContextType, AssetContextFilters } from '../../stores/assetContextStore';
 import './AppHeader.css';
@@ -182,29 +183,8 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
             <span>{isConnected ? 'Connected' : 'Connect'}</span>
           </button>
 
-          {/* Browse Assets Button */}
-          <button
-            className={`browse-btn ${showBrowserPanel ? 'active' : ''}`}
-            onClick={() => setShowBrowserPanel(!showBrowserPanel)}
-            title="Browse assets"
-          >
-            <FolderOpen size={16} />
-            <span>Browse</span>
-          </button>
-
-          {/* Quick Context Switcher */}
-          <QuickContextSwitcher />
-
-          {/* Context Drop Zone (for drag-and-drop) */}
-          <div
-            className={`context-drop-zone ${isDraggingOver ? 'drag-over' : ''}`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            title="Drop assets here to set context"
-          >
-            <Download size={14} />
-          </div>
+          {/* Hierarchical Context Bar - replaces Browse + QuickContextSwitcher */}
+          {isConnected && <HierarchicalContextBar />}
 
           {error && (
             <div className="context-error" title={error}>

@@ -592,8 +592,9 @@ function buildBoolQuery(filters: {
  * Build connector filter
  */
 function connectorFilter(connector: string): Record<string, unknown> {
-  // Use connectorName without .keyword suffix - matches getDatabases behavior
-  return { term: { 'connectorName': connector } };
+  // Normalize to lowercase for case-insensitive matching
+  const normalized = connector.toLowerCase();
+  return { term: { 'connectorName': normalized } };
 }
 
 /**
@@ -1413,6 +1414,10 @@ export async function getDatabases(connector: string): Promise<HierarchyItem[]> 
     throw new Error('Atlan API not configured');
   }
 
+  // Normalize connector name to lowercase for case-insensitive matching
+  const normalizedConnector = connector.toLowerCase();
+  logger.debug('getDatabases called', { input: connector, normalized: normalizedConnector });
+
   // First, try the standard database types
   const query = {
     dsl: {
@@ -1420,7 +1425,7 @@ export async function getDatabases(connector: string): Promise<HierarchyItem[]> 
       query: {
         bool: {
           must: [
-            { term: { 'connectorName': connector } },
+            { term: { 'connectorName': normalizedConnector } },
             {
               terms: {
                 '__typeName.keyword': [
