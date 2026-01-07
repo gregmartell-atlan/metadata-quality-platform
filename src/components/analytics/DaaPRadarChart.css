@@ -50,7 +50,7 @@
   color: #ffffff;
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-sm);
 }
 
 .daap-tooltip-header {

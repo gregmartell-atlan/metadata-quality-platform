@@ -4,7 +4,6 @@
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--card-shadow);
   overflow: hidden;
 }
 
@@ -143,11 +142,11 @@
 
 /* Card Variants */
 .card-elevated {
-  box-shadow: var(--shadow-md);
+  /* No shadow - borders define elevation */
 }
 
 .card-flat {
-  box-shadow: none;
+  /* Default - no shadow needed */
 }
 
 .card-interactive {
@@ -156,8 +155,7 @@
 }
 
 .card-interactive:hover {
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-md);
+  border-color: var(--border-hover);
 }
 
 /* Card with status indicator */

@@ -72,7 +72,6 @@ export function PivotBuilder() {
           <Button
             variant="secondary"
             onClick={handleViewLineage}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
           >
             <GitBranch size={16} />
             Lineage

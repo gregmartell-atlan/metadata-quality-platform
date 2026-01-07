@@ -237,7 +237,6 @@
   /* Card */
   --card-bg: #ffffff;
   --card-border: var(--color-gray-200);
-  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 
   /* Table */
   --table-header-bg: var(--color-gray-50);
@@ -313,24 +312,23 @@
   --gap-xl: var(--space-8);
 
   /* ========================================
-     BORDER RADIUS
+     BORDER RADIUS - Sharp technical system
      ======================================== */
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
-  --radius-xl: 12px;
-  --radius-2xl: 16px;
   --radius-full: 9999px;
 
   /* ========================================
-     SHADOWS
+     BORDERS - Borders-first approach
      ======================================== */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --border: rgba(0, 0, 0, 0.08);
+  --border-hover: rgba(59, 130, 246, 0.3);
+
+  /* ========================================
+     SHADOWS - Minimal (borders define regions)
+     ======================================== */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
 
   /* Legacy shadow aliases */
   --glow-primary: var(--focus-ring);
@@ -375,7 +373,6 @@
 
   --card-bg: var(--color-gray-800);
   --card-border: var(--color-gray-700);
-  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 
   --table-header-bg: var(--color-gray-700);
   --table-row-hover: var(--color-gray-700);
@@ -739,9 +736,12 @@ a:hover {
 /* Cards */
 .card {
   background: var(--card-bg);
-  border: 1px solid var(--card-border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+}
+
+.card:hover {
+  border-color: var(--border-hover);
 }
 
 .card-body {
@@ -762,7 +762,7 @@ a:hover {
 
 .query-card {
   background: var(--card-bg);
-  border: 1px solid var(--card-border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: var(--space-4);
   cursor: pointer;
@@ -770,15 +770,18 @@ a:hover {
 }
 
 .query-card:hover {
-  border-color: var(--primary-blue);
-  box-shadow: var(--shadow-md);
+  border-color: var(--border-hover);
 }
 
 .hero-card {
-  background: linear-gradient(135deg, var(--primary-blue-light) 0%, var(--card-bg) 100%);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-xl);
+  background: var(--primary-blue-light);
+  border: 1px solid var(--color-blue-200);
+  border-radius: var(--radius-lg);
   padding: var(--space-6);
+}
+
+.hero-card:hover {
+  border-color: var(--primary-blue);
 }
 
 /* Badges */

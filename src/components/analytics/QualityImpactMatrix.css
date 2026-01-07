@@ -330,7 +330,7 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   padding: var(--space-3);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-sm);
   min-width: 160px;
 }
 
