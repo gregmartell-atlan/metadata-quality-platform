@@ -37,7 +37,7 @@
 .logo-icon {
   width: 28px;
   height: 28px;
-  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+  background: var(--accent-primary);
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
@@ -51,7 +51,7 @@
 .logo-text {
   font-weight: var(--font-weight-semibold);
   font-size: var(--font-size-base);
-  color: #ffffff;
+  color: var(--text-default);
   letter-spacing: -0.2px;
   white-space: nowrap;
   overflow: hidden;
@@ -169,14 +169,14 @@
 
 .nav-item:hover {
   background: var(--sidebar-item-hover);
-  color: #ffffff;
+  color: var(--text-default);
   transform: translateX(2px);
 }
 
 /* Active state: solid background OR left border using primary blue */
 .nav-item.active {
-  background: rgba(59, 130, 246, 0.15);
-  color: #ffffff;
+  background: var(--sidebar-item-active-bg);
+  color: var(--sidebar-item-active-text);
   position: relative;
 }
 
@@ -215,8 +215,8 @@
 /* Nav Item Badge */
 .nav-item-badge {
   margin-left: auto;
-  background: rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.8);
+  background: var(--bg-muted);
+  color: var(--text-secondary);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
   padding: 2px 6px;
@@ -226,8 +226,8 @@
 }
 
 .nav-item.active .nav-item-badge {
-  background: rgba(255, 255, 255, 0.25);
-  color: #ffffff;
+  background: var(--color-blue-100);
+  color: var(--accent-primary);
 }
 
 .sidebar.collapsed .nav-item-badge {
@@ -256,5 +256,5 @@
 
 .sidebar-help:hover {
   background: var(--sidebar-item-hover);
-  color: #ffffff;
+  color: var(--text-default);
 }
