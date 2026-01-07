@@ -5,7 +5,6 @@
  */
 
 import { Link } from 'react-router-dom';
-import { AppHeader } from '../components/layout/AppHeader';
 import { Card } from '../components/shared';
 import { PinnedWidgets } from '../components/home/PinnedWidgets';
 import { ConnectionCards } from '../components/home/ConnectionCards';
@@ -91,11 +90,6 @@ export function HomePage() {
 
   return (
     <div className="home-page">
-      <AppHeader
-        title="Metadata Quality Platform"
-        subtitle="Your data health at a glance"
-      />
-
       <div className="home-content">
         {/* Hero Stats Row */}
         <div className="hero-stats">

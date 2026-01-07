@@ -1,4 +1,3 @@
-import { AppHeader } from '../layout/AppHeader';
 import { BreadcrumbNav } from '../layout/BreadcrumbNav';
 import { Button } from '../shared';
 import { useState, useEffect, useCallback } from 'react';
@@ -87,75 +86,76 @@ export function ExecutiveDashboard() {
 
   return (
     <div className="executive-dashboard">
-      <AppHeader
-        title="Executive Overview"
-        subtitle={`Last updated ${getTimeAgo(lastUpdated)}`}
-      >
-        {/* Edit mode controls */}
-        {isEditMode && (
-          <>
-            <WidgetPickerPanel />
-            <Button
-              variant="secondary"
-              onClick={handleResetLayout}
-              className="reset-btn"
-            >
-              <RotateCcw size={14} />
-              Reset
-            </Button>
-          </>
-        )}
-
-        {/* Snapshot controls */}
-        <Button
-          variant="secondary"
-          onClick={handleCaptureSnapshot}
-          disabled={assetsWithScores.length === 0}
-          className="snapshot-btn"
-          title="Capture current state as snapshot"
-        >
-          <Camera size={14} />
-          Snapshot
-        </Button>
-
-        <Button
-          variant={showSnapshotsPanel ? 'primary' : 'secondary'}
-          onClick={() => setShowSnapshotsPanel(!showSnapshotsPanel)}
-          className="history-btn"
-          title="View recent snapshots"
-        >
-          <Clock size={14} />
-          History
-          {snapshots.length > 0 && (
-            <span className="snapshot-count">{snapshots.length}</span>
+      {/* Dashboard toolbar */}
+      <div className="dashboard-toolbar">
+        <span className="toolbar-status">Last updated {getTimeAgo(lastUpdated)}</span>
+        <div className="toolbar-actions">
+          {/* Edit mode controls */}
+          {isEditMode && (
+            <>
+              <WidgetPickerPanel />
+              <Button
+                variant="secondary"
+                onClick={handleResetLayout}
+                className="reset-btn"
+              >
+                <RotateCcw size={14} />
+                Reset
+              </Button>
+            </>
           )}
-        </Button>
 
-        {/* Template selector */}
-        <Button
-          variant="secondary"
-          onClick={() => setShowTemplateModal(true)}
-          className="template-btn"
-        >
-          <LayoutTemplate size={14} />
-          Template
-        </Button>
+          {/* Snapshot controls */}
+          <Button
+            variant="secondary"
+            onClick={handleCaptureSnapshot}
+            disabled={assetsWithScores.length === 0}
+            className="snapshot-btn"
+            title="Capture current state as snapshot"
+          >
+            <Camera size={14} />
+            Snapshot
+          </Button>
 
-        {/* Edit mode toggle */}
-        <Button
-          variant={isEditMode ? 'primary' : 'secondary'}
-          onClick={toggleEditMode}
-          className="edit-btn"
-        >
-          {isEditMode ? <Save size={14} /> : <Edit3 size={14} />}
-          {isEditMode ? 'Done' : 'Edit'}
-        </Button>
+          <Button
+            variant={showSnapshotsPanel ? 'primary' : 'secondary'}
+            onClick={() => setShowSnapshotsPanel(!showSnapshotsPanel)}
+            className="history-btn"
+            title="View recent snapshots"
+          >
+            <Clock size={14} />
+            History
+            {snapshots.length > 0 && (
+              <span className="snapshot-count">{snapshots.length}</span>
+            )}
+          </Button>
 
-        {/* Refresh button */}
-        <Button variant="primary" onClick={handleRefresh} className="refresh-btn">
-          Refresh
-        </Button>
-      </AppHeader>
+          {/* Template selector */}
+          <Button
+            variant="secondary"
+            onClick={() => setShowTemplateModal(true)}
+            className="template-btn"
+          >
+            <LayoutTemplate size={14} />
+            Template
+          </Button>
+
+          {/* Edit mode toggle */}
+          <Button
+            variant={isEditMode ? 'primary' : 'secondary'}
+            onClick={toggleEditMode}
+            className="edit-btn"
+          >
+            {isEditMode ? <Save size={14} /> : <Edit3 size={14} />}
+            {isEditMode ? 'Done' : 'Edit'}
+          </Button>
+
+          {/* Refresh button */}
+          <Button variant="primary" onClick={handleRefresh} className="refresh-btn">
+            Refresh
+          </Button>
+        </div>
+      </div>
 
       {/* Breadcrumb navigation for context */}
       <BreadcrumbNav />

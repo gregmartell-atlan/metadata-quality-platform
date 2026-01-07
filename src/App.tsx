@@ -1,7 +1,8 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { useEffect, lazy, Suspense } from 'react';
 import { ErrorBoundary, GlobalSearch, useGlobalSearch } from './components/shared';
 import { Sidebar } from './components/layout/Sidebar';
+import { AppHeader } from './components/layout/AppHeader';
 import { AssetPreviewDrawer } from './components/layout/AssetPreviewDrawer';
 import { AssetInspectorModal } from './components/AssetInspector/AssetInspectorModal';
 import { useUIPreferences } from './stores/uiPreferencesStore';
@@ -27,6 +28,42 @@ function PageLoader() {
 }
 
 // Note: PersistentAssetBrowser removed - now using header-based AssetBrowserPanel
+
+// Page titles and subtitles by route
+const pageTitles: Record<string, { title: string; subtitle?: string }> = {
+  '/': { title: 'Metadata Quality Platform', subtitle: 'Your data health at a glance' },
+  '/dashboard': { title: 'Executive Dashboard', subtitle: 'Quality metrics overview' },
+  '/pivot': { title: 'Pivot Builder', subtitle: 'Analyze by dimension' },
+  '/lineage': { title: 'Lineage Explorer', subtitle: 'Trace data relationships' },
+  '/analytics': { title: 'DaaP Analytics', subtitle: 'Data as a Product compliance' },
+  '/settings': { title: 'Settings', subtitle: 'Configure your workspace' },
+};
+
+// Inner app component that has access to location
+function AppContent() {
+  const location = useLocation();
+  const pageInfo = pageTitles[location.pathname] || { title: 'Metadata Quality Platform' };
+
+  return (
+    <>
+      <AppHeader title={pageInfo.title} subtitle={pageInfo.subtitle} />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/dashboard" element={<ExecutiveDashboard />} />
+          <Route path="/pivot" element={<PivotBuilder />} />
+          <Route path="/lineage" element={<LineageViewPage />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/stewardship" element={<div className="page-placeholder">Stewardship Ops</div>} />
+          <Route path="/campaigns" element={<div className="page-placeholder">Campaign Tracking</div>} />
+          <Route path="/trends" element={<div className="page-placeholder">Quality Trends</div>} />
+          <Route path="/accountability" element={<div className="page-placeholder">Accountability</div>} />
+          <Route path="/settings" element={<SettingsPage />} />
+        </Routes>
+      </Suspense>
+    </>
+  );
+}
 
 function App() {
   const { theme, density } = useUIPreferences();
@@ -54,22 +91,11 @@ function App() {
       <BrowserRouter>
         <div className="app">
           <Sidebar />
-          <ErrorBoundary>
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/dashboard" element={<ExecutiveDashboard />} />
-                <Route path="/pivot" element={<PivotBuilder />} />
-                <Route path="/lineage" element={<LineageViewPage />} />
-                <Route path="/analytics" element={<AnalyticsPage />} />
-                <Route path="/stewardship" element={<div className="page-placeholder">Stewardship Ops</div>} />
-                <Route path="/campaigns" element={<div className="page-placeholder">Campaign Tracking</div>} />
-                <Route path="/trends" element={<div className="page-placeholder">Quality Trends</div>} />
-                <Route path="/accountability" element={<div className="page-placeholder">Accountability</div>} />
-                <Route path="/settings" element={<SettingsPage />} />
-              </Routes>
-            </Suspense>
-          </ErrorBoundary>
+          <div className="app-main">
+            <ErrorBoundary>
+              <AppContent />
+            </ErrorBoundary>
+          </div>
 
           {/* Global Modals */}
           <AssetInspectorModal />

@@ -6,7 +6,6 @@
 
 import { useState, useMemo } from 'react';
 import { Download, BarChart3, AlertTriangle, Lightbulb, Info } from 'lucide-react';
-import { AppHeader } from '../components/layout/AppHeader';
 import { BreadcrumbNav } from '../components/layout/BreadcrumbNav';
 import { DaaPRadarChart, CoverageHeatmap, QualityImpactMatrix, RemediationPrioritizer } from '../components/analytics';
 import { Card, Button, Tooltip, InfoTooltip } from '../components/shared';
@@ -177,12 +176,12 @@ export function AnalyticsPage() {
 
   return (
     <div className="analytics-page">
-      <AppHeader title="DaaP Analytics" subtitle="Data as a Product compliance overview">
+      <div className="analytics-toolbar">
         <Button variant="secondary" onClick={handleExport}>
           <Download size={16} />
           Export Report
         </Button>
-      </AppHeader>
+      </div>
 
       <BreadcrumbNav />
 

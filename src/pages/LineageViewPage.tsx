@@ -8,7 +8,6 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ReactFlowProvider } from '@xyflow/react';
 import { LineageView } from '../components/lineage/LineageView';
-import { AppHeader } from '../components/layout/AppHeader';
 import { BreadcrumbNav } from '../components/layout/BreadcrumbNav';
 import { useAssetStore } from '../stores/assetStore';
 import type { AtlanAsset } from '../services/atlan/types';
@@ -33,7 +32,6 @@ export function LineageViewPage() {
 
   return (
     <div className="lineage-view-page">
-      <AppHeader title="Lineage Explorer" />
       <BreadcrumbNav />
       <div className="lineage-view-container">
         <ReactFlowProvider>

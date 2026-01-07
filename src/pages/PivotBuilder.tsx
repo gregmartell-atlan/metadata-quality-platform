@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, ConfirmModal } from '../components/shared';
-import { AppHeader } from '../components/layout/AppHeader';
 import { BreadcrumbNav } from '../components/layout/BreadcrumbNav';
 import { DemoPivots } from '../components/pivot/DemoPivots';
 import { RealPivotBuilder } from '../components/pivot/RealPivotBuilder';
@@ -47,7 +46,7 @@ export function PivotBuilder() {
 
   return (
     <div className="pivot-builder-page">
-      <AppHeader title="Pivot Builder">
+      <div className="pivot-toolbar">
         {views.length > 0 && (
           <select
             value={currentView?.id || ''}
@@ -82,7 +81,7 @@ export function PivotBuilder() {
           {showDemo ? 'Real Data' : 'Demo'}
         </Button>
         <Button variant="secondary">Export</Button>
-      </AppHeader>
+      </div>
 
       <BreadcrumbNav />
 
