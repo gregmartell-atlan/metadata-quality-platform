@@ -16,38 +16,20 @@
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
 }
 
-/* Context Bar Label - always visible */
+/* Subtle left accent when context active - integrated with header */
 .hierarchical-context-bar::before {
-  content: 'CONTEXT';
+  content: '';
   position: absolute;
-  left: 24px;
-  top: -8px;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--color-gray-400);
-  padding: 2px 8px;
-  background: var(--bg-surface);
-  border-radius: 4px;
-  text-transform: uppercase;
-  transition: all 200ms ease;
-  z-index: 1;
-}
-
-/* Active state - glow effect + label highlight */
-.hierarchical-context-bar:has(.breadcrumb-trigger.selected) {
-  box-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.03),
-    0 0 0 1px rgba(51, 102, 255, 0.1),
-    0 4px 16px rgba(51, 102, 255, 0.08),
-    inset 0 1px 0 rgba(51, 102, 255, 0.05);
-  border-bottom-color: var(--color-blue-300);
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: transparent;
+  transition: background 200ms ease;
 }
 
 .hierarchical-context-bar:has(.breadcrumb-trigger.selected)::before {
-  color: var(--color-blue-600);
-  background: var(--color-blue-50);
-  border: 1px solid var(--color-blue-300);
+  background: linear-gradient(to bottom, var(--color-blue-500) 0%, var(--color-blue-600) 100%);
 }
 
 .context-breadcrumbs {
