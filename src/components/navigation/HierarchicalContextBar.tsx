@@ -18,9 +18,11 @@ import {
   Link2,
   X,
   Check,
-  Loader2
+  Loader2,
+  Info
 } from 'lucide-react';
 import { useAssetContextStore } from '../../stores/assetContextStore';
+import { useAssetInspectorStore } from '../../stores/assetInspectorStore';
 import { getConnectors, getDatabases, getSchemas, type ConnectorInfo } from '../../services/atlan/api';
 import { loadAssetsForContext, generateContextLabel } from '../../utils/assetContextLoader';
 import './HierarchicalContextBar.css';
@@ -43,6 +45,7 @@ interface DropdownItem {
 
 export function HierarchicalContextBar() {
   const { context, contextAssets, setContext, setLoading } = useAssetContextStore();
+  const { openInspector } = useAssetInspectorStore();
 
   // Dropdown state
   const [activeDropdown, setActiveDropdown] = useState<'connection' | 'database' | 'schema' | null>(null);
@@ -52,6 +55,10 @@ export function HierarchicalContextBar() {
   const [connections, setConnections] = useState<ConnectorInfo[]>([]);
   const [databases, setDatabases] = useState<DropdownItem[]>([]);
   const [schemas, setSchemas] = useState<DropdownItem[]>([]);
+
+  // Full entities for inspector
+  const [databaseEntities, setDatabaseEntities] = useState<Map<string, any>>(new Map());
+  const [schemaEntities, setSchemaEntities] = useState<Map<string, any>>(new Map());
 
   // Selection state
   const [selectedConnection, setSelectedConnection] = useState<string | null>(null);
@@ -95,6 +102,15 @@ export function HierarchicalContextBar() {
       setIsLoadingLevel('database');
       getDatabases(selectedConnection)
         .then(dbs => {
+          // Store full entities for inspector
+          const entitiesMap = new Map();
+          dbs.forEach(db => {
+            if (db.fullEntity) {
+              entitiesMap.set(db.qualifiedName, db.fullEntity);
+            }
+          });
+          setDatabaseEntities(entitiesMap);
+
           setDatabases(dbs.map(db => ({
             id: db.qualifiedName,
             name: db.name,
@@ -109,6 +125,8 @@ export function HierarchicalContextBar() {
     } else {
       setDatabases([]);
       setSchemas([]);
+      setDatabaseEntities(new Map());
+      setSchemaEntities(new Map());
       setSelectedDatabase(null);
       setSelectedSchema(null);
     }
@@ -122,6 +140,15 @@ export function HierarchicalContextBar() {
       if (dbQualifiedName) {
         getSchemas(dbQualifiedName)
           .then(schs => {
+            // Store full entities for inspector
+            const entitiesMap = new Map();
+            schs.forEach(sch => {
+              if (sch.fullEntity) {
+                entitiesMap.set(sch.qualifiedName, sch.fullEntity);
+              }
+            });
+            setSchemaEntities(entitiesMap);
+
             setSchemas(schs.map(sch => ({
               id: sch.qualifiedName,
               name: sch.name,
@@ -136,6 +163,7 @@ export function HierarchicalContextBar() {
       }
     } else {
       setSchemas([]);
+      setSchemaEntities(new Map());
       setSelectedSchema(null);
     }
   }, [selectedDatabase, selectedConnection, databases]);
@@ -320,20 +348,35 @@ export function HierarchicalContextBar() {
                 </div>
                 <div className="dropdown-items">
                   {databases.map(db => (
-                    <button
-                      key={db.id}
-                      className={`dropdown-item ${selectedDatabase === db.name ? 'selected' : ''}`}
-                      onClick={() => handleSelectDatabase(db.name)}
-                    >
-                      <Folder size={16} />
-                      <span className="item-name">{db.displayName}</span>
-                      {db.count !== undefined && (
-                        <span className="item-count">{db.count.toLocaleString()}</span>
+                    <div key={db.id} className="dropdown-item-wrapper">
+                      <button
+                        className={`dropdown-item ${selectedDatabase === db.name ? 'selected' : ''}`}
+                        onClick={() => handleSelectDatabase(db.name)}
+                      >
+                        <Folder size={16} />
+                        <span className="item-name">{db.displayName}</span>
+                        {db.count !== undefined && (
+                          <span className="item-count">{db.count.toLocaleString()}</span>
+                        )}
+                        {selectedDatabase === db.name && (
+                          <Check size={14} className="item-check" />
+                        )}
+                      </button>
+                      {/* Info button to open inspector */}
+                      {databaseEntities.has(db.id) && (
+                        <button
+                          className="item-info-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const entity = databaseEntities.get(db.id);
+                            if (entity) openInspector(entity);
+                          }}
+                          title="View database details"
+                        >
+                          <Info size={14} />
+                        </button>
                       )}
-                      {selectedDatabase === db.name && (
-                        <Check size={14} className="item-check" />
-                      )}
-                    </button>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -382,20 +425,35 @@ export function HierarchicalContextBar() {
                 </div>
                 <div className="dropdown-items">
                   {schemas.map(sch => (
-                    <button
-                      key={sch.id}
-                      className={`dropdown-item ${selectedSchema === sch.name ? 'selected' : ''}`}
-                      onClick={() => handleSelectSchema(sch.name)}
-                    >
-                      <Table2 size={16} />
-                      <span className="item-name">{sch.displayName}</span>
-                      {sch.count !== undefined && (
-                        <span className="item-count">{sch.count.toLocaleString()}</span>
+                    <div key={sch.id} className="dropdown-item-wrapper">
+                      <button
+                        className={`dropdown-item ${selectedSchema === sch.name ? 'selected' : ''}`}
+                        onClick={() => handleSelectSchema(sch.name)}
+                      >
+                        <Table2 size={16} />
+                        <span className="item-name">{sch.displayName}</span>
+                        {sch.count !== undefined && (
+                          <span className="item-count">{sch.count.toLocaleString()}</span>
+                        )}
+                        {selectedSchema === sch.name && (
+                          <Check size={14} className="item-check" />
+                        )}
+                      </button>
+                      {/* Info button to open inspector */}
+                      {schemaEntities.has(sch.id) && (
+                        <button
+                          className="item-info-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const entity = schemaEntities.get(sch.id);
+                            if (entity) openInspector(entity);
+                          }}
+                          title="View schema details"
+                        >
+                          <Info size={14} />
+                        </button>
                       )}
-                      {selectedSchema === sch.name && (
-                        <Check size={14} className="item-check" />
-                      )}
-                    </button>
+                    </div>
                   ))}
                 </div>
               </div>

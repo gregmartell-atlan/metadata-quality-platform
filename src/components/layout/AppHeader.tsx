@@ -171,17 +171,8 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
   return (
     <>
       <header className="app-header">
-        {/* Left: Connection & Context */}
+        {/* Left: Context Navigation */}
         <div className="app-header-left">
-          {/* Connection Status */}
-          <button
-            className={`connection-btn ${isConnected ? 'connected' : ''}`}
-            onClick={() => setShowConnectModal(true)}
-          >
-            {isConnected ? <Link2 size={16} /> : <Link2Off size={16} />}
-            <span>{isConnected ? 'Connected' : 'Connect'}</span>
-          </button>
-
           {/* Hierarchical Context Bar - replaces Browse + QuickContextSwitcher */}
           {isConnected && <HierarchicalContextBar />}
 
@@ -200,9 +191,18 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
           </div>
         )}
 
-        {/* Right: Page Actions */}
+        {/* Right: Connection Status + Page Actions */}
         <div className="app-header-right">
           {children}
+
+          {/* Connection Status */}
+          <button
+            className={`connection-btn ${isConnected ? 'connected' : ''}`}
+            onClick={() => setShowConnectModal(true)}
+          >
+            {isConnected ? <Link2 size={16} /> : <Link2Off size={16} />}
+            <span>{isConnected ? 'Connected' : 'Connect'}</span>
+          </button>
         </div>
       </header>
 

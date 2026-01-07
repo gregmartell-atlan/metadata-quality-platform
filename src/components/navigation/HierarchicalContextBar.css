@@ -155,8 +155,8 @@
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  min-width: 320px;
-  max-width: 480px;
+  min-width: 420px; /* Expanded from 320px for more space */
+  max-width: 580px; /* Expanded from 480px */
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
   border-radius: 8px;
@@ -164,6 +164,13 @@
   z-index: 102;
   animation: dropdownSlideIn 220ms cubic-bezier(0.25, 1, 0.5, 1);
   overflow: hidden;
+  transition: min-width 200ms ease, box-shadow 200ms ease;
+}
+
+/* Expand on hover */
+.breadcrumb-dropdown:hover {
+  min-width: 480px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
 }
 
 @keyframes dropdownSlideIn {
@@ -208,6 +215,18 @@
   padding: 4px;
 }
 
+/* Dropdown item wrapper - contains item button + info button */
+.dropdown-item-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dropdown-item-wrapper:hover .item-info-btn {
+  opacity: 1;
+}
+
 /* Custom scrollbar for dropdown */
 .dropdown-items::-webkit-scrollbar {
   width: 8px;
@@ -231,7 +250,7 @@
   display: flex;
   align-items: center;
   gap: 12px; /* Fixed: on grid */
-  width: 100%;
+  flex: 1; /* Take remaining space */
   padding: 8px 12px; /* Fixed: on grid */
   background: transparent;
   border: none;
@@ -246,6 +265,34 @@
 
 .dropdown-item:hover {
   background: var(--bg-hover);
+}
+
+/* Info button - shows on hover */
+.item-info-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 140ms ease;
+  opacity: 0;
+  flex-shrink: 0;
+}
+
+.item-info-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-default);
+  color: var(--accent-primary);
+  opacity: 1 !important;
+}
+
+.item-info-btn:active {
+  transform: scale(0.94);
 }
 
 .dropdown-item.selected {
