@@ -5,10 +5,10 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link2, Link2Off, ChevronDown, BarChart3, X, Download, Loader2, AlertTriangle, Globe, FolderOpen, Settings } from 'lucide-react';
+import { Link2, Link2Off, Download, AlertTriangle, FolderOpen, Settings } from 'lucide-react';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
-import { getAtlanConfig, getConnectors, testAtlanConnection, configureAtlanApi, getSavedAtlanBaseUrl } from '../../services/atlan/api';
+import { getAtlanConfig, testAtlanConnection, configureAtlanApi, getSavedAtlanBaseUrl } from '../../services/atlan/api';
 import { loadAssetsForContext, generateContextLabel } from '../../utils/assetContextLoader';
 import { sanitizeError } from '../../utils/sanitize';
 import { logger } from '../../utils/logger';
@@ -36,27 +36,19 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
 
   // Asset context state
   const {
-    context,
     contextAssets,
-    isLoading,
     error,
     setContext,
-    setAllAssets,
-    clearContext,
     setLoading,
     setError,
-    getContextLabel,
-    getAssetCount,
   } = useAssetContextStore();
 
   // Scores store for triggering score calculation
   const { setAssetsWithScores } = useScoresStore();
 
   const [isDraggingOver, setIsDraggingOver] = useState(false);
-  const [showContextMenu, setShowContextMenu] = useState(false);
   const [showBrowserPanel, setShowBrowserPanel] = useState(false);
   const [showSettingsDrawer, setShowSettingsDrawer] = useState(false);
-  const [availableConnectors, setAvailableConnectors] = useState<Array<{ name: string; id: string }>>([]);
 
   // Check connection status on mount
   useEffect(() => {
@@ -67,19 +59,6 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
     const config = getAtlanConfig();
     setIsConnected(!!config);
   }, []);
-
-  // Load connectors when connected
-  useEffect(() => {
-    if (isConnected) {
-      getConnectors()
-        .then(connectors => {
-          if (connectors?.length > 0) {
-            setAvailableConnectors(connectors.map(c => ({ name: c.name, id: c.id })));
-          }
-        })
-        .catch(err => logger.error('Failed to load connectors', err));
-    }
-  }, [isConnected]);
 
   // Trigger score calculation when context assets change
   const prevAssetsLengthRef = useRef(0);
@@ -105,8 +84,8 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
       setIsConnected(true);
       setShowConnectModal(false);
       window.dispatchEvent(new CustomEvent('atlan-connected', { detail: { baseUrl } }));
-    } catch (err: any) {
-      let errorMessage = err.message || 'Failed to connect to Atlan.';
+    } catch (err: unknown) {
+      let errorMessage = err instanceof Error ? err.message : 'Failed to connect to Atlan.';
       if (errorMessage.includes('ERR_CONNECTION_REFUSED') || errorMessage.includes('Proxy server not running')) {
         errorMessage = 'Proxy server not running. Start with: npm run proxy';
       }
@@ -188,44 +167,6 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
       setLoading(false);
     }
   }, [setContext, setLoading, setError]);
-
-  const handleSelectAllAssets = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setShowContextMenu(false);
-    try {
-      const assets = await loadAssetsForContext('all', {});
-      if (assets.length === 0) {
-        setError('No assets found. Connect to Atlan first.');
-      } else {
-        setAllAssets(assets);
-      }
-    } catch (err) {
-      logger.error('Failed to load all assets', err);
-      setError(err instanceof Error ? err.message : 'Failed to load assets');
-    } finally {
-      setLoading(false);
-    }
-  }, [setAllAssets, setLoading, setError]);
-
-  const handleSelectConnection = useCallback(async (connectionName: string) => {
-    setLoading(true);
-    setError(null);
-    setShowContextMenu(false);
-    try {
-      const assets = await loadAssetsForContext('connection', { connectionName });
-      const label = generateContextLabel('connection', { connectionName });
-      setContext('connection', { connectionName }, label, assets);
-    } catch (err) {
-      logger.error('Failed to load connection assets', err);
-      setError(err instanceof Error ? err.message : 'Failed to load connection');
-    } finally {
-      setLoading(false);
-    }
-  }, [setContext, setLoading, setError]);
-
-  const contextLabel = getContextLabel();
-  const assetCount = getAssetCount();
 
   return (
     <>
