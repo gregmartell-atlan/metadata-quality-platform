@@ -4,7 +4,7 @@
   top: 0;
   right: 0;
   height: 100vh;
-  z-index: 50;
+  z-index: 40; /* Lower than modals, but above content */
   display: flex;
   align-items: stretch;
   pointer-events: none;

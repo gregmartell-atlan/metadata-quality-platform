@@ -49,7 +49,6 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
 
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showBrowserPanel, setShowBrowserPanel] = useState(false);
-  const [showSettingsDrawer, setShowSettingsDrawer] = useState(false);
 
   // Check connection status on mount
   useEffect(() => {
@@ -203,15 +202,6 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
 
         {/* Right: Page Actions */}
         <div className="app-header-right">
-          {/* Global Settings button */}
-          <button
-            className={`settings-btn ${showSettingsDrawer ? 'active' : ''}`}
-            onClick={() => setShowSettingsDrawer(!showSettingsDrawer)}
-            title="Global settings (theme, density, defaults)"
-          >
-            <Settings size={16} />
-          </button>
-
           {children}
         </div>
       </header>
@@ -220,12 +210,6 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
       <AssetBrowserPanel
         isOpen={showBrowserPanel}
         onClose={() => setShowBrowserPanel(false)}
-      />
-
-      {/* Global Settings Drawer */}
-      <GlobalSettingsDrawer
-        isOpen={showSettingsDrawer}
-        onClose={() => setShowSettingsDrawer(!showSettingsDrawer)}
       />
 
       {/* Connection Modal */}

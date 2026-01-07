@@ -16,6 +16,28 @@
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
 }
 
+/* Context indicator - shows when context is applied */
+.hierarchical-context-bar::before {
+  content: 'CONTEXT FILTER ACTIVE';
+  position: absolute;
+  left: 0;
+  top: -1px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--accent-primary);
+  opacity: 0;
+  transition: opacity 200ms ease;
+  text-transform: uppercase;
+  padding: 2px 8px 2px 20px;
+  background: linear-gradient(to right, transparent, rgba(51, 102, 255, 0.08));
+  border-radius: 0 0 4px 0;
+}
+
+.hierarchical-context-bar:has(.breadcrumb-trigger.selected)::before {
+  opacity: 1;
+}
+
 .context-breadcrumbs {
   display: flex;
   align-items: center;
