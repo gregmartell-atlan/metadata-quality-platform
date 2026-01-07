@@ -439,6 +439,39 @@
 }
 
 /* ========================================
+   LAYOUT UTILITIES - Auto-arrange widgets
+   ======================================== */
+
+.widget-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-6);
+  width: 100%;
+}
+
+.widget-grid-2col {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: var(--space-6);
+}
+
+.widget-grid-3col {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
+.widget-full {
+  grid-column: 1 / -1;
+}
+
+/* ========================================
    GLOBAL STYLES
    ======================================== */
 
