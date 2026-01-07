@@ -151,12 +151,14 @@
 .matrix-content {
   display: flex;
   gap: var(--space-4);
+  width: 100%;  /* Ensure full width when in column layout */
 }
 
 .matrix-chart {
   flex: 1;
   position: relative;
   min-height: 320px;
+  width: 100%;  /* Ensure ResponsiveContainer can calculate dimensions */
 }
 
 .matrix-quadrant-labels {

@@ -113,27 +113,33 @@ export function PreBuiltPivots() {
 
   // Build dynamic pivot based on user selection
   const customPivot = useMemo(() => {
+    // Skip building pivot until scores are ready to avoid wasteful double-build
+    if (sourceAssets.length > 0 && !scoresMap) {
+      logger.debug('PreBuiltPivots: Waiting for scores before building custom pivot');
+      return null;
+    }
+
     const startTime = performance.now();
     logger.info('PreBuiltPivots: Building custom pivot', {
       assetCount: sourceAssets.length,
       rowDimensions: rowDimensions.length,
       measures: measures.length
     });
-    
+
     if (sourceAssets.length === 0 || rowDimensions.length === 0 || measures.length === 0) {
       logger.debug('PreBuiltPivots: Skipping custom pivot (empty input)');
       return null;
     }
-    
+
     const pivot = buildDynamicPivot(sourceAssets, rowDimensions, measures, undefined, scoresMap);
     pivot.measureDisplayModes = measureDisplayModes;
-    
+
     const duration = performance.now() - startTime;
     logger.info('PreBuiltPivots: Custom pivot built', {
       rowCount: pivot.rows.length,
       duration: `${duration.toFixed(2)}ms`
     });
-    
+
     return pivot;
   }, [sourceAssets, rowDimensions, measures, measureDisplayModes, scoresMap]);
 
@@ -144,14 +150,20 @@ export function PreBuiltPivots() {
 
   // PIVOT 1: Completeness by Connection & Asset Type (pre-built example)
   const completenessPivot = useMemo(() => {
+    // Skip building pivot until scores are ready to avoid wasteful double-build
+    if (sourceAssets.length > 0 && !scoresMap) {
+      logger.debug('PreBuiltPivots: Waiting for scores before building completeness pivot');
+      return null;
+    }
+
     const startTime = performance.now();
     logger.info('PreBuiltPivots: Building completeness pivot', { assetCount: sourceAssets.length });
-    
+
     if (sourceAssets.length === 0) {
       logger.debug('PreBuiltPivots: Skipping completeness pivot (no assets)');
       return null;
     }
-    
+
     const pivot = buildDynamicPivot(
       sourceAssets,
       ['connection', 'type'],
@@ -159,13 +171,13 @@ export function PreBuiltPivots() {
       undefined,
       scoresMap
     );
-    
+
     const duration = performance.now() - startTime;
     logger.info('PreBuiltPivots: Completeness pivot built', {
       rowCount: pivot.rows.length,
       duration: `${duration.toFixed(2)}ms`
     });
-    
+
     return pivot;
   }, [sourceAssets, scoresMap]);
 
@@ -176,14 +188,20 @@ export function PreBuiltPivots() {
 
   // PIVOT 2: Domain Health Scorecard
   const domainPivot = useMemo(() => {
+    // Skip building pivot until scores are ready to avoid wasteful double-build
+    if (sourceAssets.length > 0 && !scoresMap) {
+      logger.debug('PreBuiltPivots: Waiting for scores before building domain pivot');
+      return null;
+    }
+
     const startTime = performance.now();
     logger.info('PreBuiltPivots: Building domain pivot', { assetCount: sourceAssets.length });
-    
+
     if (sourceAssets.length === 0) {
       logger.debug('PreBuiltPivots: Skipping domain pivot (no assets)');
       return null;
     }
-    
+
     const pivot = buildDynamicPivot(
       sourceAssets,
       ['domain'],
@@ -191,13 +209,13 @@ export function PreBuiltPivots() {
       undefined,
       scoresMap
     );
-    
+
     const duration = performance.now() - startTime;
     logger.info('PreBuiltPivots: Domain pivot built', {
       rowCount: pivot.rows.length,
       duration: `${duration.toFixed(2)}ms`
     });
-    
+
     return pivot;
   }, [sourceAssets, scoresMap]);
 
@@ -242,6 +260,12 @@ export function PreBuiltPivots() {
 
   // PIVOT 3: Owner Accountability - Certification Coverage
   const ownerPivot = useMemo(() => {
+    // Skip building pivot until scores are ready to avoid wasteful double-build
+    if (sourceAssets.length > 0 && !scoresMap) {
+      logger.debug('PreBuiltPivots: Waiting for scores before building owner pivot');
+      return null;
+    }
+
     if (sourceAssets.length === 0) return null;
     return buildDynamicPivot(
       sourceAssets,
@@ -317,14 +341,20 @@ export function PreBuiltPivots() {
 
   // PIVOT 4: Lineage Coverage
   const lineagePivot = useMemo(() => {
+    // Skip building pivot until scores are ready to avoid wasteful double-build
+    if (sourceAssets.length > 0 && !scoresMap) {
+      logger.debug('PreBuiltPivots: Waiting for scores before building lineage pivot');
+      return null;
+    }
+
     const startTime = performance.now();
     logger.info('PreBuiltPivots: Building lineage pivot', { assetCount: sourceAssets.length });
-    
+
     if (sourceAssets.length === 0) {
       logger.debug('PreBuiltPivots: Skipping lineage pivot (no assets)');
       return null;
     }
-    
+
     const pivot = buildDynamicPivot(
       sourceAssets,
       ['connection', 'database', 'schema'],
@@ -332,13 +362,13 @@ export function PreBuiltPivots() {
       undefined,
       scoresMap
     );
-    
+
     const duration = performance.now() - startTime;
     logger.info('PreBuiltPivots: Lineage pivot built', {
       rowCount: pivot.rows.length,
       duration: `${duration.toFixed(2)}ms`
     });
-    
+
     return pivot;
   }, [sourceAssets, scoresMap]);
 

@@ -11,12 +11,13 @@
   padding: var(--space-6);
 }
 
-/* Top Grid: Radar Chart + Stats */
+/* Top Grid: Radar Chart + Stats - More balanced */
 .analytics-top-grid {
   display: grid;
-  grid-template-columns: 1fr 2fr;
+  grid-template-columns: minmax(400px, 1fr) minmax(500px, 1.5fr);
   gap: var(--space-6);
   margin-bottom: var(--space-6);
+  align-items: start;
 }
 
 @media (max-width: 1200px) {
@@ -27,12 +28,16 @@
 
 .analytics-radar-section {
   min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .analytics-stats-section {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-4);
+  align-content: start;
 }
 
 @media (max-width: 768px) {
@@ -554,14 +559,13 @@
 
 /* Impact Section - Quality Matrix & Remediation */
 .analytics-impact-section {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-6);
   margin-bottom: var(--space-6);
 }
 
-@media (max-width: 1400px) {
-  .analytics-impact-section {
-    grid-template-columns: 1fr;
-  }
+/* Give each widget full width so they have room to breathe */
+.analytics-impact-section > * {
+  width: 100%;
 }

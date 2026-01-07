@@ -1,58 +1,64 @@
-/* Connection Cards - Home page connection overview */
+/* Connection Cards - Atlan Professional Design */
 
 .connection-cards-section {
-  margin-bottom: var(--space-6);
+  margin-bottom: 2rem;
 }
 
 .connection-cards-section .section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--space-4);
+  margin-bottom: 1.25rem;
 }
 
 .connection-cards-section .section-title {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-default);
+  gap: 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #0F172A;
   margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.connection-cards-section .section-title svg {
+  color: #5850EC;
 }
 
 .connection-cards-section .refresh-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  background: transparent;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  color: var(--text-muted);
+  width: 32px;
+  height: 32px;
+  background: white;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  color: #64748B;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.2s ease;
 }
 
 .connection-cards-section .refresh-btn:hover {
-  background: var(--bg-hover);
-  border-color: var(--border-default);
-  color: var(--text-default);
+  background: #F8FAFC;
+  border-color: #5850EC;
+  color: #5850EC;
 }
 
 .connection-cards-loading {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-3);
-  padding: var(--space-8);
-  color: var(--text-muted);
-  font-size: var(--font-size-sm);
+  gap: 0.875rem;
+  padding: 4rem 2rem;
+  color: #64748B;
+  font-size: 0.938rem;
 }
 
 .connection-cards-loading .spin {
   animation: spin 1s linear infinite;
+  color: #5850EC;
 }
 
 @keyframes spin {
@@ -63,64 +69,78 @@
 /* Cards Grid */
 .connection-cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.25rem;
 }
 
-/* Individual Card */
+/* Individual Card - Premium feel */
 .connection-card {
   display: flex;
   flex-direction: column;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  background: white;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
   overflow: hidden;
-  transition: all var(--transition-fast);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.connection-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: transparent;
+  transition: all 0.3s ease;
 }
 
 .connection-card:hover {
-  border-color: var(--border-default);
-  box-shadow: var(--shadow-md);
+  border-color: #CBD5E1;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.1);
+  transform: translateY(-4px);
 }
 
-/* Score-based border accent */
-.connection-card.excellent {
-  border-left: 3px solid var(--state-success-text);
+/* Score-based border accent - Atlan style */
+.connection-card.excellent::before {
+  background: linear-gradient(180deg, #10B981 0%, #059669 100%);
 }
 
-.connection-card.good {
-  border-left: 3px solid var(--score-good);
+.connection-card.good::before {
+  background: linear-gradient(180deg, #3B82F6 0%, #2563EB 100%);
 }
 
-.connection-card.fair {
-  border-left: 3px solid var(--state-warning-text);
+.connection-card.fair::before {
+  background: linear-gradient(180deg, #F59E0B 0%, #D97706 100%);
 }
 
-.connection-card.poor {
-  border-left: 3px solid var(--state-danger-text);
+.connection-card.poor::before {
+  background: linear-gradient(180deg, #EF4444 0%, #DC2626 100%);
 }
 
 /* Card Header */
 .connection-card-header {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  background: var(--bg-subtle);
-  border-bottom: 1px solid var(--border-subtle);
+  gap: 1rem;
+  padding: 1.25rem;
+  background: linear-gradient(180deg, #FAFBFC 0%, white 100%);
+  border-bottom: 1px solid #F1F5F9;
 }
 
 .connection-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  color: var(--text-secondary);
+  width: 52px;
+  height: 52px;
+  background: white;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  color: #5850EC;
   flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04);
 }
 
 .connection-info {
@@ -129,84 +149,91 @@
 }
 
 .connection-name {
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-default);
-  margin: 0 0 var(--space-1) 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0F172A;
+  margin: 0 0 0.25rem 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: -0.01em;
 }
 
 .connection-count {
-  font-size: var(--font-size-xs);
-  color: var(--text-muted);
+  font-size: 0.813rem;
+  color: #64748B;
+  font-weight: 500;
 }
 
 /* Card Body */
 .connection-card-body {
-  padding: var(--space-4);
+  padding: 1.25rem;
   flex: 1;
+  background: white;
 }
 
 .score-display {
   display: flex;
   align-items: baseline;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .score-value {
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--text-default);
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: #0F172A;
+  letter-spacing: -0.02em;
+  line-height: 1;
 }
 
 .score-label {
-  font-size: var(--font-size-sm);
-  color: var(--text-muted);
+  font-size: 0.875rem;
+  color: #64748B;
+  font-weight: 500;
 }
 
 .score-bar {
-  height: 4px;
-  background: var(--bg-subtle);
-  border-radius: 2px;
+  height: 6px;
+  background: #F1F5F9;
+  border-radius: 3px;
   overflow: hidden;
-  margin-bottom: var(--space-2);
+  margin-bottom: 0.75rem;
 }
 
 .score-bar-fill {
   height: 100%;
-  border-radius: 2px;
-  transition: width var(--transition-normal);
+  border-radius: 3px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .score-bar-fill.excellent {
-  background: var(--state-success-text);
+  background: linear-gradient(90deg, #10B981 0%, #059669 100%);
 }
 
 .score-bar-fill.good {
-  background: var(--score-good);
+  background: linear-gradient(90deg, #3B82F6 0%, #2563EB 100%);
 }
 
 .score-bar-fill.fair {
-  background: var(--state-warning-text);
+  background: linear-gradient(90deg, #F59E0B 0%, #D97706 100%);
 }
 
 .score-bar-fill.poor {
-  background: var(--state-danger-text);
+  background: linear-gradient(90deg, #EF4444 0%, #DC2626 100%);
 }
 
 .critical-badge {
   display: inline-flex;
   align-items: center;
-  padding: var(--space-1) var(--space-2);
-  background: var(--state-danger-bg);
-  border: 1px solid var(--state-danger-border);
-  border-radius: var(--radius-sm);
-  color: var(--state-danger-text);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
+  padding: 0.375rem 0.625rem;
+  background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%);
+  border: 1px solid #FECACA;
+  border-radius: 6px;
+  color: #DC2626;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .no-score {
@@ -214,49 +241,58 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--space-4);
+  padding: 1.5rem;
   text-align: center;
-  color: var(--text-muted);
 }
 
 .no-score span:first-child {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  margin-bottom: var(--space-1);
+  font-size: 0.938rem;
+  font-weight: 500;
+  color: #475569;
+  margin-bottom: 0.375rem;
 }
 
 .no-score-hint {
-  font-size: var(--font-size-xs);
-  opacity: 0.8;
+  font-size: 0.813rem;
+  color: #94A3B8;
 }
 
-/* Explore Button */
+/* Explore Button - Atlan Purple */
 .explore-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
+  gap: 0.5rem;
   width: 100%;
-  padding: var(--space-3);
-  background: var(--button-primary-bg);
+  padding: 0.875rem;
+  background: #5850EC;
   border: none;
-  border-top: 1px solid var(--border-subtle);
-  color: var(--button-primary-text);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
+  border-top: 1px solid #F1F5F9;
+  color: white;
+  font-size: 0.938rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: -0.01em;
 }
 
 .explore-btn:hover:not(:disabled) {
-  background: var(--button-primary-bg-hover);
+  background: #3730A3;
+  box-shadow: inset 0 -2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .explore-btn:disabled {
-  opacity: 0.7;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
 .explore-btn .spin {
   animation: spin 1s linear infinite;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .connection-cards-grid {
+    grid-template-columns: 1fr;
+  }
 }

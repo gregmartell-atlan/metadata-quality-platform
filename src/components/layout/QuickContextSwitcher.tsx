@@ -40,6 +40,7 @@ export function QuickContextSwitcher() {
   const [loadedSchemas, setLoadedSchemas] = useState<LoadedChildren>({});
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [isLoadingConnectors, setIsLoadingConnectors] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -100,20 +101,28 @@ export function QuickContextSwitcher() {
     if (!isOpen || connectors.length > 0 || isLoadingConnectors) return;
 
     let cancelled = false;
-    setIsLoadingConnectors(true); // eslint-disable-line react-hooks/set-state-in-effect
+    setIsLoadingConnectors(true);
+    setLoadError(null);
     getConnectors()
       .then(data => {
-        if (!cancelled) setConnectors(data);
+        if (!cancelled) {
+          setConnectors(data);
+          setLoadError(null);
+        }
       })
       .catch(err => {
-        if (!cancelled) console.error(err);
+        if (!cancelled) {
+          console.error('Failed to load connectors:', err);
+          const errorMessage = err instanceof Error ? err.message : 'Failed to load connections';
+          setLoadError(errorMessage);
+        }
       })
       .finally(() => {
         if (!cancelled) setIsLoadingConnectors(false);
       });
 
     return () => { cancelled = true; };
-  }, [isOpen, connectors.length, isLoadingConnectors]);
+  }, [isOpen, connectors.length]);
 
   // Close on outside click
   useEffect(() => {
@@ -237,7 +246,11 @@ export function QuickContextSwitcher() {
 
           {/* Connections List */}
           <div className="context-tree">
-            {isLoadingConnectors ? (
+            {loadError ? (
+              <div className="error-state" style={{ color: 'var(--color-error, #e74c3c)', padding: '12px', textAlign: 'center' }}>
+                <span>{loadError}</span>
+              </div>
+            ) : isLoadingConnectors ? (
               <div className="loading-state">
                 <Loader2 size={16} className="spin" />
                 <span>Loading connections...</span>

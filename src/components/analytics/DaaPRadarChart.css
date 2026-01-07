@@ -19,6 +19,7 @@
 .daap-radar-container {
   width: 100%;
   height: 350px;
+  min-height: 350px;  /* Ensure container maintains height for ResponsiveContainer */
 }
 
 /* Responsive sizing */
