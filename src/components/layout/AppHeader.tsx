@@ -60,6 +60,43 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
     setIsConnected(!!config);
   }, []);
 
+  // Auto-reload assets when context is restored but assets are empty
+  const hasTriedReload = useRef(false);
+  useEffect(() => {
+    const reloadAssets = async () => {
+      if (!context || !isConnected || hasTriedReload.current) return;
+
+      // Context exists but no assets - reload them
+      if (context.assetCount > 0 && contextAssets.length === 0) {
+        hasTriedReload.current = true;
+        logger.info('AppHeader: Reloading assets from persisted context', {
+          contextType: context.type,
+          contextLabel: context.label,
+          expectedCount: context.assetCount
+        });
+
+        setLoading(true);
+        try {
+          const assets = await loadAssetsForContext(context.type, context.filters);
+          logger.info('AppHeader: Assets reloaded', { count: assets.length });
+          useAssetContextStore.getState().setContextAssets(assets);
+        } catch (err) {
+          logger.error('AppHeader: Failed to reload assets', err);
+          setError('Failed to reload assets. Please reselect your context.');
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    reloadAssets();
+  }, [context, contextAssets.length, isConnected, setLoading, setError]);
+
+  // Reset reload flag when context changes
+  useEffect(() => {
+    hasTriedReload.current = false;
+  }, [context?.label]);
+
   // Trigger score calculation when context assets change
   const prevAssetsLengthRef = useRef(0);
   useEffect(() => {
