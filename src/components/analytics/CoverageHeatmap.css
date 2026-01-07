@@ -32,7 +32,7 @@
 }
 
 .heatmap-table-wrapper {
-  min-width: 600px;
+  min-width: 900px;  /* Wider to accommodate all columns comfortably */
 }
 
 /* Header Row */
@@ -51,12 +51,14 @@
 
 .heatmap-field-header {
   flex: 1;
-  padding: var(--space-2);
-  font-size: var(--font-size-sm);
+  min-width: 85px;  /* Ensure cells don't get too narrow */
+  padding: var(--space-2) var(--space-1);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   color: var(--text-secondary);
   text-align: center;
   text-transform: capitalize;
+  white-space: nowrap;  /* Prevent text wrapping */
 }
 
 /* Data Rows */
@@ -83,17 +85,18 @@
 
 .heatmap-cell-wrapper {
   flex: 1;
+  min-width: 85px;  /* Match header width */
   padding: 4px;
 }
 
 .heatmap-cell {
   height: 100%;
-  min-height: 40px;
+  min-height: 44px;  /* Slightly taller for better readability */
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-sm);  /* Larger text */
   font-weight: var(--font-weight-bold);
   transition: all var(--transition-fast);
 }
