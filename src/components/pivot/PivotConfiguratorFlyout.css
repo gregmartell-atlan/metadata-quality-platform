@@ -1,9 +1,9 @@
 /* Config Flyout - Collapsible right sidebar */
 .config-flyout {
   position: fixed;
-  top: 0;
+  top: 72px; /* Account for header height */
   right: 0;
-  height: 100vh;
+  height: calc(100vh - 72px); /* Subtract header height */
   z-index: 40; /* Lower than modals, but above content */
   display: flex;
   align-items: stretch;
@@ -17,7 +17,7 @@
 /* Collapsed Tab Button - Always visible on right edge */
 .flyout-collapsed-tab {
   position: fixed;
-  top: 50%;
+  top: calc(50% + 36px); /* Offset by half header height */
   right: 0;
   transform: translateY(-50%);
   width: 36px;
@@ -77,9 +77,9 @@
 /* Flyout Panel */
 .flyout-panel {
   position: fixed;
-  top: 0;
+  top: 72px; /* Account for header height */
   right: 0;
-  height: 100vh;
+  height: calc(100vh - 72px); /* Subtract header height */
   background: var(--bg-card, #141416);
   border-left: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
   display: flex;

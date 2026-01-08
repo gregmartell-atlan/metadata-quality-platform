@@ -1,97 +1,138 @@
+/* Glass morphism lineage nodes */
 .lineage-node {
   position: relative;
-  background: white;
-  border: 2px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-lg);
+  padding: 10px 14px;
   min-width: 150px;
   max-width: 200px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s ease;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
   cursor: pointer;
+  overflow: hidden;
 }
 
+/* Premium hover state with lift effect */
 .lineage-node:hover {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
+  transform: translateY(-6px) scale(1.02);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 0 32px rgba(51, 102, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
+/* Selected state with glow */
 .lineage-node.selected {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(235, 240, 255, 0.9));
+  border: 2px solid var(--primary-blue);
+  box-shadow:
+    0 0 0 4px rgba(51, 102, 255, 0.15),
+    0 16px 48px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
+/* Center node (focal point) with prominent styling */
 .lineage-node.center {
-  border-color: #3b82f6;
-  border-width: 3px;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  background: linear-gradient(135deg, rgba(51, 102, 255, 0.05), rgba(235, 240, 255, 0.15));
+  border: 3px solid var(--primary-blue);
+  box-shadow:
+    0 0 0 6px rgba(51, 102, 255, 0.1),
+    0 12px 40px rgba(51, 102, 255, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
-/* Color coding by quality */
+/* Quality-based border colors with gradient backgrounds */
 .lineage-node.node-quality-high {
-  border-color: #10b981;
+  border-color: var(--color-success-500);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.85), rgba(218, 251, 225, 0.3));
 }
 
 .lineage-node.node-quality-medium {
-  border-color: #f59e0b;
+  border-color: var(--color-amber-500);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.85), rgba(254, 243, 199, 0.3));
 }
 
 .lineage-node.node-quality-low {
-  border-color: #ef4444;
+  border-color: var(--color-red-500);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.85), rgba(254, 226, 226, 0.3));
 }
 
-/* Color coding by lineage */
+/* Lineage status colors */
 .lineage-node.node-lineage-full {
-  border-color: #10b981;
+  border-color: var(--color-success-500);
 }
 
 .lineage-node.node-lineage-partial {
-  border-color: #f59e0b;
+  border-color: var(--color-amber-500);
 }
 
 .lineage-node.node-lineage-orphaned {
-  border-color: #9ca3af;
+  border-color: var(--color-gray-400);
   opacity: 0.7;
 }
 
-/* Process nodes */
+/* Process nodes with purple gradient */
 .lineage-node.node-process {
-  border-color: #8b5cf6;
-  background: #faf5ff;
+  border-color: var(--color-purple-500);
+  background: linear-gradient(135deg, rgba(250, 245, 255, 0.9), rgba(237, 233, 254, 0.6));
 }
 
-/* Highlight states */
+/* Enhanced highlight states with premium pulse animations */
 .lineage-node.node-highlight-impact {
-  background: #fef3c7;
-  border-color: #f59e0b;
-  animation: pulse-impact 2s ease-in-out infinite;
+  background: linear-gradient(135deg, #fef3c7, #fef08a);
+  border: 2px solid var(--color-amber-500);
+  animation: pulse-glow-impact 2s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
 }
 
 .lineage-node.node-highlight-root-cause {
-  background: #fee2e2;
-  border-color: #ef4444;
-  animation: pulse-root-cause 2s ease-in-out infinite;
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+  border: 2px solid var(--color-red-500);
+  animation: pulse-glow-danger 2s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
 }
 
 .lineage-node.node-highlight-quality {
-  background: #fef2f2;
-  border-color: #dc2626;
+  background: linear-gradient(135deg, #fef2f2, #fecaca);
+  border: 2px solid var(--color-red-600);
 }
 
-@keyframes pulse-impact {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
-  50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+/* Premium pulse animations with glow */
+@keyframes pulse-glow-impact {
+  0%, 100% {
+    box-shadow:
+      0 0 0 0 rgba(245, 158, 11, 0.6),
+      0 8px 32px rgba(245, 158, 11, 0.15);
+  }
+  50% {
+    box-shadow:
+      0 0 0 12px rgba(245, 158, 11, 0),
+      0 8px 32px rgba(245, 158, 11, 0.25);
+  }
 }
 
-@keyframes pulse-root-cause {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-  50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+@keyframes pulse-glow-danger {
+  0%, 100% {
+    box-shadow:
+      0 0 0 0 rgba(239, 68, 68, 0.6),
+      0 8px 32px rgba(239, 68, 68, 0.15);
+  }
+  50% {
+    box-shadow:
+      0 0 0 12px rgba(239, 68, 68, 0),
+      0 8px 32px rgba(239, 68, 68, 0.25);
+  }
 }
 
+/* Node content layout */
 .lineage-node-content {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .lineage-node-header {
@@ -111,60 +152,76 @@
 
 .lineage-node-icon {
   flex-shrink: 0;
-  color: #6b7280;
+  color: var(--text-secondary);
+  transition: color 0.25s ease;
 }
 
+.lineage-node:hover .lineage-node-icon {
+  color: var(--primary-blue);
+}
+
+/* Enhanced badge styling */
 .lineage-node-badge {
   font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: #f3f4f6;
-  color: #374151;
+  padding: 3px 8px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--bg-subtle), var(--bg-muted));
+  color: var(--text-secondary);
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 80px;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
 }
 
 .lineage-node-badge-process {
-  background: #ede9fe;
-  color: #7c3aed;
+  background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+  color: var(--color-purple-700);
 }
 
+/* Premium quality score badges with gradients */
 .lineage-node-quality {
   font-size: 11px;
   font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-md);
   flex-shrink: 0;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .lineage-node-quality.high {
-  background: #d1fae5;
-  color: #065f46;
+  background: linear-gradient(135deg, #DAFBE1, #D1FAE5);
+  color: var(--color-success-700);
+  box-shadow: 0 2px 8px rgba(45, 164, 78, 0.15);
 }
 
 .lineage-node-quality.medium {
-  background: #fef3c7;
-  color: #92400e;
+  background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+  color: var(--color-amber-800);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
 }
 
 .lineage-node-quality.low {
-  background: #fee2e2;
-  color: #991b1b;
+  background: linear-gradient(135deg, #FEE2E2, #FECACA);
+  color: var(--color-red-700);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15);
 }
 
+/* Node label */
 .lineage-node-label {
   font-size: 12px;
   font-weight: 500;
-  color: #111827;
+  color: var(--text-default);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.4;
 }
 
+/* Badges container */
 .lineage-node-badges {
   display: flex;
   align-items: center;
@@ -175,80 +232,138 @@
 .lineage-node-badge-small {
   display: flex;
   align-items: center;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 10px;
 }
 
 .lineage-node-badge-stale {
-  color: #f59e0b;
+  color: var(--color-amber-500);
 }
 
+/* Lineage info badges */
 .lineage-node-lineage-info {
   display: flex;
   gap: 4px;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .lineage-node-lineage-badge {
   font-size: 9px;
-  padding: 1px 4px;
-  border-radius: 3px;
-  background: #f3f4f6;
-  color: #6b7280;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--bg-subtle), var(--bg-muted));
+  color: var(--text-muted);
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
 }
 
 .lineage-node-lineage-badge.upstream {
-  background: #fef3c7;
-  color: #92400e;
+  background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+  color: var(--color-amber-800);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.lineage-node-lineage-badge.upstream:hover {
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+  transform: translateY(-1px);
 }
 
 .lineage-node-lineage-badge.downstream {
-  background: #d1fae5;
-  color: #065f46;
+  background: linear-gradient(135deg, #DAFBE1, #D1FAE5);
+  color: var(--color-success-700);
+  border: 1px solid rgba(45, 164, 78, 0.2);
 }
 
+.lineage-node-lineage-badge.downstream:hover {
+  box-shadow: 0 4px 12px rgba(45, 164, 78, 0.2);
+  transform: translateY(-1px);
+}
+
+/* Premium expand button */
 .lineage-node-expand {
   position: absolute;
   top: -8px;
   right: -8px;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  background: #3b82f6;
+  background: linear-gradient(135deg, var(--primary-blue), var(--color-blue-600));
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
   font-weight: bold;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(51, 102, 255, 0.3);
+  border: 2px solid white;
   cursor: pointer;
   z-index: 10;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .lineage-node-expand:hover {
-  background: #2563eb;
-  transform: scale(1.1);
+  background: linear-gradient(135deg, var(--color-blue-600), var(--color-blue-700));
+  transform: scale(1.15);
+  box-shadow: 0 8px 24px rgba(51, 102, 255, 0.4);
 }
 
+.lineage-node-expand:active {
+  transform: scale(1.05);
+}
+
+/* Connection handles */
 .lineage-handle {
-  width: 8px;
-  height: 8px;
-  background: #3b82f6;
+  width: 10px;
+  height: 10px;
+  background: var(--primary-blue);
   border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  transition: all 0.25s ease;
+}
+
+.lineage-handle:hover {
+  transform: scale(1.3);
 }
 
 .lineage-handle-input {
-  background: #f59e0b;
+  background: var(--color-amber-500);
 }
 
 .lineage-handle-output {
-  background: #10b981;
+  background: var(--color-success-500);
 }
 
+/* Dark mode nodes */
+[data-theme="dark"] .lineage-node {
+  background: rgba(30, 41, 59, 0.75);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
 
+[data-theme="dark"] .lineage-node:hover {
+  background: rgba(30, 41, 59, 0.85);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 0 32px rgba(51, 102, 255, 0.25);
+}
 
+[data-theme="dark"] .lineage-node.selected {
+  background: rgba(51, 102, 255, 0.1);
+  border-color: var(--primary-blue);
+}
 
+[data-theme="dark"] .lineage-node.center {
+  background: linear-gradient(135deg, rgba(51, 102, 255, 0.12), rgba(51, 102, 255, 0.05));
+}
 
+[data-theme="dark"] .lineage-node-badge {
+  background: linear-gradient(135deg, var(--bg-subtle), var(--bg-muted));
+}
 
-
+[data-theme="dark"] .lineage-node.node-process {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(139, 92, 246, 0.05));
+}

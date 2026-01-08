@@ -17,7 +17,7 @@ export function Sidebar() {
     <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
       <div className="logo">
         <div className="logo-icon">MQ</div>
-        {!isCollapsed && <span className="logo-text">Metadata Quality</span>}
+        <span className="logo-text">Metadata Quality</span>
       </div>
 
       <button
@@ -36,19 +36,19 @@ export function Sidebar() {
             title="Home"
           >
             <Home size={18} />
-            {!isCollapsed && <span>Home</span>}
+            <span>Home</span>
           </Link>
         </div>
 
         <div className="nav-section">
-          {!isCollapsed && <div className="nav-label">Dashboards</div>}
+          <div className="nav-label">Dashboards</div>
           <Link
             to="/dashboard"
             className={`nav-item ${isActive('/dashboard') ? 'active' : ''}`}
             title="Executive Overview"
           >
             <LayoutGrid size={18} />
-            {!isCollapsed && <span>Executive Overview</span>}
+            <span>Executive Overview</span>
           </Link>
           <Link
             to="/stewardship"
@@ -56,7 +56,7 @@ export function Sidebar() {
             title="Stewardship Ops"
           >
             <BarChart3 size={18} />
-            {!isCollapsed && <span>Stewardship Ops</span>}
+            <span>Stewardship Ops</span>
           </Link>
           <Link
             to="/campaigns"
@@ -64,19 +64,19 @@ export function Sidebar() {
             title="Campaign Tracking"
           >
             <Target size={18} />
-            {!isCollapsed && <span>Campaign Tracking</span>}
+            <span>Campaign Tracking</span>
           </Link>
         </div>
 
         <div className="nav-section">
-          {!isCollapsed && <div className="nav-label">Analysis</div>}
+          <div className="nav-label">Analysis</div>
           <Link
             to="/pivot"
             className={`nav-item ${isActive('/pivot') ? 'active' : ''}`}
             title="Pivot Builder"
           >
             <LayoutGrid size={18} />
-            {!isCollapsed && <span>Pivot Builder</span>}
+            <span>Pivot Builder</span>
           </Link>
           <Link
             to="/lineage"
@@ -84,7 +84,7 @@ export function Sidebar() {
             title="Lineage Explorer"
           >
             <GitBranch size={18} />
-            {!isCollapsed && <span>Lineage Explorer</span>}
+            <span>Lineage Explorer</span>
           </Link>
           <Link
             to="/analytics"
@@ -92,7 +92,7 @@ export function Sidebar() {
             title="DaaP Analytics"
           >
             <Radar size={18} />
-            {!isCollapsed && <span>DaaP Analytics</span>}
+            <span>DaaP Analytics</span>
           </Link>
           <Link
             to="/trends"
@@ -100,7 +100,7 @@ export function Sidebar() {
             title="Quality Trends"
           >
             <RefreshCw size={18} />
-            {!isCollapsed && <span>Quality Trends</span>}
+            <span>Quality Trends</span>
           </Link>
           <Link
             to="/accountability"
@@ -108,19 +108,19 @@ export function Sidebar() {
             title="Accountability"
           >
             <Users size={18} />
-            {!isCollapsed && <span>Accountability</span>}
+            <span>Accountability</span>
           </Link>
         </div>
 
         <div className="nav-section">
-          {!isCollapsed && <div className="nav-label">Actions</div>}
+          <div className="nav-label">Actions</div>
           <button className="nav-item" title="Campaigns">
             <Target size={18} />
-            {!isCollapsed && <span>Campaigns</span>}
+            <span>Campaigns</span>
           </button>
           <button className="nav-item" title="Automation Rules">
             <Zap size={18} />
-            {!isCollapsed && <span>Automation Rules</span>}
+            <span>Automation Rules</span>
           </button>
         </div>
 
@@ -131,7 +131,7 @@ export function Sidebar() {
             title="Settings"
           >
             <Settings size={18} />
-            {!isCollapsed && <span>Settings</span>}
+            <span>Settings</span>
           </Link>
         </div>
       </nav>

@@ -1,45 +1,93 @@
+/* Enhanced lineage edges with subtle styling */
 .lineage-edge {
-  stroke: #9ca3af;
+  stroke: var(--color-gray-300);
   stroke-width: 2;
   fill: none;
+  transition: all 0.3s ease;
+  opacity: 0.7;
 }
 
+.lineage-edge:hover {
+  opacity: 1;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
+}
+
+/* Selected edge with glow effect */
 .lineage-edge.selected {
+  stroke: var(--primary-blue);
   stroke-width: 3;
-  stroke: #3b82f6;
+  opacity: 1;
+  filter: drop-shadow(0 0 8px rgba(51, 102, 255, 0.6));
 }
 
+/* Directional edge colors */
 .lineage-edge-upstream {
-  stroke: #f59e0b;
+  stroke: var(--color-amber-500);
+  opacity: 0.8;
+}
+
+.lineage-edge-upstream:hover {
+  filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.5));
 }
 
 .lineage-edge-downstream {
-  stroke: #10b981;
+  stroke: var(--color-success-500);
+  opacity: 0.8;
 }
 
+.lineage-edge-downstream:hover {
+  filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.5));
+}
+
+/* Process edges with premium dashing */
 .lineage-edge-process {
-  stroke: #8b5cf6;
-  stroke-dasharray: 5, 5;
+  stroke: var(--color-purple-500);
+  stroke-dasharray: 6, 4;
+  opacity: 0.7;
 }
 
+.lineage-edge-process:hover {
+  filter: drop-shadow(0 0 6px rgba(139, 92, 246, 0.5));
+}
+
+/* Enhanced animation with smoother flow */
 .lineage-edge-animated {
-  stroke-dasharray: 10, 5;
-  animation: flow 2s linear infinite;
+  stroke-dasharray: 12, 6;
+  animation: flow-premium 2.5s linear infinite;
   pointer-events: none;
+  opacity: 0.6;
 }
 
-@keyframes flow {
+@keyframes flow-premium {
   0% {
     stroke-dashoffset: 0;
   }
   100% {
-    stroke-dashoffset: 15;
+    stroke-dashoffset: 18;
   }
 }
 
+/* Dark mode edges */
+[data-theme="dark"] .lineage-edge {
+  stroke: var(--color-gray-600);
+}
 
+[data-theme="dark"] .lineage-edge:hover {
+  filter: drop-shadow(0 2px 8px rgba(255, 255, 255, 0.15));
+}
 
+[data-theme="dark"] .lineage-edge.selected {
+  filter: drop-shadow(0 0 10px rgba(51, 102, 255, 0.8));
+}
 
+[data-theme="dark"] .lineage-edge-upstream:hover {
+  filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.6));
+}
 
+[data-theme="dark"] .lineage-edge-downstream:hover {
+  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.6));
+}
 
-
+[data-theme="dark"] .lineage-edge-process:hover {
+  filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.6));
+}
