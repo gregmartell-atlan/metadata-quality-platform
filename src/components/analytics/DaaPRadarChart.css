@@ -242,11 +242,4 @@
 }
 
 /* Dark mode adjustments */
-[data-theme="dark"] .daap-radar-chart {
-  background: var(--card-bg);
-}
 
-[data-theme="dark"] .daap-tooltip {
-  background: var(--color-gray-800);
-  border: 1px solid var(--color-gray-700);
-}

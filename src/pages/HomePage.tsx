@@ -239,7 +239,7 @@ export function HomePage() {
                   </div>
                   <div className="feature-item-content">
                     <h4>Configure Settings</h4>
-                    <p>Customize filters, themes, and defaults</p>
+                    <p>Customize filters, layouts, and defaults</p>
                   </div>
                 </Link>
               </div>

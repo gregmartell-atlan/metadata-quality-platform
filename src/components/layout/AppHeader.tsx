@@ -14,7 +14,6 @@ import { loadAssetsForContext, generateContextLabel } from '../../utils/assetCon
 import { sanitizeError } from '../../utils/sanitize';
 import { logger } from '../../utils/logger';
 import { AssetBrowserPanel } from './AssetBrowserPanel';
-import { GlobalSettingsDrawer } from './GlobalSettingsDrawer';
 import { QuickContextSwitcher } from './QuickContextSwitcher';
 import { HierarchicalContextBar } from '../navigation/HierarchicalContextBar';
 import type { AtlanAsset } from '../../services/atlan/types';
@@ -212,12 +211,6 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
       <header className="app-header">
         {/* 1. Brand Section (Fixed Left) */}
         <div className="app-header-brand">
-          <Link to="/" className="app-header-logo" title="Go to home">
-            <div className="logo-icon-small">MQ</div>
-          </Link>
-
-          {title && <div className="header-divider" />}
-
           {title && (
             <div className="app-header-title-group">
               <h1>{title}</h1>

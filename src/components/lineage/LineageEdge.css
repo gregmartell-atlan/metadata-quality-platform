@@ -68,26 +68,4 @@
 }
 
 /* Dark mode edges */
-[data-theme="dark"] .lineage-edge {
-  stroke: var(--color-gray-600);
-}
 
-[data-theme="dark"] .lineage-edge:hover {
-  filter: drop-shadow(0 2px 8px rgba(255, 255, 255, 0.15));
-}
-
-[data-theme="dark"] .lineage-edge.selected {
-  filter: drop-shadow(0 0 10px rgba(51, 102, 255, 0.8));
-}
-
-[data-theme="dark"] .lineage-edge-upstream:hover {
-  filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.6));
-}
-
-[data-theme="dark"] .lineage-edge-downstream:hover {
-  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.6));
-}
-
-[data-theme="dark"] .lineage-edge-process:hover {
-  filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.6));
-}

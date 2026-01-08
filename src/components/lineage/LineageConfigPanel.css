@@ -362,44 +362,4 @@
 }
 
 /* Dark mode */
-[data-theme="dark"] .lineage-config-panel {
-  background: rgba(30, 41, 59, 0.95);
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow:
-    0 20px 40px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-}
 
-[data-theme="dark"] .lineage-config-header {
-  background: linear-gradient(135deg, var(--bg-surface), var(--bg-subtle));
-  border-bottom-color: var(--border-subtle);
-}
-
-[data-theme="dark"] .config-section:hover {
-  background: rgba(51, 102, 255, 0.05);
-}
-
-[data-theme="dark"] .asset-search-input,
-[data-theme="dark"] .asset-select,
-[data-theme="dark"] .config-section select {
-  background: var(--input-bg);
-  border-color: var(--input-border);
-  color: var(--input-text);
-}
-
-[data-theme="dark"] .asset-search-input:focus,
-[data-theme="dark"] .asset-select:focus,
-[data-theme="dark"] .config-section select:focus {
-  box-shadow:
-    0 0 0 4px rgba(51, 102, 255, 0.15),
-    0 4px 12px rgba(51, 102, 255, 0.25);
-}
-
-[data-theme="dark"] .radio-group label:hover,
-[data-theme="dark"] .checkbox-group label:hover {
-  background: var(--bg-hover);
-}
-
-[data-theme="dark"] .config-section input[type="range"] {
-  background: var(--border-subtle);
-}

@@ -21,13 +21,6 @@
   --spring-smooth: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-[data-theme="dark"] .filters-container {
-  --filter-bg: var(--color-gray-800);
-  --filter-border: var(--color-gray-700);
-  --filter-shadow: 0 4px 12px rgba(0, 0, 0, 0.2),
-                   0 12px 24px rgba(0, 0, 0, 0.3);
-}
-
 /* ========================================
    CONTAINER
    ======================================== */

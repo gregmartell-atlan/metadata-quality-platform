@@ -2,7 +2,6 @@
 
 .analytics-page {
   flex: 1;
-  margin-left: 220px;
   min-height: 100vh;
   background: var(--bg-canvas);
 }
@@ -499,10 +498,7 @@
   color: var(--color-gray-400);
 }
 
-/* Responsive sidebar adjustment */
-.app:has(.sidebar.collapsed) .analytics-page {
-  margin-left: 56px;
-}
+
 
 /* Demo Data Banner */
 .demo-data-banner {
@@ -516,12 +512,6 @@
   margin-bottom: var(--space-4);
   font-size: var(--font-size-sm);
   color: var(--color-blue-700);
-}
-
-[data-theme="dark"] .demo-data-banner {
-  background: rgba(59, 130, 246, 0.1);
-  border-color: rgba(59, 130, 246, 0.3);
-  color: var(--color-blue-400);
 }
 
 .demo-data-banner svg {
@@ -542,12 +532,6 @@
   color: var(--color-green-700);
 }
 
-[data-theme="dark"] .real-data-banner {
-  background: rgba(45, 164, 78, 0.1);
-  border-color: rgba(45, 164, 78, 0.3);
-  color: var(--color-emerald-200);
-}
-
 .real-data-banner svg {
   flex-shrink: 0;
   color: var(--color-success-500);
@@ -557,15 +541,7 @@
   font-weight: var(--font-weight-semibold);
 }
 
-/* Impact Section - Quality Matrix & Remediation */
+/* Impact Section - Quality Matrix */
 .analytics-impact-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
   margin-bottom: var(--space-6);
-}
-
-/* Give each widget full width so they have room to breathe */
-.analytics-impact-section > * {
-  width: 100%;
 }

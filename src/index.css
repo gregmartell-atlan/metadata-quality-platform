@@ -271,15 +271,24 @@
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
 
-  --font-size-xs: 0.75rem;   /* 12px */
-  --font-size-sm: 0.875rem;  /* 14px */
-  --font-size-base: 1rem;    /* 16px */
-  --font-size-md: 1rem;      /* 16px */
-  --font-size-lg: 1.125rem;  /* 18px */
-  --font-size-xl: 1.25rem;   /* 20px */
-  --font-size-2xl: 1.5rem;   /* 24px */
-  --font-size-3xl: 1.875rem; /* 30px */
-  --font-size-4xl: 2.25rem;  /* 36px */
+  --font-size-xs: 0.75rem;
+  /* 12px */
+  --font-size-sm: 0.875rem;
+  /* 14px */
+  --font-size-base: 1rem;
+  /* 16px */
+  --font-size-md: 1rem;
+  /* 16px */
+  --font-size-lg: 1.125rem;
+  /* 18px */
+  --font-size-xl: 1.25rem;
+  /* 20px */
+  --font-size-2xl: 1.5rem;
+  /* 24px */
+  --font-size-3xl: 1.875rem;
+  /* 30px */
+  --font-size-4xl: 2.25rem;
+  /* 36px */
 
   --font-weight-normal: 400;
   --font-weight-medium: 500;
@@ -340,80 +349,21 @@
   --transition-fast: 150ms ease;
   --transition-normal: 200ms ease;
   --transition-slow: 300ms ease;
+
+  /* Premium Sidebar Easing (matches Lucide/Atlan feel) */
+  --transition-timing-sidebar: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --layout-transition: 300ms var(--transition-timing-sidebar);
+
+  /* ========================================
+     LAYOUT SIZES
+     ======================================== */
+  --sidebar-width: 220px;
+  --sidebar-collapsed-width: 56px;
+  --inspector-width: 440px;
+  --rail-width: 48px;
 }
 
-/* ========================================
-   DARK THEME - Optional dark mode override
-   ======================================== */
-[data-theme="dark"] {
-  /* Backgrounds */
-  --bg-canvas: var(--color-gray-900);
-  --bg-surface: var(--color-gray-800);
-  --bg-subtle: var(--color-gray-700);
-  --bg-muted: var(--color-gray-600);
-  --bg-hover: var(--color-gray-700);
-  --bg-active: var(--color-gray-600);
-  --bg-selected: rgba(34, 91, 210, 0.2);
 
-  /* Text */
-  --text-default: var(--color-gray-50);
-  --text-secondary: var(--color-gray-300);
-  --text-muted: var(--color-gray-400);
-  --text-placeholder: var(--color-gray-500);
-  --text-link: var(--color-blue-400);
-  --text-link-hover: var(--color-blue-300);
-
-  /* Borders */
-  --border-subtle: var(--color-gray-700);
-  --border-default: var(--color-gray-600);
-  --border-strong: var(--color-gray-500);
-
-  /* Components - Sidebar stays dark navy in ALL themes (Atlan style) */
-  /* Sidebar variables NOT overridden - keep dark navy from :root */
-
-  --card-bg: var(--color-gray-800);
-  --card-border: var(--color-gray-700);
-
-  --table-header-bg: var(--color-gray-700);
-  --table-row-hover: var(--color-gray-700);
-  --table-border: var(--color-gray-600);
-
-  --button-secondary-bg: var(--color-gray-700);
-  --button-secondary-bg-hover: var(--color-gray-600);
-  --button-secondary-text: var(--color-gray-200);
-  --button-secondary-border: var(--color-gray-600);
-
-  --button-ghost-bg-hover: var(--color-gray-700);
-  --button-ghost-text: var(--color-gray-300);
-
-  --input-bg: var(--color-gray-800);
-  --input-border: var(--color-gray-600);
-  --input-border-hover: var(--color-gray-500);
-  --input-text: var(--color-gray-100);
-  --input-placeholder: var(--color-gray-500);
-
-  /* Heatmap dark mode adjustments */
-  --heatmap-empty: var(--color-gray-700);
-  --heatmap-0: rgba(207, 34, 46, 0.3);
-  --heatmap-0-text: #F87171;
-  --heatmap-25: rgba(207, 34, 46, 0.2);
-  --heatmap-25-text: #FCA5A5;
-  --heatmap-50: rgba(249, 115, 22, 0.25);
-  --heatmap-50-text: #FDBA74;
-  --heatmap-75: rgba(245, 158, 11, 0.25);
-  --heatmap-75-text: #FCD34D;
-  --heatmap-90: rgba(16, 185, 129, 0.25);
-  --heatmap-90-text: #6EE7B7;
-  --heatmap-100: var(--color-success-500);
-  --heatmap-100-text: #ffffff;
-
-  /* Legacy */
-  --bg-primary: var(--bg-canvas);
-  --bg-secondary: var(--bg-surface);
-  --bg-tertiary: var(--bg-subtle);
-  --bg-card: var(--card-bg);
-  --text-primary: var(--text-default);
-}
 
 /* Density variations */
 [data-density="compact"] {
@@ -538,17 +488,45 @@ a:hover {
 }
 
 /* Typography utilities */
-.text-xs { font-size: var(--font-size-xs); }
-.text-sm { font-size: var(--font-size-sm); }
-.text-base { font-size: var(--font-size-base); }
-.text-lg { font-size: var(--font-size-lg); }
-.text-xl { font-size: var(--font-size-xl); }
-.text-2xl { font-size: var(--font-size-2xl); }
+.text-xs {
+  font-size: var(--font-size-xs);
+}
 
-.font-normal { font-weight: var(--font-weight-normal); }
-.font-medium { font-weight: var(--font-weight-medium); }
-.font-semibold { font-weight: var(--font-weight-semibold); }
-.font-bold { font-weight: var(--font-weight-bold); }
+.text-sm {
+  font-size: var(--font-size-sm);
+}
+
+.text-base {
+  font-size: var(--font-size-base);
+}
+
+.text-lg {
+  font-size: var(--font-size-lg);
+}
+
+.text-xl {
+  font-size: var(--font-size-xl);
+}
+
+.text-2xl {
+  font-size: var(--font-size-2xl);
+}
+
+.font-normal {
+  font-weight: var(--font-weight-normal);
+}
+
+.font-medium {
+  font-weight: var(--font-weight-medium);
+}
+
+.font-semibold {
+  font-weight: var(--font-weight-semibold);
+}
+
+.font-bold {
+  font-weight: var(--font-weight-bold);
+}
 
 /* Truncate */
 .truncate {

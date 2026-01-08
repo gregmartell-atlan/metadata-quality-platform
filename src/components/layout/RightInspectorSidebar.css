@@ -176,8 +176,3 @@
 .inspector-panel .drawer-content {
     padding: 20px 0;
 }
-
-/* Dark theme overrides */
-[data-theme="dark"] .inspector-panel {
-    box-shadow: -8px 0 32px rgba(0, 0, 0, 0.4);
-}

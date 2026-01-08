@@ -5,15 +5,17 @@
  */
 
 import { useState, useMemo } from 'react';
-import { Download, BarChart3, AlertTriangle, Lightbulb, Info } from 'lucide-react';
+import { Download, BarChart3, AlertTriangle, Lightbulb, Info, Zap } from 'lucide-react';
 import { AppHeader } from '../components/layout/AppHeader';
-import { DaaPRadarChart, CoverageHeatmap, QualityImpactMatrix, RemediationPrioritizer } from '../components/analytics';
-import { Card, Button, Tooltip, InfoTooltip } from '../components/shared';
+import { DaaPRadarChart, CoverageHeatmap, QualityImpactMatrix } from '../components/analytics';
+import { Card, Tooltip, InfoTooltip } from '../components/shared';
+import { HeaderToolbar, HeaderActionGroup, HeaderButton, HeaderDivider } from '../components/layout/HeaderActions';
 import { useFieldCoverage, getOverallCompleteness, getTopGaps } from '../hooks/useFieldCoverage';
 import { getFieldInfo } from '../constants/metadataDescriptions';
 import { exportAnalyticsReport } from '../utils/analyticsExport';
 import { useScoresStore } from '../stores/scoresStore';
 import { useAssetPreviewStore } from '../stores/assetPreviewStore';
+import { useRightSidebarStore } from '../stores/rightSidebarStore';
 import type { RequirementsMatrix } from '../types/requirements';
 import type { AtlanAsset } from '../services/atlan/types';
 import type { AssetMetadata, QualityScores } from '../services/qualityMetrics';
@@ -153,6 +155,7 @@ export function AnalyticsPage() {
   const topGaps = getTopGaps(fieldCoverage, 3);
   const { assetsWithScores: storeAssets } = useScoresStore();
   const { openPreview } = useAssetPreviewStore();
+  const { toggleTab } = useRightSidebarStore();
 
   // Use real assets if available, otherwise use sample data for demo
   const isUsingDemoData = storeAssets.length === 0;
@@ -177,10 +180,20 @@ export function AnalyticsPage() {
   return (
     <div className="analytics-page">
       <AppHeader title="DaaP Analytics">
-        <Button variant="secondary" onClick={handleExport}>
-          <Download size={16} />
-          Export Report
-        </Button>
+        <HeaderToolbar>
+          <HeaderActionGroup>
+            <HeaderButton
+              icon={<Zap />}
+              onClick={() => toggleTab('remediation')}
+              title="View Remediation Plan"
+            />
+            <HeaderButton
+              icon={<Download />}
+              onClick={handleExport}
+              title="Export Report"
+            />
+          </HeaderActionGroup>
+        </HeaderToolbar>
       </AppHeader>
 
       <div className="analytics-content">
@@ -339,14 +352,11 @@ export function AnalyticsPage() {
           </div>
         )}
 
-        {/* Quality Impact & Remediation */}
+        {/* Quality Impact */}
         {assetsWithScores.length > 0 && (
-          <>
-            <div className="analytics-impact-section">
-              <QualityImpactMatrix assets={assetsWithScores} onAssetClick={handleAssetClick} />
-              <RemediationPrioritizer assets={assetsWithScores} onAssetClick={handleAssetClick} />
-            </div>
-          </>
+          <div className="analytics-impact-section">
+            <QualityImpactMatrix assets={assetsWithScores} onAssetClick={handleAssetClick} />
+          </div>
         )}
 
         {/* Requirements Matrix Table */}

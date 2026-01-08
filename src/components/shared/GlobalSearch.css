@@ -263,10 +263,4 @@
 }
 
 /* Dark mode adjustments */
-[data-theme="dark"] .global-search-overlay {
-  background: rgba(0, 0, 0, 0.7);
-}
 
-[data-theme="dark"] .global-search-modal {
-  box-shadow: var(--shadow-xl), 0 0 0 1px var(--border-default);
-}

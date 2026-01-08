@@ -24,15 +24,6 @@
   --spring-smooth: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-[data-theme="dark"] .drawer-panel {
-  --drawer-bg: var(--color-gray-800);
-  --drawer-header-bg: rgba(30, 41, 59, 0.95);
-  --drawer-border: var(--color-gray-700);
-  --drawer-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2),
-                   0 8px 32px rgba(0, 0, 0, 0.3),
-                   0 24px 64px rgba(0, 0, 0, 0.4);
-}
-
 /* ========================================
    BACKDROP
    ======================================== */
@@ -153,31 +144,6 @@
   color: #475569;
 }
 
-[data-theme="dark"] .asset-type-table {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(79, 70, 229, 0.15) 100%);
-  color: #A5B4FC;
-}
-
-[data-theme="dark"] .asset-type-column {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.15) 100%);
-  color: #FCD34D;
-}
-
-[data-theme="dark"] .asset-type-view {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.15) 100%);
-  color: #6EE7B7;
-}
-
-[data-theme="dark"] .asset-type-database {
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.2) 0%, rgba(2, 132, 199, 0.15) 100%);
-  color: #7DD3FC;
-}
-
-[data-theme="dark"] .asset-type-default {
-  background: linear-gradient(135deg, rgba(100, 116, 139, 0.2) 0%, rgba(71, 85, 105, 0.15) 100%);
-  color: #CBD5E1;
-}
-
 /* Close Button */
 .drawer-close {
   display: flex;
@@ -249,21 +215,6 @@
   color: #991B1B;
 }
 
-[data-theme="dark"] .cert-verified {
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(22, 163, 74, 0.15) 100%);
-  color: #86EFAC;
-}
-
-[data-theme="dark"] .cert-draft {
-  background: linear-gradient(135deg, rgba(234, 179, 8, 0.2) 0%, rgba(202, 138, 4, 0.15) 100%);
-  color: #FDE047;
-}
-
-[data-theme="dark"] .cert-deprecated {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.15) 100%);
-  color: #FCA5A5;
-}
-
 /* Quality Score Badge */
 .drawer-score-badge {
   display: inline-flex;
@@ -290,21 +241,6 @@
 .drawer-score-badge[data-score="low"] {
   background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
   color: #991B1B;
-}
-
-[data-theme="dark"] .drawer-score-badge[data-score="high"] {
-  background: rgba(34, 197, 94, 0.15);
-  color: #86EFAC;
-}
-
-[data-theme="dark"] .drawer-score-badge[data-score="medium"] {
-  background: rgba(234, 179, 8, 0.15);
-  color: #FDE047;
-}
-
-[data-theme="dark"] .drawer-score-badge[data-score="low"] {
-  background: rgba(239, 68, 68, 0.15);
-  color: #FCA5A5;
 }
 
 /* ========================================
@@ -414,10 +350,6 @@
 @keyframes loadingPulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.7; }
-}
-
-[data-theme="dark"] .drawer-loading {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.05) 100%);
 }
 
 /* ========================================
@@ -626,11 +558,6 @@
   transform: translateY(-1px);
 }
 
-[data-theme="dark"] .drawer-classification {
-  background: rgba(245, 158, 11, 0.15);
-  color: #FCD34D;
-}
-
 /* ========================================
    BREADCRUMB
    ======================================== */
@@ -794,11 +721,6 @@
   box-shadow: 0 2px 8px rgba(109, 40, 217, 0.15);
 }
 
-[data-theme="dark"] .drawer-term {
-  background: rgba(139, 92, 246, 0.15);
-  color: #C4B5FD;
-}
-
 /* ========================================
    DATA PRODUCTS & DOMAINS
    ======================================== */
@@ -835,16 +757,6 @@
 .drawer-domain-card:hover,
 .drawer-product-card:hover {
   transform: translateY(-1px);
-}
-
-[data-theme="dark"] .drawer-domain-card {
-  background: rgba(59, 130, 246, 0.15);
-  color: #93C5FD;
-}
-
-[data-theme="dark"] .drawer-product-card {
-  background: rgba(16, 185, 129, 0.15);
-  color: #6EE7B7;
 }
 
 /* ========================================

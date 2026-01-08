@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type RightSidebarTab = 'asset' | 'config' | 'history';
+export type RightSidebarTab = 'asset' | 'config' | 'history' | 'remediation';
 
 interface RightSidebarState {
     activeTab: RightSidebarTab | null;

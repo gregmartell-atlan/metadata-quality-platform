@@ -4,7 +4,7 @@
  * Unified side panel for asset preview, configuration, and history.
  */
 
-import { Info, Sliders, Clock, X, HelpCircle } from 'lucide-react';
+import { Info, Sliders, Clock, X, HelpCircle, Zap } from 'lucide-react';
 import { useRightSidebarStore, RightSidebarTab } from '../../stores/rightSidebarStore';
 import { useAssetPreviewStore } from '../../stores/assetPreviewStore';
 import { useEffect } from 'react';
@@ -14,6 +14,7 @@ import './RightInspectorSidebar.css';
 import { AssetPreviewTab } from './inspector/AssetPreviewTab';
 import { ConfigTab } from './inspector/ConfigTab';
 import { HistoryTab } from './inspector/HistoryTab';
+import { RemediationTab } from './inspector/RemediationTab';
 
 export function RightInspectorSidebar() {
     const { activeTab, isOpen, toggleTab, close } = useRightSidebarStore();
@@ -39,6 +40,7 @@ export function RightInspectorSidebar() {
             case 'asset': return 'Asset Preview';
             case 'config': return 'View Configuration';
             case 'history': return 'Snapshot History';
+            case 'remediation': return 'Remediation Plan';
             default: return 'Inspector';
         }
     };
@@ -48,6 +50,7 @@ export function RightInspectorSidebar() {
             case 'asset': return <Info size={18} />;
             case 'config': return <Sliders size={18} />;
             case 'history': return <Clock size={18} />;
+            case 'remediation': return <Zap size={18} />;
             default: return null;
         }
     };
@@ -81,6 +84,10 @@ export function RightInspectorSidebar() {
                     {activeTab === 'history' && (
                         <HistoryTab />
                     )}
+
+                    {activeTab === 'remediation' && (
+                        <RemediationTab />
+                    )}
                 </div>
             </div>
 
@@ -108,6 +115,14 @@ export function RightInspectorSidebar() {
                     title="Recent History"
                 >
                     <Clock size={18} />
+                </button>
+
+                <button
+                    className={`rail-button ${activeTab === 'remediation' && isOpen ? 'active' : ''}`}
+                    onClick={() => toggleTab('remediation')}
+                    title="Remediation Plan"
+                >
+                    <Zap size={18} />
                 </button>
 
                 <button

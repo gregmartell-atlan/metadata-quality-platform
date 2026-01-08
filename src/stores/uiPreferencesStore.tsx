@@ -13,7 +13,6 @@ export type CertificationStatus = 'VERIFIED' | 'DRAFT' | 'DEPRECATED';
 export interface UIPreferences {
   // Display Settings
   density: 'compact' | 'comfortable' | 'spacious';
-  theme: 'dark' | 'light' | 'auto';
 
   // Asset Browser Defaults
   defaultConnection: string | null;
@@ -38,7 +37,6 @@ export interface UIPreferences {
 interface UIPreferencesActions {
   // Display
   setDensity: (density: UIPreferences['density']) => void;
-  setTheme: (theme: UIPreferences['theme']) => void;
 
   // Asset Browser
   setDefaultConnection: (connection: string | null) => void;
@@ -66,7 +64,6 @@ interface UIPreferencesActions {
 const defaultPreferences: UIPreferences = {
   // Display
   density: 'comfortable',
-  theme: 'dark',
 
   // Asset Browser
   defaultConnection: null,
@@ -95,7 +92,6 @@ export const useUIPreferences = create<UIPreferences & UIPreferencesActions>()(
 
       // Display actions
       setDensity: (density) => set({ density }),
-      setTheme: (theme) => set({ theme }),
 
       // Asset Browser actions
       setDefaultConnection: (defaultConnection) => set({ defaultConnection }),
@@ -121,7 +117,7 @@ export const useUIPreferences = create<UIPreferences & UIPreferencesActions>()(
     }),
     {
       name: 'ui-preferences-storage',
-      version: 1,
+      version: 2,
     }
   )
 );

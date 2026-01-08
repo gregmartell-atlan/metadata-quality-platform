@@ -39,9 +39,6 @@
 }
 
 /* Dark mode graph background */
-[data-theme="dark"] .lineage-view-graph {
-  background: linear-gradient(135deg, var(--bg-canvas) 0%, var(--color-gray-800) 100%);
-}
 
 /* Premium error state with glass morphism */
 .lineage-view-error {
@@ -61,14 +58,6 @@
   text-align: center;
   z-index: 100;
   animation: slideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-[data-theme="dark"] .lineage-view-error {
-  background: rgba(30, 41, 59, 0.95);
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow:
-    0 20px 40px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .lineage-view-error p {

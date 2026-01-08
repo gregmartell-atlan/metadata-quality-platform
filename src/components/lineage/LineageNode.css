@@ -334,36 +334,4 @@
 }
 
 /* Dark mode nodes */
-[data-theme="dark"] .lineage-node {
-  background: rgba(30, 41, 59, 0.75);
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
 
-[data-theme="dark"] .lineage-node:hover {
-  background: rgba(30, 41, 59, 0.85);
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow:
-    0 16px 48px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    0 0 32px rgba(51, 102, 255, 0.25);
-}
-
-[data-theme="dark"] .lineage-node.selected {
-  background: rgba(51, 102, 255, 0.1);
-  border-color: var(--primary-blue);
-}
-
-[data-theme="dark"] .lineage-node.center {
-  background: linear-gradient(135deg, rgba(51, 102, 255, 0.12), rgba(51, 102, 255, 0.05));
-}
-
-[data-theme="dark"] .lineage-node-badge {
-  background: linear-gradient(135deg, var(--bg-subtle), var(--bg-muted));
-}
-
-[data-theme="dark"] .lineage-node.node-process {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(139, 92, 246, 0.05));
-}

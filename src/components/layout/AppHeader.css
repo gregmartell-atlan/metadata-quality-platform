@@ -1,55 +1,32 @@
 /* Atlantis App Header - Premium Top Bar with Glass Morphism */
 
 .app-header {
-  display: grid;
-  grid-template-columns: min-content 1fr min-content;
+  display: flex;
   align-items: center;
   gap: var(--space-4);
-  padding: 0 var(--space-4);
-  background: linear-gradient(180deg,
-      rgba(255, 255, 255, 0.97) 0%,
-      rgba(255, 255, 255, 0.92) 100%);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: none;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.04),
-    0 4px 12px rgba(0, 0, 0, 0.02),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  padding: 0 var(--space-6) 0 var(--space-4);
+  /* Right padding matches content, left padding tighter */
+  background: white;
+  border-bottom: 1px solid var(--border-subtle);
   position: sticky;
   top: 0;
-  z-index: 100;
-  min-height: 64px;
-  /* Slightly reduced height for tighter feel */
-  transition: all var(--transition-normal);
-}
-
-/* Dark mode glass effect */
-[data-theme="dark"] .app-header {
-  background: linear-gradient(180deg,
-      rgba(20, 25, 40, 0.95) 0%,
-      rgba(20, 25, 40, 0.9) 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.3),
-    0 4px 12px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  z-index: 99;
+  min-height: 60px;
+  transition: all var(--layout-transition);
 }
 
 /* 1. Brand Section */
 .app-header-brand {
   display: flex;
   align-items: center;
-  padding-right: var(--space-2);
 }
 
-/* 2. Context Section */
 .app-header-context {
+  flex: 1;
+  /* Replace grid column with flex-grow */
   display: flex;
   align-items: center;
   min-width: 0;
-  /* Enable flex shrinking */
   justify-content: flex-start;
 }
 
@@ -70,32 +47,7 @@
   flex-shrink: 0;
 }
 
-/* Logo styling */
-.app-header-logo {
-  display: flex;
-  align-items: center;
-  text-decoration: none;
-  transition: transform 0.2s ease;
-  flex-shrink: 0;
-}
 
-.app-header-logo:hover {
-  transform: scale(1.05);
-}
-
-.logo-icon-small {
-  width: 32px;
-  height: 32px;
-  background: linear-gradient(135deg, var(--primary-blue) 0%, #2563eb 100%);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 14px;
-  font-weight: 800;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
-}
 
 .app-header-title-group {
   display: flex;
@@ -206,23 +158,7 @@
   }
 }
 
-/* Dark mode connection button */
-[data-theme="dark"] .connection-btn {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.03) 100%);
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-}
 
-[data-theme="dark"] .connection-btn:hover {
-  background: linear-gradient(135deg, rgba(51, 102, 255, 0.15) 0%, rgba(51, 102, 255, 0.08) 100%);
-  border-color: rgba(51, 102, 255, 0.4);
-}
-
-[data-theme="dark"] .connection-btn.connected {
-  background: linear-gradient(135deg, rgba(45, 164, 78, 0.15) 0%, rgba(45, 164, 78, 0.08) 100%);
-}
 
 /* Browse Button */
 .browse-btn {
@@ -547,27 +483,7 @@
   }
 }
 
-/* Dark mode modal */
-[data-theme="dark"] .modal-overlay {
-  background: rgba(0, 0, 0, 0.5);
-}
 
-[data-theme="dark"] .connect-modal {
-  background: linear-gradient(180deg,
-      rgba(30, 35, 50, 0.98) 0%,
-      rgba(25, 30, 45, 0.95) 100%);
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow:
-    0 10px 40px rgba(0, 0, 0, 0.4),
-    0 2px 10px rgba(0, 0, 0, 0.3),
-    0 0 1px rgba(255, 255, 255, 0.1) inset;
-}
-
-[data-theme="dark"] .connect-modal::before {
-  background: linear-gradient(180deg,
-      rgba(51, 102, 255, 0.08) 0%,
-      transparent 100%);
-}
 
 .connect-modal h2 {
   font-size: var(--font-size-xl);
@@ -613,23 +529,7 @@
   opacity: 0.5;
 }
 
-/* Dark mode inputs */
-[data-theme="dark"] .connect-modal input {
-  background: rgba(0, 0, 0, 0.2);
-  border-color: rgba(255, 255, 255, 0.1);
-}
 
-[data-theme="dark"] .connect-modal input:hover {
-  background: rgba(0, 0, 0, 0.25);
-  border-color: rgba(51, 102, 255, 0.4);
-}
-
-[data-theme="dark"] .connect-modal input:focus {
-  background: rgba(0, 0, 0, 0.3);
-  box-shadow:
-    0 0 0 4px rgba(51, 102, 255, 0.15),
-    0 2px 8px rgba(51, 102, 255, 0.1);
-}
 
 .connect-error {
   padding: var(--space-3);

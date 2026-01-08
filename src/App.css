@@ -9,11 +9,10 @@
 /* Main Content Area */
 .main-content {
   flex: 1;
-  margin-left: 220px;
-  margin-right: 48px;
-  /* Default for rail */
+  margin-left: var(--sidebar-width);
+  margin-right: var(--rail-width);
   min-height: 100vh;
-  transition: all var(--transition-slow);
+  transition: margin-left var(--layout-transition), margin-right var(--layout-transition);
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -21,13 +20,12 @@
 
 /* Push effect when inspector is open */
 .app:has(.inspector-panel:not(.collapsed)) .main-content {
-  margin-right: 488px;
-  /* 440px panel + 48px rail */
+  margin-right: calc(var(--inspector-width) + var(--rail-width));
 }
 
 /* Adjust when sidebar is collapsed */
 .app:has(.sidebar.collapsed) .main-content {
-  margin-left: 56px;
+  margin-left: var(--sidebar-collapsed-width);
 }
 
 /* Page Container */
@@ -97,18 +95,18 @@
 /* Page placeholder */
 .page-placeholder {
   flex: 1;
-  margin-left: 220px;
+  margin-left: var(--sidebar-width);
   padding: var(--space-6);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: var(--font-size-xl);
   color: var(--text-secondary);
-  transition: margin-left var(--transition-slow);
+  transition: margin-left var(--layout-transition);
 }
 
 .app:has(.sidebar.collapsed) .page-placeholder {
-  margin-left: 56px;
+  margin-left: var(--sidebar-collapsed-width);
 }
 
 /* Loading States */
@@ -122,9 +120,7 @@
   z-index: 9999;
 }
 
-[data-theme="dark"] .loading-overlay {
-  background: rgba(17, 24, 39, 0.8);
-}
+
 
 .loading-spinner {
   width: 40px;

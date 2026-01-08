@@ -383,11 +383,6 @@
   flex-shrink: 0;
 }
 
-[data-theme="dark"] .fix-rank {
-  background: rgba(239, 68, 68, 0.2);
-  color: var(--color-red-400);
-}
-
 .top-fix-item:nth-child(1) .fix-rank,
 .top-fix-item:nth-child(2) .fix-rank,
 .top-fix-item:nth-child(3) .fix-rank {

@@ -172,11 +172,4 @@
 }
 
 /* Dark mode adjustments - tooltips stay dark */
-[data-theme="dark"] .tooltip {
-  background: var(--color-gray-800);
-  border: 1px solid var(--color-gray-700);
-}
 
-[data-theme="dark"] .tooltip-arrow {
-  background: var(--color-gray-800);
-}

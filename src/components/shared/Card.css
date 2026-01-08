@@ -60,11 +60,6 @@
   -webkit-backdrop-filter: blur(12px);
 }
 
-[data-theme="dark"] .card-glass {
-  --card-bg: rgba(30, 41, 59, 0.7);
-  --card-border: rgba(51, 65, 85, 0.5);
-}
-
 /* Outlined - Border emphasis */
 .card-outlined {
   --card-bg: transparent;
@@ -234,10 +229,6 @@
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(2px);
   z-index: 10;
-}
-
-[data-theme="dark"] .card-loading-overlay {
-  background: rgba(15, 23, 42, 0.8);
 }
 
 .card-loading-spinner {

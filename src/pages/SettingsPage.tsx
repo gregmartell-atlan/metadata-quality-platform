@@ -63,9 +63,7 @@ export function SettingsPage() {
   const {
     // Display
     density,
-    theme,
     setDensity,
-    setTheme,
 
     // Asset Browser
     showPopularityBadges,
@@ -205,37 +203,7 @@ export function SettingsPage() {
               </div>
             </div>
 
-            <div className="setting-row">
-              <div className="setting-info">
-                <Palette size={16} />
-                <div>
-                  <label>Theme</label>
-                  <span>Choose color scheme</span>
-                </div>
-              </div>
-              <div className="setting-control">
-                <div className="segment-control">
-                  <button
-                    className={theme === 'light' ? 'active' : ''}
-                    onClick={() => setTheme('light')}
-                  >
-                    Light
-                  </button>
-                  <button
-                    className={theme === 'dark' ? 'active' : ''}
-                    onClick={() => setTheme('dark')}
-                  >
-                    Dark
-                  </button>
-                  <button
-                    className={theme === 'auto' ? 'active' : ''}
-                    onClick={() => setTheme('auto')}
-                  >
-                    Auto
-                  </button>
-                </div>
-              </div>
-            </div>
+
 
             <div className="setting-row">
               <div className="setting-info">

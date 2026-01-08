@@ -1,0 +1,58 @@
+.remediation-tab-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.remediation-tab-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-12) var(--space-6);
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.remediation-tab-empty svg {
+    margin-bottom: var(--space-4);
+    opacity: 0.5;
+}
+
+.remediation-tab-empty h3 {
+    color: var(--text-default);
+    margin-bottom: var(--space-2);
+}
+
+.tab-context-header {
+    padding: var(--space-4) var(--space-6);
+    background: var(--bg-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    line-height: var(--line-height-relaxed);
+}
+
+/* Override RemediationPrioritizer styles for sidebar fit */
+.remediation-tab-content .remediation-prioritizer {
+    padding: 0;
+    border: none;
+    background: transparent;
+}
+
+.remediation-tab-content .remediation-header {
+    padding: var(--space-4) var(--space-6);
+}
+
+.remediation-tab-content .remediation-summary {
+    margin: 0 var(--space-6) var(--space-4);
+}
+
+.remediation-tab-content .gap-categories {
+    padding: 0 var(--space-4);
+}
+
+.remediation-tab-content .top-fixes {
+    margin-top: var(--space-6);
+    padding: 0 var(--space-6) var(--space-6);
+}

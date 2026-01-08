@@ -29,7 +29,7 @@ function PageLoader() {
 // Note: PersistentAssetBrowser removed - now using header-based AssetBrowserPanel
 
 function App() {
-  const { theme, density } = useUIPreferences();
+  const { density } = useUIPreferences();
   const { selectedAsset, isOpen: isPreviewOpen, isLoading: isPreviewLoading, closePreview } = useAssetPreviewStore();
   const { isOpen: isSearchOpen, closeSearch } = useGlobalSearch();
 
@@ -37,17 +37,12 @@ function App() {
   useEffect(() => {
     const root = document.documentElement;
 
-    // Apply theme
-    if (theme === 'auto') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      root.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
-    } else {
-      root.setAttribute('data-theme', theme);
-    }
+    // Apply theme - now forced to light
+    root.setAttribute('data-theme', 'light');
 
     // Apply density
     root.setAttribute('data-density', density);
-  }, [theme, density]);
+  }, [density]);
 
   return (
     <ErrorBoundary>
