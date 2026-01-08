@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { Link2, Link2Off, Download, AlertTriangle, FolderOpen, Settings } from 'lucide-react';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
@@ -209,29 +210,37 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
   return (
     <>
       <header className="app-header">
-        {/* Left: Context Navigation */}
-        <div className="app-header-left">
-          {/* Hierarchical Context Bar - replaces Browse + QuickContextSwitcher */}
-          {isConnected && <HierarchicalContextBar />}
+        {/* 1. Brand Section (Fixed Left) */}
+        <div className="app-header-brand">
+          <Link to="/" className="app-header-logo" title="Go to home">
+            <div className="logo-icon-small">MQ</div>
+          </Link>
 
-          {error && (
-            <div className="context-error" title={error}>
-              <AlertTriangle size={14} />
+          {title && <div className="header-divider" />}
+
+          {title && (
+            <div className="app-header-title-group">
+              <h1>{title}</h1>
             </div>
           )}
         </div>
 
-        {/* Center: Title */}
-        {title && (
-          <div className="app-header-center">
-            <h1>{title}</h1>
-            {subtitle && <p>{subtitle}</p>}
-          </div>
-        )}
+        {/* 2. Context Section (Fluid Center) */}
+        <div className="app-header-context">
+          {isConnected ? (
+            <HierarchicalContextBar />
+          ) : (
+            <div className="context-placeholder">
+              <span>Connect to Atlan to explore assets</span>
+            </div>
+          )}
+        </div>
 
-        {/* Right: Connection Status + Page Actions */}
-        <div className="app-header-right">
+        {/* 3. Actions Section (Fixed Right) */}
+        <div className="app-header-actions">
           {children}
+
+          <div className="header-divider" />
 
           {/* Connection Status */}
           <button

@@ -1,0 +1,98 @@
+/* Header Actions & Toolbar Styles */
+
+.header-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    height: 100%;
+}
+
+.header-action-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: var(--bg-subtle);
+    padding: 2px;
+    border-radius: 8px;
+    border: 1px solid var(--border-subtle);
+    height: 36px;
+    /* Fixed height for consistency */
+}
+
+.header-actions-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--border-subtle);
+    margin: 0 4px;
+}
+
+/* Base button override for header icons */
+.header-icon-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px !important;
+    transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1) !important;
+    color: var(--text-secondary);
+    position: relative;
+}
+
+.header-icon-btn:hover {
+    background: var(--bg-hover) !important;
+    color: var(--text-default) !important;
+}
+
+.header-icon-btn.active {
+    background: var(--bg-selected) !important;
+    color: var(--button-primary-bg) !important;
+}
+
+.header-icon-btn svg {
+    stroke-width: 2px;
+    width: 16px;
+    height: 16px;
+}
+
+/* Primary variant override */
+.header-icon-btn.btn-primary {
+    background: var(--button-primary-bg) !important;
+    color: var(--button-primary-text) !important;
+}
+
+.header-icon-btn.btn-primary:hover {
+    background: var(--button-primary-bg-hover) !important;
+}
+
+/* Badge Indicators */
+.header-btn-badge-dot {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 6px;
+    height: 6px;
+    background: var(--accent-primary);
+    border-radius: 50%;
+    border: 2px solid var(--bg-surface);
+    /* Creates a cut-out effect */
+}
+
+.header-btn-badge-count {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    background: var(--button-primary-bg);
+    color: var(--button-primary-text);
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    border: 2px solid var(--bg-surface);
+}

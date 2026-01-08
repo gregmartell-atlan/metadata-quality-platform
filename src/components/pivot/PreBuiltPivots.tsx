@@ -13,11 +13,12 @@ import { Snowflake, Database, Table, BarChart3, Workflow, Building2, Users, Link
 import { useAssetStore } from '../../stores/assetStore';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
+import { usePivotConfigStore } from '../../stores/pivotConfigStore';
 import { buildDynamicPivot, pivotDataToTableRows } from '../../utils/dynamicPivotBuilder';
 import { PivotSection } from './PivotSection';
 import { PivotTable } from './PivotTable';
 import { HierarchicalPivotTable } from './HierarchicalPivotTable';
-import { PivotConfiguratorFlyout } from './PivotConfiguratorFlyout';
+// PivotConfiguratorFlyout import removed
 import { getDimensionLabel, getDimensionIcon } from '../../utils/pivotDimensions';
 import { getMeasureLabel, formatMeasure, calculateMeasure } from '../../utils/pivotMeasures';
 import { extractDimensionValue } from '../../utils/pivotDimensions';
@@ -79,10 +80,10 @@ export function PreBuiltPivots() {
   const context = useAssetContextStore((state) => state.context);
   const getAssetCount = useAssetContextStore((state) => state.getAssetCount);
   const { assetsWithScores } = useScoresStore();
-  
+
   // Use context assets if available, fallback to selectedAssets for backward compatibility
   const sourceAssets = contextAssets.length > 0 ? contextAssets : selectedAssets;
-  
+
   // Build scores map from scoresStore for efficient pivot calculations
   const scoresMap = useMemo(() => {
     if (assetsWithScores.length === 0) return undefined;
@@ -92,7 +93,7 @@ export function PreBuiltPivots() {
     });
     return map;
   }, [assetsWithScores]);
-  
+
   // Log asset sources for debugging
   useEffect(() => {
     logger.info('PreBuiltPivots: Asset source check', {
@@ -105,11 +106,9 @@ export function PreBuiltPivots() {
       assetCount: getAssetCount()
     });
   }, [contextAssets, selectedAssets, sourceAssets, context, getAssetCount]);
-  
-  // State for configurable pivot - include full hierarchy: connection → database → schema → type
-  const [rowDimensions, setRowDimensions] = useState<RowDimension[]>(['connection', 'database', 'schema', 'type']);
-  const [measures, setMeasures] = useState<Measure[]>(['assetCount', 'descriptionCoverage', 'ownerCoverage', 'avgCompleteness']);
-  const [measureDisplayModes, setMeasureDisplayModes] = useState<Map<Measure, MeasureDisplayMode>>(new Map());
+
+  // Use global pivot config store
+  const { rowDimensions, measures, measureDisplayModes } = usePivotConfigStore();
 
   // Build dynamic pivot based on user selection
   const customPivot = useMemo(() => {
@@ -222,7 +221,7 @@ export function PreBuiltPivots() {
   const domainRows = useMemo(() => {
     if (!domainPivot) return [];
     const rows: (string | React.ReactNode)[][] = [];
-    
+
     domainPivot.rows.forEach((row) => {
       const domainName = row.dimensionValues.domain || 'No Domain';
       const cells: (string | React.ReactNode)[] = [
@@ -279,18 +278,18 @@ export function PreBuiltPivots() {
   // Calculate certification breakdown per owner group
   const ownerCertRows = useMemo(() => {
     if (!ownerPivot) return [];
-    
+
     const rows: (string | React.ReactNode)[][] = [];
-    
+
     ownerPivot.rows.forEach((row) => {
       const ownerGroup = row.dimensionValues.ownerGroup || 'Unowned';
       const assetGuids = row.assetGuids;
-      
+
       // Get assets for this owner group
-      const groupAssets = sourceAssets.filter((a) => 
+      const groupAssets = sourceAssets.filter((a) =>
         assetGuids.includes(a.guid)
       );
-      
+
       // Count by certification status
       const certified = groupAssets.filter((a) => a.certificateStatus === 'VERIFIED').length;
       const draft = groupAssets.filter((a) => a.certificateStatus === 'DRAFT').length;
@@ -298,7 +297,7 @@ export function PreBuiltPivots() {
       const none = groupAssets.filter((a) => !a.certificateStatus || a.certificateStatus === null).length;
       const total = groupAssets.length;
       const certRate = total > 0 ? Math.round((certified / total) * 100) : 0;
-      
+
       const cells: (string | React.ReactNode)[] = [
         <span key="owner" className="dim-cell">
           <Users size={16} className="dim-icon owner" />
@@ -463,7 +462,7 @@ export function PreBuiltPivots() {
   // Check both sourceAssets and context to provide better messaging
   const hasContext = !!context && context.type !== null;
   const hasAssets = sourceAssets.length > 0;
-  
+
   logger.debug('PreBuiltPivots: Rendering check', {
     hasContext,
     hasAssets,
@@ -471,13 +470,13 @@ export function PreBuiltPivots() {
     contextType: context?.type,
     contextLabel: context?.label
   });
-  
+
   if (!hasAssets) {
     return (
       <div className="pre-built-pivots-empty">
         <h2>No Assets in Context</h2>
         <p>
-          {hasContext 
+          {hasContext
             ? `Context is set (${context?.label}) but no assets were loaded. Please try refreshing or selecting a different context.`
             : 'Please set an asset context by dragging a connection, database, or schema into the context header, or select assets from the Asset Browser.'}
         </p>
@@ -499,15 +498,7 @@ export function PreBuiltPivots() {
 
   return (
     <div className="pre-built-pivots">
-      {/* Pivot Configurator Flyout */}
-      <PivotConfiguratorFlyout
-        rowDimensions={rowDimensions}
-        measures={measures}
-        onRowDimensionsChange={setRowDimensions}
-        onMeasuresChange={setMeasures}
-        measureDisplayModes={measureDisplayModes}
-        onMeasureDisplayModesChange={setMeasureDisplayModes}
-      />
+      {/* Pivot Configurator Flyout Removed - now handled by RightInspectorSidebar */}
 
       {/* Custom Pivot View */}
       {customPivot && customPivotRows.length > 0 && (
@@ -628,9 +619,9 @@ export function PreBuiltPivots() {
               { label: <Clock size={14} />, value: `Updated ${new Date().toLocaleTimeString()}` },
             ]}
             rows={
-            <span className="chip">
-              <Building2 size={14} className="chip-icon" /> Domain
-            </span>
+              <span className="chip">
+                <Building2 size={14} className="chip-icon" /> Domain
+              </span>
             }
             columns={<span className="chip">Quality Dimensions (5)</span>}
             insights={[

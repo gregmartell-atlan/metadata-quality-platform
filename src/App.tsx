@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useEffect, lazy, Suspense } from 'react';
 import { ErrorBoundary, GlobalSearch, useGlobalSearch } from './components/shared';
 import { Sidebar } from './components/layout/Sidebar';
-import { AssetPreviewDrawer } from './components/layout/AssetPreviewDrawer';
+import { RightInspectorSidebar } from './components/layout/RightInspectorSidebar';
 import { AssetInspectorModal } from './components/AssetInspector/AssetInspectorModal';
 import { useUIPreferences } from './stores/uiPreferencesStore';
 import { useAssetPreviewStore } from './stores/assetPreviewStore';
@@ -54,33 +54,27 @@ function App() {
       <BrowserRouter>
         <div className="app">
           <Sidebar />
-          <ErrorBoundary>
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/dashboard" element={<ExecutiveDashboard />} />
-                <Route path="/pivot" element={<PivotBuilder />} />
-                <Route path="/lineage" element={<LineageViewPage />} />
-                <Route path="/analytics" element={<AnalyticsPage />} />
-                <Route path="/stewardship" element={<div className="page-placeholder">Stewardship Ops</div>} />
-                <Route path="/campaigns" element={<div className="page-placeholder">Campaign Tracking</div>} />
-                <Route path="/trends" element={<div className="page-placeholder">Quality Trends</div>} />
-                <Route path="/accountability" element={<div className="page-placeholder">Accountability</div>} />
-                <Route path="/settings" element={<SettingsPage />} />
-              </Routes>
-            </Suspense>
-          </ErrorBoundary>
+          <main className="main-content">
+            <ErrorBoundary>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/dashboard" element={<ExecutiveDashboard />} />
+                  <Route path="/pivot" element={<PivotBuilder />} />
+                  <Route path="/lineage" element={<LineageViewPage />} />
+                  <Route path="/analytics" element={<AnalyticsPage />} />
+                  <Route path="/trends" element={<div className="page-placeholder">Quality Trends</div>} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                </Routes>
+              </Suspense>
+            </ErrorBoundary>
+          </main>
 
           {/* Global Modals */}
           <AssetInspectorModal />
 
-          {/* Asset Preview Drawer */}
-          <AssetPreviewDrawer
-            asset={selectedAsset}
-            isOpen={isPreviewOpen}
-            isLoading={isPreviewLoading}
-            onClose={closePreview}
-          />
+          {/* Unified Right Sidebar */}
+          <RightInspectorSidebar />
 
           {/* Global Search (Cmd/Ctrl + K) */}
           <GlobalSearch isOpen={isSearchOpen} onClose={closeSearch} />

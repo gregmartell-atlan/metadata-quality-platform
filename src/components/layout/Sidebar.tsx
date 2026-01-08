@@ -50,22 +50,7 @@ export function Sidebar() {
             <LayoutGrid size={18} />
             <span>Executive Overview</span>
           </Link>
-          <Link
-            to="/stewardship"
-            className={`nav-item ${isActive('/stewardship') ? 'active' : ''}`}
-            title="Stewardship Ops"
-          >
-            <BarChart3 size={18} />
-            <span>Stewardship Ops</span>
-          </Link>
-          <Link
-            to="/campaigns"
-            className={`nav-item ${isActive('/campaigns') ? 'active' : ''}`}
-            title="Campaign Tracking"
-          >
-            <Target size={18} />
-            <span>Campaign Tracking</span>
-          </Link>
+
         </div>
 
         <div className="nav-section">
@@ -102,27 +87,10 @@ export function Sidebar() {
             <RefreshCw size={18} />
             <span>Quality Trends</span>
           </Link>
-          <Link
-            to="/accountability"
-            className={`nav-item ${isActive('/accountability') ? 'active' : ''}`}
-            title="Accountability"
-          >
-            <Users size={18} />
-            <span>Accountability</span>
-          </Link>
+
         </div>
 
-        <div className="nav-section">
-          <div className="nav-label">Actions</div>
-          <button className="nav-item" title="Campaigns">
-            <Target size={18} />
-            <span>Campaigns</span>
-          </button>
-          <button className="nav-item" title="Automation Rules">
-            <Zap size={18} />
-            <span>Automation Rules</span>
-          </button>
-        </div>
+
 
         <div className="nav-section nav-section-bottom">
           <Link

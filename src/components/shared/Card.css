@@ -47,9 +47,9 @@
 /* Elevated - More prominent shadow */
 .card-elevated {
   --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.04),
-                 0 4px 12px rgba(0, 0, 0, 0.06);
+    0 4px 12px rgba(0, 0, 0, 0.06);
   --card-hover-shadow: 0 2px 8px rgba(0, 0, 0, 0.06),
-                       0 8px 24px rgba(0, 0, 0, 0.08);
+    0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
 /* Glass - Frosted glass effect */
@@ -250,7 +250,9 @@
 }
 
 @keyframes cardSpin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ========================================
@@ -400,31 +402,39 @@
    SKELETON LOADING
    ======================================== */
 .card-skeleton {
-  background: linear-gradient(
-    90deg,
-    var(--bg-subtle) 25%,
-    var(--bg-muted) 50%,
-    var(--bg-subtle) 75%
-  );
+  background: linear-gradient(90deg,
+      var(--bg-subtle) 25%,
+      var(--bg-muted) 50%,
+      var(--bg-subtle) 75%);
   background-size: 200% 100%;
   animation: cardShimmer 1.5s infinite;
 }
 
 @keyframes cardShimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* ========================================
    DASHBOARD SPECIFIC
    ======================================== */
 .card-dashboard {
-  --card-radius: 10px;
+  --card-radius: 12px;
+  --card-padding: 16px;
+  background: var(--bg-surface);
+  border-color: var(--border-subtle);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .card-dashboard .card-header {
-  padding: 12px 16px;
-  border-bottom: none;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--bg-canvas);
+  /* Very subtle divider */
 }
 
 .card-dashboard .card-body {
@@ -432,10 +442,13 @@
 }
 
 .card-dashboard .card-title {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  color: var(--text-secondary);
+  font-size: 13px;
+  /* Increased from 11px */
+  font-weight: 600;
+  text-transform: none;
+  /* Removed uppercase for a more modern feel */
+  letter-spacing: -0.1px;
+  color: var(--text-default);
 }
 
 /* ========================================
@@ -452,6 +465,7 @@
    REDUCED MOTION
    ======================================== */
 @media (prefers-reduced-motion: reduce) {
+
   .card,
   .card-loading-spinner {
     animation: none;

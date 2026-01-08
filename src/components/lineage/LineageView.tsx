@@ -143,7 +143,7 @@ export function LineageView() {
         setError('Invalid response from lineage API');
         return;
       }
-      
+
       // Note: guidEntityMap might be empty if asset has no lineage, but center asset should still be shown
       // We'll create the center node manually if needed
 
@@ -154,9 +154,9 @@ export function LineageView() {
       if (!allAssets.find(a => a.guid === centerAsset.guid)) {
         assetsToScore.push(centerAsset);
       }
-      
+
       let qualityScoresMap = new Map<string, QualityScores>();
-      
+
       try {
         // Filter to only Table/View assets for scoring (scoring service expects specific types)
         const scorableAssets = assetsToScore.filter(
@@ -167,14 +167,14 @@ export function LineageView() {
           // Find standard profile or use first profile
           const standardProfile = profileScores.find(s => s.profileId === 'standard') || profileScores[0];
           if (!standardProfile) return;
-          
+
           // Extract scores from dimensions
           const dimensions = standardProfile.dimensions || [];
           const getDimensionScore = (dim: string) => {
             const dimResult = dimensions.find(d => d.dimension === dim);
             return dimResult ? Math.round(dimResult.score01 * 100) : 0;
           };
-          
+
           qualityScoresMap.set(guid, {
             overall: Math.round(standardProfile.score * 100),
             completeness: getDimensionScore('completeness'),
@@ -243,7 +243,7 @@ export function LineageView() {
 
   // Handle impact analysis - use separate state for highlights to avoid mutating graph
   const [highlightedNodeIds, setHighlightedNodeIds] = useState<Set<string>>(new Set());
-  
+
   useEffect(() => {
     if (config.impactAnalysisMode && selectedNodeId && graph) {
       const affectedIds = findImpactPath(graph, selectedNodeId);
@@ -322,7 +322,7 @@ export function LineageView() {
       data: {
         ...node,
         isHighlighted: highlightedNodeIds.has(node.id),
-        highlightReason: highlightedNodeIds.has(node.id) 
+        highlightReason: highlightedNodeIds.has(node.id)
           ? (config.impactAnalysisMode ? 'impact' : config.rootCauseMode ? 'root-cause' : undefined)
           : undefined,
       } as LineageNodeData & Record<string, unknown>,
@@ -393,7 +393,7 @@ export function LineageView() {
         onRefresh={fetchLineage}
         loading={loading}
       />
-      
+
       <div className="lineage-view-graph">
         {error && (
           <div className="lineage-view-error">
@@ -401,7 +401,7 @@ export function LineageView() {
             <button onClick={fetchLineage}>Retry</button>
           </div>
         )}
-        
+
         {loading && (
           <div className="lineage-view-loading">
             <div className="spinner" />
@@ -423,13 +423,15 @@ export function LineageView() {
             maxZoom={2}
             defaultViewport={{ x: 0, y: 0, zoom: 1 }}
           >
-            <defs>
-              <linearGradient id="lineage-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="currentColor" stopOpacity="0" />
-                <stop offset="50%" stopColor="currentColor" stopOpacity="0.5" />
-                <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
-              </linearGradient>
-            </defs>
+            <svg style={{ position: 'absolute', width: 0, height: 0 }}>
+              <defs>
+                <linearGradient id="lineage-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="currentColor" stopOpacity="0" />
+                  <stop offset="50%" stopColor="currentColor" stopOpacity="0.5" />
+                  <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+            </svg>
             <Background color="#e5e7eb" gap={20} />
             <Controls position="bottom-right" />
             <MiniMap

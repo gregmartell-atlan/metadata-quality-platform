@@ -10,8 +10,19 @@
 .main-content {
   flex: 1;
   margin-left: 220px;
+  margin-right: 48px;
+  /* Default for rail */
   min-height: 100vh;
-  transition: margin-left var(--transition-slow);
+  transition: all var(--transition-slow);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Push effect when inspector is open */
+.app:has(.inspector-panel:not(.collapsed)) .main-content {
+  margin-right: 488px;
+  /* 440px panel + 48px rail */
 }
 
 /* Adjust when sidebar is collapsed */
@@ -160,6 +171,7 @@
     opacity: 0;
     transform: translateX(100%);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);

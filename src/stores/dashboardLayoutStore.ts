@@ -5,14 +5,14 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Layout } from 'react-grid-layout';
+import type { Layout, LayoutItem } from 'react-grid-layout';
 import { getWidgetMetadata } from '../components/dashboard/widgets/registry';
 import { builtInTemplates } from '../config/dashboards/templates';
 
 /**
- * Dashboard layout item (extends react-grid-layout's Layout)
+ * Dashboard layout item (extends react-grid-layout's LayoutItem)
  */
-export interface DashboardLayoutItem extends Layout {
+export interface DashboardLayoutItem extends LayoutItem {
   widgetType: string;
   widgetId: string;
   config?: Record<string, any>;

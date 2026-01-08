@@ -315,16 +315,16 @@ export function HierarchicalContextBar() {
           >
             {selectedConnection ? (
               <>
-                {getConnectionIcon(selectedConnection)}
+                <span className="breadcrumb-icon">{getConnectionIcon(selectedConnection)}</span>
                 <span className="breadcrumb-label">{selectedConnection}</span>
               </>
             ) : (
               <>
-                <Database size={16} />
+                <Database size={16} className="text-muted" />
                 <span className="breadcrumb-label breadcrumb-placeholder">Connection</span>
               </>
             )}
-            <ChevronDown size={14} className="breadcrumb-chevron" />
+            <ChevronDown size={12} className="breadcrumb-chevron" />
           </button>
 
           {activeDropdown === 'connection' && (
@@ -349,7 +349,6 @@ export function HierarchicalContextBar() {
                         <Check size={14} className="item-check" />
                       )}
                     </button>
-                    {/* Info button to open inspector */}
                     {connectionEntities.has(conn.name) && (
                       <button
                         className="item-info-btn"
@@ -374,189 +373,167 @@ export function HierarchicalContextBar() {
         </div>
 
         {/* Separator */}
-        {selectedConnection && (
-          <ChevronRight size={14} className="breadcrumb-separator" />
-        )}
+        <span className="breadcrumb-separator">/</span>
 
         {/* Database Level */}
-        {selectedConnection && (
-          <div className="breadcrumb-segment">
-            <button
-              className={`breadcrumb-trigger ${activeDropdown === 'database' ? 'active' : ''} ${selectedDatabase ? 'selected' : ''}`}
-              onClick={() => setActiveDropdown(activeDropdown === 'database' ? null : 'database')}
-              disabled={isLoadingLevel === 'database'}
-            >
-              {selectedDatabase ? (
-                <>
-                  <Folder size={16} />
-                  <span className="breadcrumb-label">{selectedDatabase}</span>
-                </>
-              ) : (
-                <>
-                  <Folder size={16} />
-                  <span className="breadcrumb-label breadcrumb-placeholder">
-                    {isLoadingLevel === 'database' ? 'Loading...' : 'Database'}
-                  </span>
-                </>
-              )}
-              {isLoadingLevel === 'database' ? (
-                <Loader2 size={14} className="breadcrumb-spinner" />
-              ) : (
-                <ChevronDown size={14} className="breadcrumb-chevron" />
-              )}
-            </button>
-
-            {activeDropdown === 'database' && databases.length > 0 && (
-              <div className="breadcrumb-dropdown">
-                <div className="dropdown-header">
-                  <span>Select Database</span>
-                  <span className="dropdown-count">{databases.length} available</span>
-                </div>
-                <div className="dropdown-items">
-                  {databases.map(db => (
-                    <div key={db.id} className="dropdown-item-wrapper">
-                      <button
-                        className={`dropdown-item ${selectedDatabase === db.name ? 'selected' : ''}`}
-                        onClick={() => handleSelectDatabase(db.name)}
-                      >
-                        <Folder size={16} />
-                        <span className="item-name">{db.displayName}</span>
-                        {db.count !== undefined && (
-                          <span className="item-count">{db.count.toLocaleString()}</span>
-                        )}
-                        {selectedDatabase === db.name && (
-                          <Check size={14} className="item-check" />
-                        )}
-                      </button>
-                      {/* Info button to open inspector */}
-                      {databaseEntities.has(db.id) && (
-                        <button
-                          className="item-info-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const entity = databaseEntities.get(db.id);
-                            if (entity) {
-                              const transformed = transformEntityForInspector(entity);
-                              openInspector(transformed);
-                            }
-                          }}
-                          title="View database details"
-                        >
-                          <Info size={14} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
+        <div className="breadcrumb-segment">
+          <button
+            className={`breadcrumb-trigger ${activeDropdown === 'database' ? 'active' : ''} ${selectedDatabase ? 'selected' : ''}`}
+            onClick={() => {
+              if (selectedConnection) setActiveDropdown(activeDropdown === 'database' ? null : 'database');
+            }}
+            disabled={!selectedConnection || isLoadingLevel === 'database'}
+          >
+            {selectedDatabase ? (
+              <>
+                <span className="breadcrumb-label">{selectedDatabase}</span>
+              </>
+            ) : (
+              <span className="breadcrumb-label breadcrumb-placeholder">
+                {isLoadingLevel === 'database' ? 'Loading...' : 'Database'}
+              </span>
             )}
-          </div>
-        )}
+            {isLoadingLevel === 'database' ? (
+              <Loader2 size={12} className="breadcrumb-spinner" />
+            ) : (
+              <ChevronDown size={12} className="breadcrumb-chevron" />
+            )}
+          </button>
+
+          {activeDropdown === 'database' && databases.length > 0 && (
+            <div className="breadcrumb-dropdown">
+              <div className="dropdown-header">
+                <span>Select Database</span>
+                <span className="dropdown-count">{databases.length} available</span>
+              </div>
+              <div className="dropdown-items">
+                {databases.map(db => (
+                  <div key={db.id} className="dropdown-item-wrapper">
+                    <button
+                      className={`dropdown-item ${selectedDatabase === db.name ? 'selected' : ''}`}
+                      onClick={() => handleSelectDatabase(db.name)}
+                    >
+                      <Folder size={16} />
+                      <span className="item-name">{db.displayName}</span>
+                      {db.count !== undefined && (
+                        <span className="item-count">{db.count.toLocaleString()}</span>
+                      )}
+                      {selectedDatabase === db.name && (
+                        <Check size={14} className="item-check" />
+                      )}
+                    </button>
+                    {databaseEntities.has(db.id) && (
+                      <button
+                        className="item-info-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const entity = databaseEntities.get(db.id);
+                          if (entity) {
+                            const transformed = transformEntityForInspector(entity);
+                            openInspector(transformed);
+                          }
+                        }}
+                        title="View database details"
+                      >
+                        <Info size={14} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Separator */}
-        {selectedDatabase && (
-          <ChevronRight size={14} className="breadcrumb-separator" />
-        )}
+        <span className="breadcrumb-separator">/</span>
 
         {/* Schema Level */}
-        {selectedDatabase && (
-          <div className="breadcrumb-segment">
-            <button
-              className={`breadcrumb-trigger ${activeDropdown === 'schema' ? 'active' : ''} ${selectedSchema ? 'selected' : ''}`}
-              onClick={() => setActiveDropdown(activeDropdown === 'schema' ? null : 'schema')}
-              disabled={isLoadingLevel === 'schema'}
-            >
-              {selectedSchema ? (
-                <>
-                  <Table2 size={16} />
-                  <span className="breadcrumb-label">{selectedSchema}</span>
-                </>
-              ) : (
-                <>
-                  <Table2 size={16} />
-                  <span className="breadcrumb-label breadcrumb-placeholder">
-                    {isLoadingLevel === 'schema' ? 'Loading...' : 'Schema'}
-                  </span>
-                </>
-              )}
-              {isLoadingLevel === 'schema' ? (
-                <Loader2 size={14} className="breadcrumb-spinner" />
-              ) : (
-                <ChevronDown size={14} className="breadcrumb-chevron" />
-              )}
-            </button>
-
-            {activeDropdown === 'schema' && schemas.length > 0 && (
-              <div className="breadcrumb-dropdown">
-                <div className="dropdown-header">
-                  <span>Select Schema</span>
-                  <span className="dropdown-count">{schemas.length} available</span>
-                </div>
-                <div className="dropdown-items">
-                  {schemas.map(sch => (
-                    <div key={sch.id} className="dropdown-item-wrapper">
-                      <button
-                        className={`dropdown-item ${selectedSchema === sch.name ? 'selected' : ''}`}
-                        onClick={() => handleSelectSchema(sch.name)}
-                      >
-                        <Table2 size={16} />
-                        <span className="item-name">{sch.displayName}</span>
-                        {sch.count !== undefined && (
-                          <span className="item-count">{sch.count.toLocaleString()}</span>
-                        )}
-                        {selectedSchema === sch.name && (
-                          <Check size={14} className="item-check" />
-                        )}
-                      </button>
-                      {/* Info button to open inspector */}
-                      {schemaEntities.has(sch.id) && (
-                        <button
-                          className="item-info-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const entity = schemaEntities.get(sch.id);
-                            if (entity) {
-                              const transformed = transformEntityForInspector(entity);
-                              openInspector(transformed);
-                            }
-                          }}
-                          title="View schema details"
-                        >
-                          <Info size={14} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
+        <div className="breadcrumb-segment">
+          <button
+            className={`breadcrumb-trigger ${activeDropdown === 'schema' ? 'active' : ''} ${selectedSchema ? 'selected' : ''}`}
+            onClick={() => {
+              if (selectedDatabase) setActiveDropdown(activeDropdown === 'schema' ? null : 'schema');
+            }}
+            disabled={!selectedDatabase || isLoadingLevel === 'schema'}
+          >
+            {selectedSchema ? (
+              <>
+                <span className="breadcrumb-label">{selectedSchema}</span>
+              </>
+            ) : (
+              <span className="breadcrumb-label breadcrumb-placeholder">
+                {isLoadingLevel === 'schema' ? 'Loading...' : 'Schema'}
+              </span>
             )}
-          </div>
-        )}
+            {/* Integrated Count for Schema */}
+            {selectedSchema && assetCount > 0 && (
+              <span className="breadcrumb-count-pill">{assetCount}</span>
+            )}
 
-        {/* Asset Count Badge */}
-        {assetCount > 0 && (
-          <>
-            <div className="breadcrumb-divider" />
-            <div className="asset-count-badge">
-              <Table2 size={14} />
-              <span className="count-number">{assetCount.toLocaleString()}</span>
-              <span className="count-label">assets</span>
+            {isLoadingLevel === 'schema' ? (
+              <Loader2 size={12} className="breadcrumb-spinner" />
+            ) : (
+              <ChevronDown size={12} className="breadcrumb-chevron" />
+            )}
+          </button>
+
+          {activeDropdown === 'schema' && schemas.length > 0 && (
+            <div className="breadcrumb-dropdown">
+              <div className="dropdown-header">
+                <span>Select Schema</span>
+                <span className="dropdown-count">{schemas.length} available</span>
+              </div>
+              <div className="dropdown-items">
+                {schemas.map(sch => (
+                  <div key={sch.id} className="dropdown-item-wrapper">
+                    <button
+                      className={`dropdown-item ${selectedSchema === sch.name ? 'selected' : ''}`}
+                      onClick={() => handleSelectSchema(sch.name)}
+                    >
+                      <Table2 size={16} />
+                      <span className="item-name">{sch.displayName}</span>
+                      {sch.count !== undefined && (
+                        <span className="item-count">{sch.count.toLocaleString()}</span>
+                      )}
+                      {selectedSchema === sch.name && (
+                        <Check size={14} className="item-check" />
+                      )}
+                    </button>
+                    {schemaEntities.has(sch.id) && (
+                      <button
+                        className="item-info-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const entity = schemaEntities.get(sch.id);
+                          if (entity) {
+                            const transformed = transformEntityForInspector(entity);
+                            openInspector(transformed);
+                          }
+                        }}
+                        title="View schema details"
+                      >
+                        <Info size={14} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
-          </>
+          )}
+        </div>
+
+        {/* Clear Context Button - Only show if something is selected */}
+        {selectedConnection && (
+          <button
+            className="context-clear-btn-icon"
+            onClick={handleClearContext}
+            title="Clear context"
+          >
+            <X size={14} />
+          </button>
         )}
       </div>
-
-      {/* Clear Context Button */}
-      {selectedConnection && (
-        <button
-          className="context-clear-btn"
-          onClick={handleClearContext}
-          title="Clear context and show all"
-        >
-          <X size={14} />
-          <span>Clear</span>
-        </button>
-      )}
     </div>
   );
 }

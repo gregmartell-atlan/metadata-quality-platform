@@ -75,7 +75,7 @@ export function HomePage() {
 
   // Calculate quick stats
   const totalAssets = assetsWithScores.length;
-  const healthScore = stats.averageScore || 0;
+  const healthScore = stats.assetsWithDescriptions > 0 ? (stats.assetsWithDescriptions / totalAssets) * 100 : 0;
   const criticalAssets = assetsWithScores.filter(a => a.scores.overall < 40).length;
   const recentSnapshots = snapshots.slice(0, 3);
 
@@ -91,10 +91,7 @@ export function HomePage() {
 
   return (
     <div className="home-page">
-      <AppHeader
-        title="Metadata Quality Platform"
-        subtitle="Your data health at a glance"
-      />
+      <AppHeader title="Home" />
 
       <div className="home-content">
         {/* Hero Stats Row */}
@@ -182,11 +179,11 @@ export function HomePage() {
                       <div className="recent-item-content">
                         <div className="recent-item-title">{snapshot.label}</div>
                         <div className="recent-item-meta">
-                          {snapshot.assetCount} assets • {Math.round(snapshot.stats?.averageScore || 0)}% avg
+                          {snapshot.totalAssets} assets • {Math.round(snapshot.overallScores?.overall || 0)}% quality
                         </div>
                       </div>
                       <div className="recent-item-time">
-                        {new Date(snapshot.createdAt).toLocaleDateString()}
+                        {new Date(snapshot.timestamp).toLocaleDateString()}
                       </div>
                     </div>
                   ))}

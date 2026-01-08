@@ -1,4 +1,5 @@
 import { AppHeader } from '../layout/AppHeader';
+import { HeaderToolbar, HeaderActionGroup, HeaderButton, HeaderDivider } from '../layout/HeaderActions';
 import { BreadcrumbNav } from '../layout/BreadcrumbNav';
 import { Button } from '../shared';
 import { useState, useEffect, useCallback } from 'react';
@@ -11,13 +12,14 @@ import { useDashboardLayoutStore } from '../../stores/dashboardLayoutStore';
 import { useScoresStore } from '../../stores/scoresStore';
 import { useQualitySnapshotStore } from '../../stores/qualitySnapshotStore';
 import { useAssetContextStore } from '../../stores/assetContextStore';
+import { useRightSidebarStore } from '../../stores/rightSidebarStore';
 import './ExecutiveDashboard.css';
 import './widgets'; // Import to trigger widget registration
 
 export function ExecutiveDashboard() {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [showTemplateModal, setShowTemplateModal] = useState(false);
-  const [showSnapshotsPanel, setShowSnapshotsPanel] = useState(false);
+  const { activeTab, isOpen: isSidebarOpen, toggleTab } = useRightSidebarStore();
   const { assetsWithScores, stats } = useScoresStore();
   const { isEditMode, toggleEditMode, activeTemplateId, resetToTemplate, setActiveTemplate, currentLayouts } = useDashboardLayoutStore();
   const { captureSnapshot, snapshots } = useQualitySnapshotStore();
@@ -57,10 +59,10 @@ export function ExecutiveDashboard() {
 
     const queryParams = context?.filters
       ? {
-          connectionFilter: context.filters.connectionName,
-          domainFilter: context.filters.databaseName, // Using databaseName as domain proxy
-          searchQuery: undefined,
-        }
+        connectionFilter: context.filters.connectionName,
+        domainFilter: context.filters.databaseName, // Using databaseName as domain proxy
+        searchQuery: undefined,
+      }
       : undefined;
 
     captureSnapshot(
@@ -70,9 +72,11 @@ export function ExecutiveDashboard() {
       queryParams
     );
 
-    // Brief visual feedback
-    setShowSnapshotsPanel(true);
-  }, [assetsWithScores, stats, context, captureSnapshot]);
+    // Brief visual feedback - open the history tab
+    if (activeTab !== 'history' || !isSidebarOpen) {
+      toggleTab('history');
+    }
+  }, [assetsWithScores.length, stats, context, captureSnapshot, activeTab, isSidebarOpen, toggleTab]);
 
   const getTimeAgo = (date: Date) => {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -87,78 +91,73 @@ export function ExecutiveDashboard() {
 
   return (
     <div className="executive-dashboard">
-      <AppHeader
-        title="Executive Overview"
-        subtitle={`Last updated ${getTimeAgo(lastUpdated)}`}
-      >
-        {/* Edit mode controls */}
-        {isEditMode && (
-          <>
-            <WidgetPickerPanel />
-            <Button
-              variant="secondary"
-              onClick={handleResetLayout}
-              className="reset-btn"
-            >
-              <RotateCcw size={14} />
-              Reset
-            </Button>
-          </>
-        )}
+      <AppHeader title="Executive Overview">
+        <HeaderToolbar>
+          {/* Action Group: View & Edit */}
+          <HeaderActionGroup>
+            <HeaderButton
+              icon={<LayoutTemplate />}
+              onClick={() => setShowTemplateModal(true)}
+              title="Switch Dashboard Template"
+            />
 
-        {/* Snapshot controls */}
-        <Button
-          variant="secondary"
-          onClick={handleCaptureSnapshot}
-          disabled={assetsWithScores.length === 0}
-          className="snapshot-btn"
-          title="Capture current state as snapshot"
-        >
-          <Camera size={14} />
-          Snapshot
-        </Button>
+            <HeaderButton
+              icon={isEditMode ? <Save /> : <Edit3 />}
+              active={isEditMode}
+              onClick={toggleEditMode}
+              title={isEditMode ? "Finish Editing" : "Edit Layout"}
+            />
 
-        <Button
-          variant={showSnapshotsPanel ? 'primary' : 'secondary'}
-          onClick={() => setShowSnapshotsPanel(!showSnapshotsPanel)}
-          className="history-btn"
-          title="View recent snapshots"
-        >
-          <Clock size={14} />
-          History
-          {snapshots.length > 0 && (
-            <span className="snapshot-count">{snapshots.length}</span>
-          )}
-        </Button>
+            {isEditMode && (
+              <HeaderButton
+                icon={<RotateCcw />}
+                onClick={handleResetLayout}
+                title="Reset Layout"
+              />
+            )}
+          </HeaderActionGroup>
 
-        {/* Template selector */}
-        <Button
-          variant="secondary"
-          onClick={() => setShowTemplateModal(true)}
-          className="template-btn"
-        >
-          <LayoutTemplate size={14} />
-          Template
-        </Button>
+          {isEditMode && <WidgetPickerPanel />}
 
-        {/* Edit mode toggle */}
-        <Button
-          variant={isEditMode ? 'primary' : 'secondary'}
-          onClick={toggleEditMode}
-          className="edit-btn"
-        >
-          {isEditMode ? <Save size={14} /> : <Edit3 size={14} />}
-          {isEditMode ? 'Done' : 'Edit'}
-        </Button>
+          <HeaderDivider />
 
-        {/* Refresh button */}
-        <Button variant="primary" onClick={handleRefresh} className="refresh-btn">
-          Refresh
-        </Button>
+          {/* Action Group: History & Snapshots */}
+          <HeaderActionGroup>
+            <HeaderButton
+              icon={<Camera />}
+              onClick={handleCaptureSnapshot}
+              disabled={assetsWithScores.length === 0}
+              title="Take Snapshot"
+            />
+
+            <HeaderButton
+              icon={<Clock />}
+              active={isSidebarOpen && activeTab === 'history'}
+              badge={snapshots.length > 0}
+              onClick={() => toggleTab('history')}
+              title="View History"
+            />
+          </HeaderActionGroup>
+
+          <HeaderDivider />
+
+          {/* Primary Refresh */}
+          <HeaderActionGroup>
+            <HeaderButton
+              icon={<RotateCcw />}
+              onClick={handleRefresh}
+              title="Refresh Data"
+            />
+          </HeaderActionGroup>
+        </HeaderToolbar>
       </AppHeader>
 
-      {/* Breadcrumb navigation for context */}
-      <BreadcrumbNav />
+      {/* Breadcrumb navigation removed - now in AppHeader */}
+
+      {/* Last updated info move from header to body */}
+      <div className="dashboard-last-updated">
+        Last updated {getTimeAgo(lastUpdated)}
+      </div>
 
       {/* Edit mode banner */}
       {isEditMode && (
@@ -176,12 +175,7 @@ export function ExecutiveDashboard() {
         onClose={() => setShowTemplateModal(false)}
       />
 
-      {/* Recent snapshots panel */}
-      <RecentSnapshotsPanel
-        isOpen={showSnapshotsPanel}
-        onClose={() => setShowSnapshotsPanel(false)}
-        onCaptureSnapshot={handleCaptureSnapshot}
-      />
+      {/* Recent snapshots panel removed - now handled by RightInspectorSidebar */}
     </div>
   );
 }

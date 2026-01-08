@@ -4,10 +4,10 @@ import { useAssetContextStore } from '../../stores/assetContextStore';
 import { usePivotStore } from '../../stores/pivotStore';
 import { useScoresStore } from '../../stores/scoresStore';
 import type { AtlanAsset } from '../../services/atlan/types';
+import { usePivotConfigStore } from '../../stores/pivotConfigStore';
 import { buildPivotHierarchy } from '../../utils/pivotBuilder';
 import { buildDynamicPivot, pivotDataToTableRows } from '../../utils/dynamicPivotBuilder';
 import { HierarchyFilter, type HierarchyFilter as HierarchyFilterType } from './HierarchyFilter';
-import { PivotConfigurator } from './PivotConfigurator';
 import { PivotSection } from './PivotSection';
 import { PivotTable } from './PivotTable';
 import { Button, showToast } from '../shared';
@@ -39,16 +39,15 @@ export function RealPivotBuilder(props: RealPivotBuilderProps = {}) {
   const contextAssets = useAssetContextStore((state) => state.contextAssets);
   const { addView, setCurrentView } = usePivotStore();
   const { assetsWithScores } = useScoresStore();
+  const { rowDimensions, measures, measureDisplayModes } = usePivotConfigStore();
   const [saving, setSaving] = useState(false);
   const [hierarchyFilter, setHierarchyFilter] = useState<HierarchyFilterType>({
     level: 'connection',
   });
-  const [rowDimensions, setRowDimensions] = useState<RowDimension[]>(['connection', 'database', 'schema', 'type']);
-  const [measures, setMeasures] = useState<Measure[]>(['assetCount', 'completeness', 'accuracy', 'overall']);
 
   // Use context assets if available, fallback to selectedAssets for backward compatibility
   const sourceAssets = contextAssets.length > 0 ? contextAssets : selectedAssets;
-  
+
   // Build scores map from scoresStore for efficient pivot calculations
   const scoresMap = useMemo(() => {
     if (assetsWithScores.length === 0) return undefined;
@@ -62,38 +61,39 @@ export function RealPivotBuilder(props: RealPivotBuilderProps = {}) {
   // Filter assets based on hierarchy filter
   const filteredAssets = useMemo(() => {
     if (sourceAssets.length === 0) return [];
-    
+
     return sourceAssets.filter((asset) => {
       if (hierarchyFilter.connectionName && asset.connectionName !== hierarchyFilter.connectionName) {
         return false;
       }
       if (hierarchyFilter.databaseName) {
-        const dbName = asset.typeName === 'Database' 
-          ? asset.name 
+        const dbName = asset.typeName === 'Database'
+          ? asset.name
           : ('databaseQualifiedName' in asset && asset.databaseQualifiedName)
-          ? asset.databaseQualifiedName.split('/').pop() || null
-          : null;
+            ? asset.databaseQualifiedName.split('/').pop() || null
+            : null;
         if (dbName !== hierarchyFilter.databaseName) return false;
       }
       if (hierarchyFilter.schemaName) {
         const schemaName = asset.typeName === 'Schema'
           ? asset.name
           : ('schemaQualifiedName' in asset && asset.schemaQualifiedName)
-          ? asset.schemaQualifiedName.split('/').pop() || null
-          : null;
+            ? asset.schemaQualifiedName.split('/').pop() || null
+            : null;
         if (schemaName !== hierarchyFilter.schemaName) return false;
       }
       return true;
     });
   }, [sourceAssets, hierarchyFilter]);
 
-  // Build dynamic pivot table
   const pivotData = useMemo(() => {
     if (filteredAssets.length === 0 || rowDimensions.length === 0 || measures.length === 0) {
       return null;
     }
-    return buildDynamicPivot(filteredAssets, rowDimensions, measures, undefined, scoresMap);
-  }, [filteredAssets, rowDimensions, measures, scoresMap]);
+    const pivot = buildDynamicPivot(filteredAssets, rowDimensions, measures, undefined, scoresMap);
+    pivot.measureDisplayModes = measureDisplayModes;
+    return pivot;
+  }, [filteredAssets, rowDimensions, measures, scoresMap, measureDisplayModes]);
 
   // Convert to table rows
   const dynamicTableRows = useMemo(() => {
@@ -121,7 +121,7 @@ export function RealPivotBuilder(props: RealPivotBuilderProps = {}) {
 
   const handleSaveView = () => {
     if (!pivotData || rowDimensions.length === 0 || measures.length === 0) return;
-    
+
     setSaving(true);
     const viewId = addView({
       name: `Pivot View ${new Date().toLocaleDateString()}`,
@@ -139,15 +139,15 @@ export function RealPivotBuilder(props: RealPivotBuilderProps = {}) {
         measures: measures as any,
       },
     });
-    
+
     setCurrentView(viewId);
     setSaving(false);
-    
+
     // Call parent callback if provided
     if (onSave) {
       onSave();
     }
-    
+
     // Show success message
     showToast('Pivot view saved successfully!', 'success');
   };
@@ -171,13 +171,7 @@ export function RealPivotBuilder(props: RealPivotBuilderProps = {}) {
         onChange={setHierarchyFilter}
       />
 
-      {/* Pivot Configurator */}
-      <PivotConfigurator
-        rowDimensions={rowDimensions}
-        measures={measures}
-        onRowDimensionsChange={setRowDimensions}
-        onMeasuresChange={setMeasures}
-      />
+      {/* Pivot Configurator Removed - now exclusively in RightInspectorSidebar */}
 
       <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
@@ -267,11 +261,11 @@ export function RealPivotBuilder(props: RealPivotBuilderProps = {}) {
             rows={(hierarchy.level === 'connection' ? hierarchy.children : [hierarchy]).map((node) => [
               <span key={`node-${node.id}`}>
                 <span className="dim-icon connection">
-                  {node.level === 'connection' 
+                  {node.level === 'connection'
                     ? getConnectionIcon(node.label)
                     : node.level === 'database'
-                    ? '🗄️'
-                    : '📁'}
+                      ? '🗄️'
+                      : '📁'}
                 </span>
                 {node.label}
               </span>,

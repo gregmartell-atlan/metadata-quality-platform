@@ -7,7 +7,6 @@
 import { useState, useMemo } from 'react';
 import { Download, BarChart3, AlertTriangle, Lightbulb, Info } from 'lucide-react';
 import { AppHeader } from '../components/layout/AppHeader';
-import { BreadcrumbNav } from '../components/layout/BreadcrumbNav';
 import { DaaPRadarChart, CoverageHeatmap, QualityImpactMatrix, RemediationPrioritizer } from '../components/analytics';
 import { Card, Button, Tooltip, InfoTooltip } from '../components/shared';
 import { useFieldCoverage, getOverallCompleteness, getTopGaps } from '../hooks/useFieldCoverage';
@@ -73,7 +72,7 @@ function generateSampleAssets(): SampleAssetWithScores[] {
       ownerUsers: hasOwner && owner ? [owner] : undefined,
       certificateStatus: isCertified ? 'VERIFIED' : undefined,
       classificationNames: hasTags ? ['PII', 'Confidential'].slice(0, Math.floor(Math.random() * 3)) : undefined,
-      meanings: hasTerms ? [{ displayText: 'Revenue', termGuid: 'term-1' }] : undefined,
+      meanings: hasTerms ? [{ displayText: 'Revenue' } as any] : undefined,
       __hasLineage: hasLineage,
       // Simulated usage metrics
       popularityScore: Math.round(Math.random() * 500),
@@ -91,7 +90,7 @@ function generateSampleAssets(): SampleAssetWithScores[] {
       owner: owner || undefined,
       tags: asset.classificationNames,
       certificationStatus: isCertified ? 'certified' : 'none',
-      lastUpdated: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000).toISOString(),
+      lastUpdated: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000),
     };
 
     sampleAssets.push({
@@ -177,14 +176,12 @@ export function AnalyticsPage() {
 
   return (
     <div className="analytics-page">
-      <AppHeader title="DaaP Analytics" subtitle="Data as a Product compliance overview">
+      <AppHeader title="DaaP Analytics">
         <Button variant="secondary" onClick={handleExport}>
           <Download size={16} />
           Export Report
         </Button>
       </AppHeader>
-
-      <BreadcrumbNav />
 
       <div className="analytics-content">
         {/* Top Row: Radar Chart & Summary Stats */}

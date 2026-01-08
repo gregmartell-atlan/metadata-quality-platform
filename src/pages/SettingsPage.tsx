@@ -160,7 +160,7 @@ export function SettingsPage() {
 
   return (
     <div className="settings-page">
-      <AppHeader title="Settings" subtitle="Configure your workspace preferences" />
+      <AppHeader title="Settings" />
 
       <div className="settings-content">
         {/* Appearance Section */}

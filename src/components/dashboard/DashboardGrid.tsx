@@ -21,9 +21,9 @@ const COLS = { lg: 12, md: 12, sm: 12 };
 
 export function DashboardGrid() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const containerWidth = useContainerWidth(containerRef);
+  const containerWidth = useContainerWidth(containerRef as any);
   // useContainerWidth returns an object { width, mounted, ... } in v2.x
-  const width = typeof containerWidth === 'number' ? containerWidth : containerWidth?.width ?? 0;
+  const width = typeof containerWidth === 'number' ? containerWidth : (containerWidth as any)?.width ?? 0;
 
   const {
     currentLayouts,
@@ -32,13 +32,15 @@ export function DashboardGrid() {
   } = useDashboardLayoutStore();
 
   // Handle layout change from react-grid-layout
-  const handleLayoutChange = (_currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
+  const handleLayoutChange = (layout: Layout, layouts: Partial<Record<string, Layout>>) => {
     if (!isEditMode) return;
 
     // Update store with new layouts
-    Object.entries(allLayouts).forEach(([breakpoint, layout]) => {
-      const updatedLayout: DashboardLayoutItem[] = layout.map(item => {
-        const existing = currentLayouts[breakpoint as keyof typeof currentLayouts]?.find(l => l.i === item.i);
+    Object.entries(layouts).forEach(([breakpoint, bpLayout]) => {
+      if (!bpLayout) return;
+
+      const updatedLayout: DashboardLayoutItem[] = bpLayout.map(item => {
+        const existing = (currentLayouts as any)[breakpoint]?.find((l: any) => l.i === item.i);
         return {
           ...item,
           widgetType: existing?.widgetType || '',
@@ -79,21 +81,23 @@ export function DashboardGrid() {
     <div ref={containerRef} className="dashboard-grid-wrapper">
       {width > 0 && (
         <Responsive
-          className="dashboard-grid-layout"
-          width={width}
-          layouts={currentLayouts}
-          breakpoints={BREAKPOINTS}
-          cols={COLS}
-          rowHeight={120}
-          containerPadding={[24, 24]}
-          margin={[16, 16]}
-          isDraggable={isEditMode}
-          isResizable={isEditMode}
-          draggableHandle=".widget-drag-handle"
-          onLayoutChange={handleLayoutChange}
-          useCSSTransforms={true}
-          compactType="vertical"
-          preventCollision={false}
+          {...{
+            className: "dashboard-grid-layout",
+            width: width,
+            layouts: currentLayouts,
+            breakpoints: BREAKPOINTS,
+            cols: COLS,
+            rowHeight: 140,
+            containerPadding: [20, 20],
+            margin: [20, 20],
+            isDraggable: isEditMode,
+            isResizable: isEditMode,
+            draggableHandle: ".widget-drag-handle",
+            onLayoutChange: handleLayoutChange,
+            useCSSTransforms: true,
+            compactType: "vertical",
+            preventCollision: false,
+          } as any}
         >
           {renderWidgets}
         </Responsive>

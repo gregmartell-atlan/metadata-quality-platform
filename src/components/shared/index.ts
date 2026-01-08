@@ -1,5 +1,6 @@
 export { Card } from './Card';
 export { Button } from './Button';
+export type { ButtonProps } from './Button';
 export { ScoreBadge } from './ScoreBadge';
 export { ErrorBoundary } from './ErrorBoundary';
 export { Modal, ConfirmModal } from './Modal';
