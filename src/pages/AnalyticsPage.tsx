@@ -14,7 +14,7 @@ import { useFieldCoverage, getOverallCompleteness, getTopGaps } from '../hooks/u
 import { getFieldInfo } from '../constants/metadataDescriptions';
 import { exportAnalyticsReport } from '../utils/analyticsExport';
 import { useScoresStore } from '../stores/scoresStore';
-import { useAssetInspectorStore } from '../stores/assetInspectorStore';
+import { useAssetPreviewStore } from '../stores/assetPreviewStore';
 import type { RequirementsMatrix } from '../types/requirements';
 import type { AtlanAsset } from '../services/atlan/types';
 import type { AssetMetadata, QualityScores } from '../services/qualityMetrics';
@@ -153,7 +153,7 @@ export function AnalyticsPage() {
   const overallCompleteness = getOverallCompleteness(fieldCoverage);
   const topGaps = getTopGaps(fieldCoverage, 3);
   const { assetsWithScores: storeAssets } = useScoresStore();
-  const { openInspector } = useAssetInspectorStore();
+  const { openPreview } = useAssetPreviewStore();
 
   // Use real assets if available, otherwise use sample data for demo
   const isUsingDemoData = storeAssets.length === 0;
@@ -169,9 +169,9 @@ export function AnalyticsPage() {
   };
 
   const handleAssetClick = (asset: typeof assetsWithScores[0]) => {
-    // Only open inspector for real assets, not sample data
+    // Only open preview for real assets, not sample data
     if (!isUsingDemoData) {
-      openInspector(asset.asset);
+      openPreview(asset.asset);
     }
   };
 

@@ -37,6 +37,7 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
 
   // Asset context state
   const {
+    context,
     contextAssets,
     error,
     setContext,

@@ -1,4 +1,4 @@
-/* Atlantis App Header - Top Bar */
+/* Atlantis App Header - Premium Top Bar with Glass Morphism */
 
 .app-header {
   display: flex;
@@ -6,12 +6,38 @@
   justify-content: space-between;
   gap: var(--space-6);
   padding: 0; /* Remove padding - let children control spacing */
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--border-subtle);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.97) 0%,
+    rgba(255, 255, 255, 0.92) 100%
+  );
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    0 4px 12px rgba(0, 0, 0, 0.02),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
   position: sticky;
   top: 0;
   z-index: 100;
   min-height: 72px;
+  transition: all var(--transition-normal);
+}
+
+/* Dark mode glass effect */
+[data-theme="dark"] .app-header {
+  background: linear-gradient(
+    180deg,
+    rgba(20, 25, 40, 0.95) 0%,
+    rgba(20, 25, 40, 0.9) 100%
+  );
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.3),
+    0 4px 12px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 /* Left Section: Context Bar (takes full left space) */
@@ -23,33 +49,112 @@
   height: 100%;
 }
 
-/* Connection Button */
+/* Connection Button - Premium with Micro-interactions */
 .connection-btn {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
-  background: var(--button-secondary-bg);
-  border: 1px solid var(--button-secondary-border);
+  background: linear-gradient(135deg, #ffffff 0%, rgba(255, 255, 255, 0.95) 100%);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: var(--radius-md);
   color: var(--text-secondary);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
   white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.connection-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(51, 102, 255, 0.06),
+    transparent
+  );
+  transform: translateX(-100%);
+  transition: transform 500ms ease;
+}
+
+.connection-btn:hover::before {
+  transform: translateX(100%);
 }
 
 .connection-btn:hover {
-  background: var(--button-secondary-bg-hover);
-  border-color: var(--border-strong);
+  transform: translateY(-2px) scale(1.02);
+  border-color: var(--color-blue-300);
   color: var(--text-default);
+  box-shadow:
+    0 4px 12px rgba(51, 102, 255, 0.12),
+    0 2px 4px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.connection-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.connection-btn svg {
+  transition: all 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.connection-btn:hover svg {
+  transform: scale(1.1);
 }
 
 .connection-btn.connected {
-  background: var(--state-success-bg);
-  border-color: var(--state-success-border);
+  background: linear-gradient(135deg, rgba(45, 164, 78, 0.08) 0%, rgba(45, 164, 78, 0.04) 100%);
+  border-color: rgba(45, 164, 78, 0.3);
   color: var(--state-success-text);
+  animation: connectedPulse 3s ease-in-out infinite;
+  box-shadow:
+    0 2px 8px rgba(45, 164, 78, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.connection-btn.connected svg {
+  filter: drop-shadow(0 1px 2px rgba(45, 164, 78, 0.3));
+}
+
+@keyframes connectedPulse {
+  0%, 100% {
+    box-shadow:
+      0 2px 8px rgba(45, 164, 78, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+  50% {
+    box-shadow:
+      0 2px 16px rgba(45, 164, 78, 0.25),
+      0 0 0 4px rgba(45, 164, 78, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+}
+
+/* Dark mode connection button */
+[data-theme="dark"] .connection-btn {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.03) 100%);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .connection-btn:hover {
+  background: linear-gradient(135deg, rgba(51, 102, 255, 0.15) 0%, rgba(51, 102, 255, 0.08) 100%);
+  border-color: rgba(51, 102, 255, 0.4);
+}
+
+[data-theme="dark"] .connection-btn.connected {
+  background: linear-gradient(135deg, rgba(45, 164, 78, 0.15) 0%, rgba(45, 164, 78, 0.08) 100%);
 }
 
 /* Browse Button */
@@ -336,24 +441,44 @@
   height: 100%;
 }
 
-/* Modal Overlay */
+/* Modal Overlay - Premium Glass Effect */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
+  animation: overlayFadeIn 200ms ease-out;
 }
 
-/* Connection Modal */
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+  }
+}
+
+/* Connection Modal - Premium Glass Card */
 .connect-modal {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.98) 0%,
+    rgba(255, 255, 255, 0.95) 100%
+  );
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: var(--radius-xl);
   padding: var(--space-6);
   min-width: 360px;
@@ -361,7 +486,66 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  box-shadow: var(--shadow-xl);
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.12),
+    0 2px 10px rgba(0, 0, 0, 0.08),
+    0 0 1px rgba(255, 255, 255, 0.5) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.05) inset;
+  animation: modalSlideUp 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.connect-modal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(
+    180deg,
+    rgba(51, 102, 255, 0.04) 0%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Dark mode modal */
+[data-theme="dark"] .modal-overlay {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .connect-modal {
+  background: linear-gradient(
+    180deg,
+    rgba(30, 35, 50, 0.98) 0%,
+    rgba(25, 30, 45, 0.95) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.4),
+    0 2px 10px rgba(0, 0, 0, 0.3),
+    0 0 1px rgba(255, 255, 255, 0.1) inset;
+}
+
+[data-theme="dark"] .connect-modal::before {
+  background: linear-gradient(
+    180deg,
+    rgba(51, 102, 255, 0.08) 0%,
+    transparent 100%
+  );
 }
 
 .connect-modal h2 {
@@ -373,26 +557,57 @@
 
 .connect-modal input {
   padding: var(--space-3);
-  background: var(--input-bg);
-  border: 1px solid var(--input-border);
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: var(--radius-md);
   color: var(--input-text);
   font-size: var(--font-size-base);
-  transition: border-color var(--transition-fast);
+  transition: all 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  z-index: 1;
 }
 
 .connect-modal input:hover {
-  border-color: var(--input-border-hover);
+  border-color: rgba(51, 102, 255, 0.3);
+  background: rgba(255, 255, 255, 0.9);
 }
 
 .connect-modal input:focus {
   outline: none;
-  border-color: var(--input-border-focus);
-  box-shadow: var(--focus-ring);
+  border-color: var(--color-blue-400);
+  background: #ffffff;
+  box-shadow:
+    0 0 0 4px rgba(51, 102, 255, 0.1),
+    0 2px 8px rgba(51, 102, 255, 0.08),
+    inset 0 1px 2px rgba(0, 0, 0, 0.02);
+  transform: scale(1.01);
 }
 
 .connect-modal input::placeholder {
   color: var(--input-placeholder);
+  transition: opacity 150ms ease;
+}
+
+.connect-modal input:focus::placeholder {
+  opacity: 0.5;
+}
+
+/* Dark mode inputs */
+[data-theme="dark"] .connect-modal input {
+  background: rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .connect-modal input:hover {
+  background: rgba(0, 0, 0, 0.25);
+  border-color: rgba(51, 102, 255, 0.4);
+}
+
+[data-theme="dark"] .connect-modal input:focus {
+  background: rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 0 0 4px rgba(51, 102, 255, 0.15),
+    0 2px 8px rgba(51, 102, 255, 0.1);
 }
 
 .connect-error {

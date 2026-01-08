@@ -30,7 +30,7 @@ function PageLoader() {
 
 function App() {
   const { theme, density } = useUIPreferences();
-  const { selectedAsset, isOpen: isPreviewOpen, closePreview } = useAssetPreviewStore();
+  const { selectedAsset, isOpen: isPreviewOpen, isLoading: isPreviewLoading, closePreview } = useAssetPreviewStore();
   const { isOpen: isSearchOpen, closeSearch } = useGlobalSearch();
 
   // Apply theme and density to document
@@ -78,6 +78,7 @@ function App() {
           <AssetPreviewDrawer
             asset={selectedAsset}
             isOpen={isPreviewOpen}
+            isLoading={isPreviewLoading}
             onClose={closePreview}
           />
 

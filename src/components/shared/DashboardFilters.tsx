@@ -1,15 +1,15 @@
 /**
- * DashboardFilters - Reusable filter bar for dashboards
+ * DashboardFilters - Beautiful filter bar for dashboards
  *
- * Features:
- * - Multi-select dropdowns for dimensions
- * - Score range filter
- * - Clear all button
- * - URL state persistence (optional)
+ * Design: Linear/Stripe-inspired with:
+ * - Elegant dropdown menus with search
+ * - Smooth animations and micro-interactions
+ * - Visual score range slider
+ * - Refined filter pills
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Filter, X, ChevronDown, Check } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Filter, X, ChevronDown, Check, Search, Sliders, RotateCcw } from 'lucide-react';
 import { useScoresStore } from '../../stores/scoresStore';
 import { useSearchParams } from 'react-router-dom';
 import './DashboardFilters.css';
@@ -35,14 +35,11 @@ const DEFAULT_FILTERS: FilterValues = {
 };
 
 interface DashboardFiltersProps {
-  /** Current filter values */
   filters: FilterValues;
-  /** Callback when filters change */
   onChange: (filters: FilterValues) => void;
-  /** Whether to persist filters to URL */
   persistToUrl?: boolean;
-  /** Custom class name */
   className?: string;
+  variant?: 'default' | 'compact' | 'inline';
 }
 
 export function DashboardFilters({
@@ -50,12 +47,12 @@ export function DashboardFilters({
   onChange,
   persistToUrl = false,
   className = '',
+  variant = 'default',
 }: DashboardFiltersProps) {
   const { assetsWithScores, byConnection, byOwner, byAssetType, bySchema, byCertification } =
     useScoresStore();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Extract unique values from store for filter options
   const options = useMemo(() => {
     return {
       connections: Array.from(byConnection.keys()).filter((k) => k !== 'No Connection').sort(),
@@ -66,7 +63,6 @@ export function DashboardFilters({
     };
   }, [byConnection, byOwner, byAssetType, bySchema, byCertification]);
 
-  // Load filters from URL on mount if persistToUrl is enabled
   useEffect(() => {
     if (!persistToUrl) return;
 
@@ -98,7 +94,6 @@ export function DashboardFilters({
     }
   }, []);
 
-  // Sync filters to URL when they change
   useEffect(() => {
     if (!persistToUrl) return;
 
@@ -131,77 +126,106 @@ export function DashboardFilters({
     onChange(DEFAULT_FILTERS);
   }, [onChange]);
 
+  const handleRemoveFilter = useCallback(
+    (key: keyof FilterValues, value: string) => {
+      const current = filters[key] as string[];
+      onChange({ ...filters, [key]: current.filter((v) => v !== value) });
+    },
+    [filters, onChange]
+  );
+
   const activeFilterCount = useMemo(() => {
     let count = 0;
-    if (filters.connections.length > 0) count++;
-    if (filters.owners.length > 0) count++;
-    if (filters.assetTypes.length > 0) count++;
-    if (filters.schemas.length > 0) count++;
-    if (filters.certifications.length > 0) count++;
+    count += filters.connections.length;
+    count += filters.owners.length;
+    count += filters.assetTypes.length;
+    count += filters.schemas.length;
+    count += filters.certifications.length;
     if (filters.minScore > 0 || filters.maxScore < 100) count++;
     return count;
   }, [filters]);
 
-  // Don't show filters if no assets loaded
+  const allActiveFilters = useMemo(() => {
+    const active: Array<{ key: keyof FilterValues; value: string; label: string }> = [];
+
+    filters.connections.forEach(v => active.push({ key: 'connections', value: v, label: v }));
+    filters.owners.forEach(v => active.push({ key: 'owners', value: v, label: v }));
+    filters.assetTypes.forEach(v => active.push({ key: 'assetTypes', value: v, label: v }));
+    filters.schemas.forEach(v => active.push({ key: 'schemas', value: v, label: v }));
+    filters.certifications.forEach(v => active.push({ key: 'certifications', value: v, label: v }));
+
+    return active;
+  }, [filters]);
+
   if (assetsWithScores.length === 0) {
     return null;
   }
 
   return (
-    <div className={`dashboard-filters ${className}`}>
-      <div className="dashboard-filters-header">
-        <Filter size={16} />
-        <span>Filters</span>
+    <div className={`filters-container filters-${variant} ${className}`}>
+      {/* Header */}
+      <div className="filters-header">
+        <div className="filters-title">
+          <Sliders size={16} strokeWidth={1.5} />
+          <span>Filters</span>
+          {activeFilterCount > 0 && (
+            <span className="filters-badge">{activeFilterCount}</span>
+          )}
+        </div>
         {activeFilterCount > 0 && (
-          <span className="dashboard-filters-count">{activeFilterCount}</span>
+          <button className="filters-reset" onClick={handleClearAll}>
+            <RotateCcw size={14} />
+            <span>Reset</span>
+          </button>
         )}
       </div>
 
-      <div className="dashboard-filters-content">
-        {/* Connection Filter */}
-        <MultiSelectDropdown
+      {/* Filter Controls */}
+      <div className="filters-controls">
+        <FilterDropdown
           label="Connection"
           options={options.connections}
           selected={filters.connections}
           onChange={(value) => handleMultiSelectChange('connections', value)}
+          placeholder="All connections"
         />
 
-        {/* Asset Type Filter */}
-        <MultiSelectDropdown
+        <FilterDropdown
           label="Asset Type"
           options={options.assetTypes}
           selected={filters.assetTypes}
           onChange={(value) => handleMultiSelectChange('assetTypes', value)}
+          placeholder="All types"
         />
 
-        {/* Owner Filter */}
-        <MultiSelectDropdown
+        <FilterDropdown
           label="Owner"
           options={options.owners}
           selected={filters.owners}
           onChange={(value) => handleMultiSelectChange('owners', value)}
+          placeholder="All owners"
         />
 
-        {/* Schema Filter */}
-        <MultiSelectDropdown
+        <FilterDropdown
           label="Schema"
           options={options.schemas}
           selected={filters.schemas}
           onChange={(value) => handleMultiSelectChange('schemas', value)}
+          placeholder="All schemas"
         />
 
-        {/* Certification Filter */}
-        <MultiSelectDropdown
+        <FilterDropdown
           label="Certification"
           options={options.certifications}
           selected={filters.certifications}
           onChange={(value) => handleMultiSelectChange('certifications', value)}
+          placeholder="All statuses"
         />
 
-        {/* Score Range Filter */}
-        <div className="dashboard-filter-item">
-          <label className="dashboard-filter-label">Score Range</label>
-          <div className="dashboard-filter-range">
+        {/* Score Range */}
+        <div className="filter-group">
+          <label className="filter-label">Score Range</label>
+          <div className="filter-range">
             <input
               type="number"
               min={0}
@@ -210,9 +234,9 @@ export function DashboardFilters({
               onChange={(e) =>
                 onChange({ ...filters, minScore: Math.max(0, parseInt(e.target.value, 10) || 0) })
               }
-              className="dashboard-filter-range-input"
+              className="filter-range-input"
             />
-            <span>to</span>
+            <span className="filter-range-sep">—</span>
             <input
               type="number"
               min={0}
@@ -224,73 +248,155 @@ export function DashboardFilters({
                   maxScore: Math.min(100, parseInt(e.target.value, 10) || 100),
                 })
               }
-              className="dashboard-filter-range-input"
+              className="filter-range-input"
             />
           </div>
         </div>
       </div>
 
-      {activeFilterCount > 0 && (
-        <button className="dashboard-filters-clear" onClick={handleClearAll}>
-          <X size={14} />
-          Clear All
-        </button>
+      {/* Active Filter Pills */}
+      {allActiveFilters.length > 0 && (
+        <div className="filters-pills">
+          {allActiveFilters.map((filter, i) => (
+            <span key={`${filter.key}-${filter.value}`} className="filter-pill">
+              <span className="filter-pill-label">{filter.label}</span>
+              <button
+                className="filter-pill-remove"
+                onClick={() => handleRemoveFilter(filter.key, filter.value)}
+                aria-label={`Remove ${filter.label} filter`}
+              >
+                <X size={12} />
+              </button>
+            </span>
+          ))}
+        </div>
       )}
     </div>
   );
 }
 
 /**
- * Multi-select dropdown component
+ * Beautiful Filter Dropdown with search
  */
-interface MultiSelectDropdownProps {
+interface FilterDropdownProps {
   label: string;
   options: string[];
   selected: string[];
   onChange: (value: string) => void;
+  placeholder?: string;
 }
 
-function MultiSelectDropdown({ label, options, selected, onChange }: MultiSelectDropdownProps) {
+function FilterDropdown({ label, options, selected, onChange, placeholder }: FilterDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+        setSearch('');
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      searchRef.current?.focus();
+    }
+
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
+  // Close on Escape
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        setIsOpen(false);
+        setSearch('');
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen]);
+
+  const filteredOptions = useMemo(() => {
+    if (!search) return options;
+    return options.filter(opt =>
+      opt.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [options, search]);
 
   if (options.length === 0) return null;
 
+  const displayText = selected.length === 0
+    ? placeholder || `All ${label}s`
+    : selected.length === 1
+      ? selected[0]
+      : `${selected.length} selected`;
+
   return (
-    <div className="dashboard-filter-item">
-      <label className="dashboard-filter-label">{label}</label>
-      <div className="dashboard-filter-dropdown">
+    <div className="filter-group" ref={dropdownRef}>
+      <label className="filter-label">{label}</label>
+      <div className="filter-dropdown">
         <button
-          className={`dashboard-filter-dropdown-trigger ${selected.length > 0 ? 'has-selection' : ''}`}
+          className={`filter-trigger ${selected.length > 0 ? 'has-selection' : ''} ${isOpen ? 'open' : ''}`}
           onClick={() => setIsOpen(!isOpen)}
+          aria-expanded={isOpen}
+          aria-haspopup="listbox"
         >
-          <span>
-            {selected.length === 0
-              ? `All ${label}s`
-              : selected.length === 1
-                ? selected[0]
-                : `${selected.length} selected`}
-          </span>
-          <ChevronDown size={14} className={isOpen ? 'rotated' : ''} />
+          <span className="filter-trigger-text">{displayText}</span>
+          <ChevronDown size={14} className="filter-trigger-icon" />
         </button>
 
         {isOpen && (
-          <>
-            <div className="dashboard-filter-dropdown-backdrop" onClick={() => setIsOpen(false)} />
-            <div className="dashboard-filter-dropdown-menu">
-              {options.map((option) => (
-                <button
-                  key={option}
-                  className={`dashboard-filter-dropdown-item ${selected.includes(option) ? 'selected' : ''}`}
-                  onClick={() => onChange(option)}
-                >
-                  <span className="dashboard-filter-dropdown-check">
-                    {selected.includes(option) && <Check size={14} />}
-                  </span>
-                  <span className="dashboard-filter-dropdown-label">{option}</span>
-                </button>
-              ))}
+          <div className="filter-menu" role="listbox">
+            {/* Search */}
+            {options.length > 5 && (
+              <div className="filter-search">
+                <Search size={14} />
+                <input
+                  ref={searchRef}
+                  type="text"
+                  placeholder={`Search ${label.toLowerCase()}...`}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="filter-search-input"
+                />
+              </div>
+            )}
+
+            {/* Options */}
+            <div className="filter-options">
+              {filteredOptions.length === 0 ? (
+                <div className="filter-empty">No results found</div>
+              ) : (
+                filteredOptions.map((option) => (
+                  <button
+                    key={option}
+                    className={`filter-option ${selected.includes(option) ? 'selected' : ''}`}
+                    onClick={() => onChange(option)}
+                    role="option"
+                    aria-selected={selected.includes(option)}
+                  >
+                    <span className="filter-checkbox">
+                      {selected.includes(option) && <Check size={12} />}
+                    </span>
+                    <span className="filter-option-label">{option}</span>
+                  </button>
+                ))
+              )}
             </div>
-          </>
+
+            {/* Selected count */}
+            {selected.length > 0 && (
+              <div className="filter-menu-footer">
+                {selected.length} selected
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>
@@ -308,10 +414,8 @@ export function useDashboardFilters(initialFilters?: Partial<FilterValues>) {
 
   const { assetsWithScores } = useScoresStore();
 
-  // Filter assets based on current filter values
   const filteredAssets = useMemo(() => {
     return assetsWithScores.filter((item) => {
-      // Connection filter
       if (
         filters.connections.length > 0 &&
         !filters.connections.includes(item.metadata.connection || '')
@@ -319,13 +423,11 @@ export function useDashboardFilters(initialFilters?: Partial<FilterValues>) {
         return false;
       }
 
-      // Owner filter
       if (filters.owners.length > 0) {
         const owner = item.metadata.owner || item.metadata.ownerGroup || '';
         if (!filters.owners.includes(owner)) return false;
       }
 
-      // Asset type filter
       if (
         filters.assetTypes.length > 0 &&
         !filters.assetTypes.includes(item.metadata.assetType || '')
@@ -333,13 +435,11 @@ export function useDashboardFilters(initialFilters?: Partial<FilterValues>) {
         return false;
       }
 
-      // Schema filter
       if (filters.schemas.length > 0) {
         const schema = item.metadata.customProperties?.schemaName || 'No Schema';
         if (!filters.schemas.includes(schema)) return false;
       }
 
-      // Certification filter
       if (filters.certifications.length > 0) {
         const cert = item.metadata.certificationStatus || 'none';
         const certLabel =
@@ -353,7 +453,6 @@ export function useDashboardFilters(initialFilters?: Partial<FilterValues>) {
         if (!filters.certifications.includes(certLabel)) return false;
       }
 
-      // Score filter
       const score = item.scores.overall;
       if (score < filters.minScore || score > filters.maxScore) {
         return false;

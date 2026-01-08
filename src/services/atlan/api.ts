@@ -102,6 +102,14 @@ export interface AtlanApiConfig {
 
 let config: AtlanApiConfig | null = null;
 
+// Cache for type definitions (forward declaration - used by clearAtlanConfig)
+// These are populated by getClassificationTypeDefs and getBusinessMetadataTypeDefs
+let classificationTypeDefsCache: Map<string, string> | null = null;
+let businessMetadataTypeDefsCache: {
+  setNames: Map<string, string>;
+  attributeNames: Map<string, Map<string, string>>;
+} | null = null;
+
 /**
  * Configure the Atlan API client
  */
@@ -152,6 +160,9 @@ export function clearAtlanConfig() {
   sessionStorage.removeItem(SAVED_BASE_URL_KEY);
   clearCache();
   resetAtlanAssetCache();
+  // Clear type definition caches when switching tenants
+  classificationTypeDefsCache = null;
+  businessMetadataTypeDefsCache = null;
 }
 
 /**
@@ -1112,14 +1123,148 @@ export async function getAsset(guid: string, attributes: string[] = []): Promise
     return null;
   }
 
-  // Transform to AtlanAsset format (similar to searchAssets)
+  // Transform to AtlanAsset format with all available attributes
+  const attrs = entity.attributes || {};
+  const businessAttrs = entity.businessAttributes || attrs.businessAttributes || {};
+
   return {
     guid: entity.guid,
     typeName: entity.typeName,
-    name: entity.attributes?.name || entity.attributes?.displayName || '',
-    qualifiedName: entity.attributes?.qualifiedName || '',
-    description: entity.attributes?.description,
-    // ... map other attributes as needed
+    name: attrs.name || attrs.displayName || '',
+    qualifiedName: attrs.qualifiedName || '',
+    description: attrs.description,
+    userDescription: attrs.userDescription,
+
+    // Ownership & Stewardship
+    ownerUsers: attrs.ownerUsers,
+    ownerGroups: attrs.ownerGroups,
+    adminUsers: attrs.adminUsers,
+    adminGroups: attrs.adminGroups,
+
+    // Governance & Certification
+    certificateStatus: attrs.certificateStatus,
+    certificateStatusMessage: attrs.certificateStatusMessage,
+    certificateUpdatedBy: attrs.certificateUpdatedBy,
+    certificateUpdatedAt: attrs.certificateUpdatedAt,
+
+    // Classifications & Tags
+    classificationNames: attrs.classificationNames || entity.classificationNames,
+    classifications: entity.classifications || attrs.classifications,
+    atlanTags: attrs.atlanTags,
+
+    // Glossary Terms
+    meanings: attrs.meanings,
+    assignedTerms: attrs.assignedTerms,
+
+    // Connection & Location
+    connectionName: attrs.connectionName,
+    connectionQualifiedName: attrs.connectionQualifiedName,
+    connectorName: attrs.connectorName,
+    connectorType: attrs.connectorType,
+    databaseName: attrs.databaseName,
+    schemaName: attrs.schemaName,
+
+    // Lineage
+    __hasLineage: attrs.__hasLineage || attrs.hasLineage,
+
+    // Usage & Popularity Metrics
+    popularityScore: attrs.popularityScore,
+    viewScore: attrs.viewScore,
+    starredCount: attrs.starredCount,
+    starredBy: attrs.starredBy,
+    sourceReadCount: attrs.sourceReadCount,
+    sourceReadUserCount: attrs.sourceReadUserCount,
+    sourceReadQueryCost: attrs.sourceReadQueryCost,
+    sourceLastReadAt: attrs.sourceLastReadAt,
+    sourceTotalCost: attrs.sourceTotalCost,
+
+    // Include the full attributes object for the drawer to access
+    attributes: {
+      ...attrs,
+
+      // Timestamps & Audit
+      createTime: attrs.createTime,
+      updateTime: attrs.updateTime,
+      createdBy: attrs.createdBy,
+      updatedBy: attrs.updatedBy,
+      sourceCreatedAt: attrs.sourceCreatedAt,
+      sourceUpdatedAt: attrs.sourceUpdatedAt,
+      sourceCreatedBy: attrs.sourceCreatedBy,
+      sourceUpdatedBy: attrs.sourceUpdatedBy,
+      lastSyncRunAt: attrs.lastSyncRunAt,
+      lastSyncWorkflowName: attrs.lastSyncWorkflowName,
+
+      // Technical Metadata
+      rowCount: attrs.rowCount,
+      columnCount: attrs.columnCount,
+      sizeBytes: attrs.sizeBytes,
+      tableType: attrs.tableType,
+      viewDefinition: attrs.viewDefinition,
+      isProfiled: attrs.isProfiled,
+      lastProfiledAt: attrs.lastProfiledAt,
+      queryCount: attrs.queryCount,
+      queryUserCount: attrs.queryUserCount,
+
+      // Schema & Structure (for columns)
+      columns: attrs.columns,
+      dataType: attrs.dataType,
+      order: attrs.order,
+      isPrimary: attrs.isPrimary,
+      isForeign: attrs.isForeign,
+      isNullable: attrs.isNullable,
+      isPartition: attrs.isPartition,
+      maxLength: attrs.maxLength,
+      precision: attrs.precision,
+      scale: attrs.scale,
+      defaultValue: attrs.defaultValue,
+
+      // Classifications & Tags
+      classifications: entity.classifications || attrs.classifications,
+      atlanTags: attrs.atlanTags,
+      tags: attrs.tags,
+
+      // Glossary Terms
+      meanings: attrs.meanings,
+      assignedTerms: attrs.assignedTerms,
+
+      // Documentation
+      readme: attrs.readme,
+      links: attrs.links,
+      resources: attrs.resources,
+
+      // Announcements
+      announcementTitle: attrs.announcementTitle,
+      announcementMessage: attrs.announcementMessage,
+      announcementType: attrs.announcementType,
+      announcementUpdatedAt: attrs.announcementUpdatedAt,
+
+      // Data Products & Domains
+      dataProducts: attrs.dataProducts,
+      dataProductGuids: attrs.dataProductGuids,
+      dataDomain: attrs.dataDomain,
+      dataDomainGuid: attrs.dataDomainGuid,
+      outputPortDataProducts: attrs.outputPortDataProducts,
+      inputPortDataProducts: attrs.inputPortDataProducts,
+
+      // Quality & Health Metrics
+      dataQualityScore: attrs.dataQualityScore,
+      dataQualitySummary: attrs.dataQualitySummary,
+      assetDbtJobLastRun: attrs.assetDbtJobLastRun,
+      assetDbtJobLastRunStatus: attrs.assetDbtJobLastRunStatus,
+      assetMcIncidentCount: attrs.assetMcIncidentCount,
+      assetMcMonitorCount: attrs.assetMcMonitorCount,
+      assetSodaCheckCount: attrs.assetSodaCheckCount,
+      assetSodaLastSyncRunAt: attrs.assetSodaLastSyncRunAt,
+      assetSodaLastScanAt: attrs.assetSodaLastScanAt,
+
+      // Usage metrics lists
+      sourceReadRecentUserList: attrs.sourceReadRecentUserList,
+      sourceReadTopUserList: attrs.sourceReadTopUserList,
+      sourceReadCostUnit: attrs.sourceReadCostUnit,
+
+      // Custom Metadata (business attributes)
+      businessAttributes: businessAttrs,
+    },
   } as AtlanAsset;
 }
 
@@ -1217,7 +1362,7 @@ export async function pollWorkflowUntilComplete(
 }
 
 // ============================================
-// CLASSIFICATION TYPE DEFINITIONS
+// TYPE DEFINITIONS (Classifications & Custom Metadata)
 // ============================================
 
 /**
@@ -1231,10 +1376,40 @@ export interface ClassificationTypeDef {
 }
 
 /**
+ * Business Metadata (Custom Metadata) attribute definition
+ */
+export interface BusinessMetadataAttributeDef {
+  name: string;
+  displayName?: string;
+  typeName?: string;
+  description?: string;
+  cardinality?: string;
+  options?: Record<string, any>;
+}
+
+/**
+ * Business Metadata (Custom Metadata) type definition from Atlan typedefs API
+ */
+export interface BusinessMetadataTypeDef {
+  name: string;
+  displayName?: string;
+  guid?: string;
+  description?: string;
+  attributeDefs?: BusinessMetadataAttributeDef[];
+}
+
+// Note: Cache variables are declared at the top of the file (after config)
+
+/**
  * Fetch all classification type definitions from Atlan
- * Returns a map of type name -> display name for name resolution
+ * Returns a map of type name (hashed) -> display name (human-readable)
  */
 export async function getClassificationTypeDefs(): Promise<Map<string, string>> {
+  // Return cached if available
+  if (classificationTypeDefsCache) {
+    return classificationTypeDefsCache;
+  }
+
   const response = await atlanFetch<{
     classificationDefs?: ClassificationTypeDef[];
   }>('/api/meta/types/typedefs?type=classification', {
@@ -1259,7 +1434,73 @@ export async function getClassificationTypeDefs(): Promise<Map<string, string>> 
     result.set(typeName, displayName);
   }
 
+  // Cache the result
+  classificationTypeDefsCache = result;
   return result;
+}
+
+/**
+ * Fetch all business metadata (custom metadata) type definitions from Atlan
+ * Returns maps for:
+ * - setNames: hashed set name -> display name
+ * - attributeNames: hashed set name -> Map of (hashed attr name -> display name)
+ */
+export async function getBusinessMetadataTypeDefs(): Promise<{
+  setNames: Map<string, string>;
+  attributeNames: Map<string, Map<string, string>>;
+}> {
+  // Return cached if available
+  if (businessMetadataTypeDefsCache) {
+    return businessMetadataTypeDefsCache;
+  }
+
+  const response = await atlanFetch<{
+    businessMetadataDefs?: BusinessMetadataTypeDef[];
+  }>('/api/meta/types/typedefs?type=business_metadata', {
+    method: 'GET',
+  });
+
+  logger.debug('[getBusinessMetadataTypeDefs] API response status:', { status: response.status, error: response.error || 'none' });
+
+  if (response.error || !response.data) {
+    logger.warn('Failed to fetch business metadata type definitions:', response.error || 'No data');
+    return { setNames: new Map(), attributeNames: new Map() };
+  }
+
+  const setNames = new Map<string, string>();
+  const attributeNames = new Map<string, Map<string, string>>();
+  const businessMetadataDefs = response.data.businessMetadataDefs || [];
+
+  logger.debug(`[getBusinessMetadataTypeDefs] Fetched ${businessMetadataDefs.length} business metadata definitions`);
+
+  for (const def of businessMetadataDefs) {
+    const setHashedName = def.name;
+    const setDisplayName = def.displayName || def.name;
+    setNames.set(setHashedName, setDisplayName);
+
+    // Process attribute definitions for this set
+    const attrMap = new Map<string, string>();
+    if (def.attributeDefs) {
+      for (const attr of def.attributeDefs) {
+        const attrHashedName = attr.name;
+        const attrDisplayName = attr.displayName || attr.name;
+        attrMap.set(attrHashedName, attrDisplayName);
+      }
+    }
+    attributeNames.set(setHashedName, attrMap);
+  }
+
+  // Cache the result
+  businessMetadataTypeDefsCache = { setNames, attributeNames };
+  return businessMetadataTypeDefsCache;
+}
+
+/**
+ * Clear type definition caches (call when switching tenants)
+ */
+export function clearTypeDefCaches(): void {
+  classificationTypeDefsCache = null;
+  businessMetadataTypeDefsCache = null;
 }
 
 // ============================================
