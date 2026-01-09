@@ -394,7 +394,7 @@ export function LineageView() {
         loading={loading}
       />
 
-      <div className="lineage-view-graph">
+      <div className="lineage-view-graph" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
         {error && (
           <div className="lineage-view-error">
             <p>Error: {error}</p>
@@ -422,6 +422,7 @@ export function LineageView() {
             minZoom={0.1}
             maxZoom={2}
             defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+            style={{ width: '100%', height: '100%' }}
           >
             <svg style={{ position: 'absolute', width: 0, height: 0 }}>
               <defs>
