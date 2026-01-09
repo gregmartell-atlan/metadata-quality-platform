@@ -242,6 +242,7 @@ export function HierarchicalContextBar() {
 
             setTables(tbls.map(tbl => ({
               id: tbl.qualifiedName,
+              guid: tbl.guid, // Store actual GUID for asset lookup
               name: tbl.name,
               displayName: tbl.name,
               qualifiedName: tbl.qualifiedName,
@@ -346,7 +347,7 @@ export function HierarchicalContextBar() {
         databaseName: selectedDatabase,
         schemaName: selectedSchema,
         tableName,
-        assetGuid: tableItem?.id // Use qualifiedName as fallback for guid lookup
+        assetGuid: tableItem?.guid // Use actual GUID for asset lookup
       });
       const label = generateContextLabel('table', {
         connectionName: selectedConnection,
@@ -359,7 +360,7 @@ export function HierarchicalContextBar() {
         databaseName: selectedDatabase,
         schemaName: selectedSchema,
         tableName,
-        assetGuid: tableItem?.id
+        assetGuid: tableItem?.guid
       }, label, assets);
     } catch (err) {
       console.error('Failed to load table context:', err);

@@ -1899,6 +1899,10 @@ export async function getTables(schemaQualifiedName: string): Promise<HierarchyI
     },
     attributes: [
       'name', 'qualifiedName', 'columnCount',
+      // Hierarchy attributes (needed for pivot grouping)
+      'connectionName', 'connectionQualifiedName',
+      'databaseName', 'databaseQualifiedName',
+      'schemaName', 'schemaQualifiedName',
       // Governance metadata
       'description', 'userDescription',
       'ownerUsers', 'ownerGroups',

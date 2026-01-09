@@ -20,7 +20,7 @@ import { PivotSection } from './PivotSection';
 import { PivotTable } from './PivotTable';
 import { HierarchicalPivotTable } from './HierarchicalPivotTable';
 // PivotConfiguratorFlyout import removed
-import { getDimensionLabel, getDimensionIcon } from '../../utils/pivotDimensions';
+import { getDimensionLabel, getDimensionIcon, extractConnection, extractDatabase, extractSchema } from '../../utils/pivotDimensions';
 import { getMeasureLabel, formatMeasure, calculateMeasure } from '../../utils/pivotMeasures';
 import { extractDimensionValue } from '../../utils/pivotDimensions';
 import type { AtlanAsset } from '../../services/atlan/types';
@@ -48,7 +48,7 @@ function assetToSummary(asset: AtlanAsset): AtlanAssetSummary {
     typeName: asset.typeName,
     name: asset.name || '',
     qualifiedName: asset.qualifiedName || '',
-    connectionName: asset.connectionName,
+    connectionName: extractConnection(asset),
     description: asset.description,
     userDescription: asset.userDescription,
     ownerUsers: Array.isArray(asset.ownerUsers)

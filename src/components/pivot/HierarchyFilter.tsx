@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { AtlanAsset } from '../../services/atlan/types';
+import { extractConnection, extractDatabase, extractSchema } from '../../utils/pivotDimensions';
 import './HierarchyFilter.css';
 
 export type HierarchyLevel = 'connection' | 'database' | 'schema';
@@ -26,8 +27,8 @@ function extractHierarchyOptions(assets: AtlanAsset[]) {
   const schemasByConnDb = new Map<string, Set<string>>();
 
   assets.forEach((asset) => {
-    // Try connectionName first, then connectorName, then fallback
-    const connName = asset.connectionName || (asset as any).connectorName || 'Unknown Connection';
+    // Use extractConnection for robust connection name extraction
+    const connName = extractConnection(asset);
     connections.add(connName);
 
     if ('databaseQualifiedName' in asset && asset.databaseQualifiedName) {
