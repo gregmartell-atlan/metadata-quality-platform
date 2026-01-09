@@ -810,6 +810,33 @@ export function SettingsPage() {
           </div>
         </Card>
 
+        {/* Developer Tools Section */}
+        <Card className="settings-card">
+          <div className="settings-card-header">
+            <Palette size={20} />
+            <div>
+              <h3>Developer Tools</h3>
+              <p>Design prototypes and experimental features</p>
+            </div>
+          </div>
+          <div className="settings-card-body">
+            <div className="setting-row">
+              <div className="setting-info">
+                <BarChart3 size={16} />
+                <div>
+                  <label>Chart Style Prototypes</label>
+                  <span>Compare 4 visual styles for the Impact Matrix</span>
+                </div>
+              </div>
+              <div className="setting-control">
+                <a href="/prototypes" className="settings-link-button">
+                  View Prototypes
+                </a>
+              </div>
+            </div>
+          </div>
+        </Card>
+
         {/* Reset Section */}
         <Card className="settings-card settings-card-danger">
           <div className="settings-card-header">
