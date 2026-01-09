@@ -308,6 +308,7 @@ export const useQualitySnapshotStore = create<QualitySnapshotState>()(
     {
       name: 'quality-snapshot-storage',
       version: 1,
+      migrate: (persistedState: any) => persistedState,
     }
   )
 );

@@ -104,6 +104,8 @@ export const usePivotStore = create<PivotState>()(
     }),
     {
       name: 'pivot-store',
+      version: 1,
+      migrate: (persistedState: any) => persistedState,
     }
   )
 );
