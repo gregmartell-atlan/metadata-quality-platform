@@ -9,6 +9,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export type CertificationStatus = 'VERIFIED' | 'DRAFT' | 'DEPRECATED';
+export type ChartStyle = 'neon' | 'glass' | 'bold' | 'minimal';
 
 export interface UIPreferences {
   // Display Settings
@@ -32,6 +33,9 @@ export interface UIPreferences {
   // Pivot Builder Configuration
   pivotDefaultRowDimensions: string[]; // Default dimensions for pivot rows
   pivotDefaultMeasures: string[]; // Default measures to show
+
+  // Chart Styling
+  chartStyle: ChartStyle; // Visual style for charts (neon, glass, bold, minimal)
 }
 
 interface UIPreferencesActions {
@@ -56,6 +60,9 @@ interface UIPreferencesActions {
   // Pivot Configuration
   setPivotDefaultRowDimensions: (dimensions: string[]) => void;
   setPivotDefaultMeasures: (measures: string[]) => void;
+
+  // Chart Styling
+  setChartStyle: (style: ChartStyle) => void;
 
   // Reset
   resetToDefaults: () => void;
@@ -83,6 +90,9 @@ const defaultPreferences: UIPreferences = {
   // Pivot
   pivotDefaultRowDimensions: ['connection', 'database'],
   pivotDefaultMeasures: ['assetCount', 'overallScore'],
+
+  // Chart Styling
+  chartStyle: 'glass', // Default to glass style
 };
 
 export const useUIPreferences = create<UIPreferences & UIPreferencesActions>()(
@@ -111,6 +121,9 @@ export const useUIPreferences = create<UIPreferences & UIPreferencesActions>()(
       // Pivot actions
       setPivotDefaultRowDimensions: (pivotDefaultRowDimensions) => set({ pivotDefaultRowDimensions }),
       setPivotDefaultMeasures: (pivotDefaultMeasures) => set({ pivotDefaultMeasures }),
+
+      // Chart Styling actions
+      setChartStyle: (chartStyle) => set({ chartStyle }),
 
       // Reset
       resetToDefaults: () => set(defaultPreferences),

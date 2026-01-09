@@ -10,8 +10,49 @@ import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip, ResponsiveContaine
 import { InfoTooltip } from '../shared';
 import { AlertTriangle, CheckCircle, Clock, Archive, Filter, ChevronDown } from 'lucide-react';
 import { calculatePopularityScore } from '../../utils/popularityScore';
+import { useUIPreferences, type ChartStyle } from '../../stores/uiPreferencesStore';
 import type { AssetWithScores } from '../../stores/scoresStore';
 import './QualityImpactMatrix.css';
+
+// Style-specific color configurations
+const STYLE_COLORS: Record<ChartStyle, Record<string, string>> = {
+  neon: {
+    critical: '#ff006e',
+    healthy: '#39ff14',
+    techDebt: '#666666',
+    quickWins: '#00f5ff',
+    axis: '#00f5ff',
+    grid: '#ffffff22',
+    reference: '#ffffff33',
+  },
+  glass: {
+    critical: '#f87171',
+    healthy: '#4ade80',
+    techDebt: '#94a3b8',
+    quickWins: '#60a5fa',
+    axis: '#64748b',
+    grid: '#e2e8f0',
+    reference: '#cbd5e1',
+  },
+  bold: {
+    critical: '#dc2626',
+    healthy: '#16a34a',
+    techDebt: '#71717a',
+    quickWins: '#2563eb',
+    axis: '#18181b',
+    grid: '#18181b',
+    reference: '#18181b',
+  },
+  minimal: {
+    critical: '#ef4444',
+    healthy: '#22c55e',
+    techDebt: '#a1a1aa',
+    quickWins: '#3b82f6',
+    axis: '#71717a',
+    grid: '#f4f4f5',
+    reference: '#e4e4e7',
+  },
+};
 
 interface QualityImpactMatrixProps {
   assets: AssetWithScores[];
@@ -84,10 +125,14 @@ export const QualityImpactMatrix = memo(function QualityImpactMatrix({
   assets,
   onAssetClick,
 }: QualityImpactMatrixProps) {
+  const { chartStyle } = useUIPreferences();
   const [selectedQuadrant, setSelectedQuadrant] = useState<string | null>(null);
   const [filterDimension, setFilterDimension] = useState<DimensionFilter>('all');
   const [filterValue, setFilterValue] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
+
+  // Get colors based on current style
+  const styleColors = STYLE_COLORS[chartStyle];
 
   // Get available filter values based on selected dimension
   const filterOptions = useMemo(() => {
@@ -155,7 +200,7 @@ export const QualityImpactMatrix = memo(function QualityImpactMatrix({
         name: 'Critical',
         description: 'High usage, low quality - fix immediately',
         icon: <AlertTriangle size={16} />,
-        color: 'var(--color-red-500)',
+        color: styleColors.critical,
         count: critical.length,
         assets: critical,
       },
@@ -163,7 +208,7 @@ export const QualityImpactMatrix = memo(function QualityImpactMatrix({
         name: 'Healthy',
         description: 'High usage, good quality - maintain',
         icon: <CheckCircle size={16} />,
-        color: 'var(--color-green-500)',
+        color: styleColors.healthy,
         count: healthy.length,
         assets: healthy,
       },
@@ -171,7 +216,7 @@ export const QualityImpactMatrix = memo(function QualityImpactMatrix({
         name: 'Tech Debt',
         description: 'Low usage, low quality - backlog',
         icon: <Archive size={16} />,
-        color: 'var(--color-gray-500)',
+        color: styleColors.techDebt,
         count: techDebt.length,
         assets: techDebt,
       },
@@ -179,7 +224,7 @@ export const QualityImpactMatrix = memo(function QualityImpactMatrix({
         name: 'Quick Wins',
         description: 'Low usage, good quality - low priority',
         icon: <Clock size={16} />,
-        color: 'var(--color-blue-500)',
+        color: styleColors.quickWins,
         count: quickWins.length,
         assets: quickWins,
       },
@@ -196,17 +241,11 @@ export const QualityImpactMatrix = memo(function QualityImpactMatrix({
         healthyPercent: Math.round((healthy.length / (filteredAssets.length || 1)) * 100),
       },
     };
-  }, [filteredAssets]);
+  }, [filteredAssets, styleColors]);
 
   const getPointColor = useCallback((quadrant: string) => {
-    const colors: Record<string, string> = {
-      critical: 'var(--color-red-500)',
-      healthy: 'var(--color-green-500)',
-      techDebt: 'var(--color-gray-400)',
-      quickWins: 'var(--color-blue-400)',
-    };
-    return colors[quadrant] || 'var(--color-gray-400)';
-  }, []);
+    return styleColors[quadrant] || styleColors.techDebt;
+  }, [styleColors]);
 
   const visibleData = selectedQuadrant
     ? scatterData.filter(d => d.quadrant === selectedQuadrant)
@@ -244,7 +283,7 @@ export const QualityImpactMatrix = memo(function QualityImpactMatrix({
   };
 
   return (
-    <div className="quality-impact-matrix">
+    <div className={`quality-impact-matrix style-${chartStyle}`}>
       <div className="matrix-header">
         <div className="matrix-title">
           <h3>Quality Impact Matrix</h3>
@@ -321,8 +360,10 @@ export const QualityImpactMatrix = memo(function QualityImpactMatrix({
                 name="Quality"
                 domain={[0, 100]}
                 tickFormatter={(v) => `${v}%`}
-                tick={{ fontSize: 11 }}
-                label={{ value: 'Quality Score', position: 'bottom', offset: 10, fontSize: 12 }}
+                tick={{ fontSize: 11, fill: styleColors.axis }}
+                axisLine={{ stroke: styleColors.grid }}
+                tickLine={{ stroke: styleColors.grid }}
+                label={{ value: 'Quality Score', position: 'bottom', offset: 10, fontSize: 12, fill: styleColors.axis }}
               />
               <YAxis
                 type="number"
@@ -330,13 +371,15 @@ export const QualityImpactMatrix = memo(function QualityImpactMatrix({
                 name="Usage"
                 domain={[0, 100]}
                 tickFormatter={(v) => `${v}%`}
-                tick={{ fontSize: 11 }}
-                label={{ value: 'Usage', angle: -90, position: 'left', offset: -5, fontSize: 12 }}
+                tick={{ fontSize: 11, fill: styleColors.axis }}
+                axisLine={{ stroke: styleColors.grid }}
+                tickLine={{ stroke: styleColors.grid }}
+                label={{ value: 'Usage', angle: -90, position: 'left', offset: -5, fontSize: 12, fill: styleColors.axis }}
               />
               <ZAxis type="number" dataKey="z" range={[30, 100]} />
               <Tooltip content={renderTooltip} />
-              <ReferenceLine x={QUALITY_THRESHOLD} stroke="var(--border-default)" strokeDasharray="3 3" />
-              <ReferenceLine y={USAGE_THRESHOLD} stroke="var(--border-default)" strokeDasharray="3 3" />
+              <ReferenceLine x={QUALITY_THRESHOLD} stroke={styleColors.reference} strokeDasharray="3 3" />
+              <ReferenceLine y={USAGE_THRESHOLD} stroke={styleColors.reference} strokeDasharray="3 3" />
               <Scatter
                 data={visibleData}
                 onClick={(data) => onAssetClick?.(data.asset)}

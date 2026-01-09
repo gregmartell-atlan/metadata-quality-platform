@@ -24,7 +24,7 @@ import {
   Scale,
   CheckSquare,
 } from 'lucide-react';
-import { useUIPreferences, type CertificationStatus } from '../stores/uiPreferencesStore';
+import { useUIPreferences, type CertificationStatus, type ChartStyle } from '../stores/uiPreferencesStore';
 import {
   useQualityRules,
   DEFAULT_THRESHOLDS,
@@ -87,6 +87,10 @@ export function SettingsPage() {
     pivotDefaultMeasures,
     setPivotDefaultRowDimensions,
     setPivotDefaultMeasures,
+
+    // Chart Styling
+    chartStyle,
+    setChartStyle,
 
     // Reset
     resetToDefaults,
@@ -219,6 +223,48 @@ export function SettingsPage() {
                   />
                   <span className="toggle-slider" />
                 </label>
+              </div>
+            </div>
+
+            <div className="setting-row">
+              <div className="setting-info">
+                <BarChart3 size={16} />
+                <div>
+                  <label>Chart Style</label>
+                  <span>Visual style for analytics charts</span>
+                </div>
+              </div>
+              <div className="setting-control">
+                <div className="segment-control chart-style-control">
+                  <button
+                    className={chartStyle === 'glass' ? 'active' : ''}
+                    onClick={() => setChartStyle('glass')}
+                    title="Soft gradients and frosted glass effects"
+                  >
+                    Glass
+                  </button>
+                  <button
+                    className={chartStyle === 'neon' ? 'active' : ''}
+                    onClick={() => setChartStyle('neon')}
+                    title="Dark background with glowing neon accents"
+                  >
+                    Neon
+                  </button>
+                  <button
+                    className={chartStyle === 'bold' ? 'active' : ''}
+                    onClick={() => setChartStyle('bold')}
+                    title="Sharp lines and brutalist typography"
+                  >
+                    Bold
+                  </button>
+                  <button
+                    className={chartStyle === 'minimal' ? 'active' : ''}
+                    onClick={() => setChartStyle('minimal')}
+                    title="Data-focused minimalist design"
+                  >
+                    Minimal
+                  </button>
+                </div>
               </div>
             </div>
           </div>
