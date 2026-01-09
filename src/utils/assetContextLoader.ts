@@ -10,7 +10,9 @@ import {
   getConnectors,
   getDatabases,
   getSchemas,
+  getTables,
   fetchAssetsForModel,
+  getAsset,
 } from '../services/atlan/api';
 import { logger } from './logger';
 
@@ -280,6 +282,72 @@ export async function loadAssetsForSchema(
 }
 
 /**
+ * Load a single table/view as the context asset
+ * Returns the table itself (and optionally its columns in the future)
+ */
+export async function loadAssetsForTable(
+  connectionName: string,
+  databaseName: string,
+  schemaName: string,
+  tableName: string,
+  tableGuid?: string,
+  options?: { includeColumns?: boolean }
+): Promise<AtlanAsset[]> {
+  const cacheKey = getCacheKey('table', { connectionName, databaseName, schemaName, tableName });
+  const cached = getCachedAssets(cacheKey);
+  if (cached) {
+    logger.debug('Returning cached table assets', { tableName, count: cached.length });
+    return cached;
+  }
+
+  logger.debug('Loading assets for table', { connectionName, databaseName, schemaName, tableName });
+
+  try {
+    // If we have a GUID, fetch the specific asset directly
+    if (tableGuid) {
+      const asset = await getAsset(tableGuid);
+      if (asset) {
+        const assets = [asset];
+        setCachedAssets(cacheKey, assets);
+        return assets;
+      }
+    }
+
+    // Otherwise, find the table by navigating the hierarchy
+    const databases = await getDatabases(connectionName);
+    const database = databases.find((db) => db.name === databaseName);
+
+    if (!database) {
+      throw new Error(`Database ${databaseName} not found in ${connectionName}`);
+    }
+
+    const schemas = await getSchemas(database.qualifiedName);
+    const schema = schemas.find((s) => s.name === schemaName);
+
+    if (!schema) {
+      throw new Error(`Schema ${schemaName} not found in ${databaseName}`);
+    }
+
+    const tables = await getTables(schema.qualifiedName);
+    const table = tables.find((t) => t.name === tableName);
+
+    if (!table) {
+      throw new Error(`Table ${tableName} not found in ${schemaName}`);
+    }
+
+    // Return the table's full entity as the context asset
+    const assets: AtlanAsset[] = table.fullEntity ? [table.fullEntity as AtlanAsset] : [];
+
+    logger.debug('Loaded table assets', { tableName, count: assets.length });
+    setCachedAssets(cacheKey, assets);
+    return assets;
+  } catch (err) {
+    logger.error(`Failed to load assets for table ${tableName}`, err);
+    throw err;
+  }
+}
+
+/**
  * Main function to load assets based on context
  */
 export async function loadAssetsForContext(
@@ -325,12 +393,16 @@ export async function loadAssetsForContext(
       break;
     
     case 'table':
-      if (!filters.assetGuid) {
-        throw new Error('assetGuid is required for table context');
+      if (!filters.connectionName || !filters.databaseName || !filters.schemaName || !filters.tableName) {
+        throw new Error('connectionName, databaseName, schemaName, and tableName are required for table context');
       }
-      // For single table, we'd need to fetch the specific asset
-      // This is a placeholder - you'd implement based on your API
-      assets = [];
+      assets = await loadAssetsForTable(
+        filters.connectionName,
+        filters.databaseName,
+        filters.schemaName,
+        filters.tableName,
+        filters.assetGuid
+      );
       break;
     
     case 'manual':
@@ -384,7 +456,7 @@ export function generateContextLabel(
       return `${filters.connectionName || 'Unknown'} > ${filters.databaseName || 'Unknown'} > ${filters.schemaName || 'Unknown'}`;
     
     case 'table':
-      return filters.tableName || 'Unknown Table';
+      return `${filters.connectionName || 'Unknown'} > ${filters.databaseName || 'Unknown'} > ${filters.schemaName || 'Unknown'} > ${filters.tableName || 'Unknown'}`;
     
     case 'manual':
       return 'Manual Selection';

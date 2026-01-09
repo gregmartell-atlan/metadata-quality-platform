@@ -1859,6 +1859,76 @@ export async function getSchemas(databaseQualifiedName: string): Promise<Hierarc
 }
 
 /**
+ * Get tables and views for a specific schema
+ */
+export async function getTables(schemaQualifiedName: string): Promise<HierarchyItem[]> {
+  if (!isConfigured()) {
+    throw new Error('Atlan API not configured');
+  }
+
+  const response = await search({
+    dsl: {
+      size: 500, // Tables can be numerous
+      query: {
+        bool: {
+          must: [
+            { term: { 'schemaQualifiedName': schemaQualifiedName } },
+            {
+              terms: {
+                '__typeName.keyword': [
+                  'Table',
+                  'View',
+                  'MaterializedView',
+                  'SnowflakeTable',
+                  'SnowflakeView',
+                  'SnowflakeDynamicTable',
+                  'DatabricksTable',
+                  'DatabricksView',
+                  'BigQueryTable',
+                  'BigQueryView',
+                  'RedshiftTable',
+                  'RedshiftView',
+                ],
+              },
+            },
+          ],
+          must_not: [{ term: { '__state': 'DELETED' } }],
+        },
+      },
+      sort: [{ 'name.keyword': { order: 'asc' } }],
+    },
+    attributes: [
+      'name', 'qualifiedName', 'columnCount',
+      // Governance metadata
+      'description', 'userDescription',
+      'ownerUsers', 'ownerGroups',
+      'certificateStatus', 'certificateStatusMessage', 'certificateUpdatedAt', 'certificateUpdatedBy',
+      'classificationNames',
+      'atlanTags',
+      'meanings', 'assignedTerms', 'domainGUIDs',
+      // Technical
+      'createTime', 'updateTime', 'createdBy', 'updatedBy',
+      'rowCount', 'sizeBytes',
+      'isDiscoverable', 'isEditable', 'isAIGenerated',
+    ],
+    relationAttributes: ['classifications'],
+  });
+
+  if (!response?.entities) {
+    return [];
+  }
+
+  return response.entities.map((e) => ({
+    guid: e.guid,
+    fullEntity: e, // Store full entity for inspector
+    name: (e.attributes.name as string) || e.typeName || e.guid,
+    qualifiedName: (e.attributes.qualifiedName as string) || e.guid,
+    typeName: e.typeName,
+    childCount: (e.attributes.columnCount as number) || 0,
+  }));
+}
+
+/**
  * Get lineage for a specific asset
  */
 export async function getLineage(

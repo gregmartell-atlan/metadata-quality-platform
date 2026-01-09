@@ -213,6 +213,17 @@
   padding: 4px;
 }
 
+/* Wide dropdown for tables (more items expected) */
+.breadcrumb-dropdown-wide {
+  min-width: 360px;
+  max-width: 520px;
+}
+
+/* Scrollable dropdown with more height for tables */
+.dropdown-items-scrollable {
+  max-height: 400px;
+}
+
 .dropdown-item-wrapper {
   display: flex;
   align-items: center;

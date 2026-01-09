@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useAssetInspectorStore } from '../../stores/assetInspectorStore';
-import { getConnectors, getDatabases, getSchemas, type ConnectorInfo } from '../../services/atlan/api';
+import { getConnectors, getDatabases, getSchemas, getTables, type ConnectorInfo, type HierarchyItem } from '../../services/atlan/api';
 import { loadAssetsForContext, generateContextLabel } from '../../utils/assetContextLoader';
 import './HierarchicalContextBar.css';
 
@@ -85,23 +85,26 @@ export function HierarchicalContextBar() {
   const { openInspector } = useAssetInspectorStore();
 
   // Dropdown state
-  const [activeDropdown, setActiveDropdown] = useState<'connection' | 'database' | 'schema' | null>(null);
+  const [activeDropdown, setActiveDropdown] = useState<'connection' | 'database' | 'schema' | 'table' | null>(null);
   const [isLoadingLevel, setIsLoadingLevel] = useState<string | null>(null);
 
   // Data
   const [connections, setConnections] = useState<ConnectorInfo[]>([]);
   const [databases, setDatabases] = useState<DropdownItem[]>([]);
   const [schemas, setSchemas] = useState<DropdownItem[]>([]);
+  const [tables, setTables] = useState<DropdownItem[]>([]);
 
   // Full entities for inspector
   const [connectionEntities, setConnectionEntities] = useState<Map<string, any>>(new Map());
   const [databaseEntities, setDatabaseEntities] = useState<Map<string, any>>(new Map());
   const [schemaEntities, setSchemaEntities] = useState<Map<string, any>>(new Map());
+  const [tableEntities, setTableEntities] = useState<Map<string, any>>(new Map());
 
   // Selection state
   const [selectedConnection, setSelectedConnection] = useState<string | null>(null);
   const [selectedDatabase, setSelectedDatabase] = useState<string | null>(null);
   const [selectedSchema, setSelectedSchema] = useState<string | null>(null);
+  const [selectedTable, setSelectedTable] = useState<string | null>(null);
 
   // Refs for click-outside handling
   const barRef = useRef<HTMLDivElement>(null);
@@ -129,6 +132,7 @@ export function HierarchicalContextBar() {
       setSelectedConnection(context.filters.connectionName || null);
       setSelectedDatabase(context.filters.databaseName || null);
       setSelectedSchema(context.filters.schemaName || null);
+      setSelectedTable(context.filters.tableName || null);
     }
   }, [context]);
 
@@ -213,8 +217,47 @@ export function HierarchicalContextBar() {
       setSchemas([]);
       setSchemaEntities(new Map());
       setSelectedSchema(null);
+      setTables([]);
+      setTableEntities(new Map());
+      setSelectedTable(null);
     }
   }, [selectedDatabase, selectedConnection, databases]);
+
+  // Load tables when schema selected
+  useEffect(() => {
+    if (selectedSchema && selectedDatabase && selectedConnection) {
+      setIsLoadingLevel('table');
+      const schemaQualifiedName = schemas.find(s => s.name === selectedSchema)?.qualifiedName;
+      if (schemaQualifiedName) {
+        getTables(schemaQualifiedName)
+          .then(tbls => {
+            // Store full entities for inspector
+            const entitiesMap = new Map();
+            tbls.forEach(tbl => {
+              if (tbl.fullEntity) {
+                entitiesMap.set(tbl.qualifiedName, tbl.fullEntity);
+              }
+            });
+            setTableEntities(entitiesMap);
+
+            setTables(tbls.map(tbl => ({
+              id: tbl.qualifiedName,
+              name: tbl.name,
+              displayName: tbl.name,
+              qualifiedName: tbl.qualifiedName,
+              count: tbl.childCount, // column count
+              icon: <Table2 size={16} />
+            })));
+          })
+          .catch(console.error)
+          .finally(() => setIsLoadingLevel(null));
+      }
+    } else {
+      setTables([]);
+      setTableEntities(new Map());
+      setSelectedTable(null);
+    }
+  }, [selectedSchema, selectedDatabase, selectedConnection, schemas]);
 
   // Handle selection
   const handleSelectConnection = async (connName: string) => {
@@ -260,6 +303,7 @@ export function HierarchicalContextBar() {
 
   const handleSelectSchema = async (schemaName: string) => {
     setSelectedSchema(schemaName);
+    setSelectedTable(null); // Clear table when schema changes
     setActiveDropdown(null);
 
     if (!selectedConnection || !selectedDatabase) return;
@@ -287,10 +331,47 @@ export function HierarchicalContextBar() {
     setLoading(false);
   };
 
+  const handleSelectTable = async (tableName: string) => {
+    setSelectedTable(tableName);
+    setActiveDropdown(null);
+
+    if (!selectedConnection || !selectedDatabase || !selectedSchema) return;
+
+    const tableItem = tables.find(t => t.name === tableName);
+
+    setLoading(true);
+    try {
+      const assets = await loadAssetsForContext('table', {
+        connectionName: selectedConnection,
+        databaseName: selectedDatabase,
+        schemaName: selectedSchema,
+        tableName,
+        assetGuid: tableItem?.id // Use qualifiedName as fallback for guid lookup
+      });
+      const label = generateContextLabel('table', {
+        connectionName: selectedConnection,
+        databaseName: selectedDatabase,
+        schemaName: selectedSchema,
+        tableName
+      });
+      setContext('table', {
+        connectionName: selectedConnection,
+        databaseName: selectedDatabase,
+        schemaName: selectedSchema,
+        tableName,
+        assetGuid: tableItem?.id
+      }, label, assets);
+    } catch (err) {
+      console.error('Failed to load table context:', err);
+    }
+    setLoading(false);
+  };
+
   const handleClearContext = () => {
     setSelectedConnection(null);
     setSelectedDatabase(null);
     setSelectedSchema(null);
+    setSelectedTable(null);
     setActiveDropdown(null);
   };
 
@@ -466,8 +547,8 @@ export function HierarchicalContextBar() {
                 {isLoadingLevel === 'schema' ? 'Loading...' : 'Schema'}
               </span>
             )}
-            {/* Integrated Count for Schema */}
-            {selectedSchema && assetCount > 0 && (
+            {/* Integrated Count for Schema - only show if no table selected */}
+            {selectedSchema && !selectedTable && assetCount > 0 && (
               <span className="breadcrumb-count-pill">{assetCount}</span>
             )}
 
@@ -522,6 +603,88 @@ export function HierarchicalContextBar() {
             </div>
           )}
         </div>
+
+        {/* Separator - only show if schema is selected */}
+        {selectedSchema && (
+          <span className="breadcrumb-separator">/</span>
+        )}
+
+        {/* Table Level - only show if schema is selected */}
+        {selectedSchema && (
+          <div className="breadcrumb-segment">
+            <button
+              className={`breadcrumb-trigger ${activeDropdown === 'table' ? 'active' : ''} ${selectedTable ? 'selected' : ''}`}
+              onClick={() => {
+                if (selectedSchema) setActiveDropdown(activeDropdown === 'table' ? null : 'table');
+              }}
+              disabled={!selectedSchema || isLoadingLevel === 'table'}
+            >
+              {selectedTable ? (
+                <>
+                  <span className="breadcrumb-label">{selectedTable}</span>
+                </>
+              ) : (
+                <span className="breadcrumb-label breadcrumb-placeholder">
+                  {isLoadingLevel === 'table' ? 'Loading...' : 'Table'}
+                </span>
+              )}
+              {/* Integrated Count for Table */}
+              {selectedTable && assetCount > 0 && (
+                <span className="breadcrumb-count-pill">{assetCount}</span>
+              )}
+
+              {isLoadingLevel === 'table' ? (
+                <Loader2 size={12} className="breadcrumb-spinner" />
+              ) : (
+                <ChevronDown size={12} className="breadcrumb-chevron" />
+              )}
+            </button>
+
+            {activeDropdown === 'table' && tables.length > 0 && (
+              <div className="breadcrumb-dropdown breadcrumb-dropdown-wide">
+                <div className="dropdown-header">
+                  <span>Select Table</span>
+                  <span className="dropdown-count">{tables.length} available</span>
+                </div>
+                <div className="dropdown-items dropdown-items-scrollable">
+                  {tables.map(tbl => (
+                    <div key={tbl.id} className="dropdown-item-wrapper">
+                      <button
+                        className={`dropdown-item ${selectedTable === tbl.name ? 'selected' : ''}`}
+                        onClick={() => handleSelectTable(tbl.name)}
+                      >
+                        <Table2 size={16} />
+                        <span className="item-name">{tbl.displayName}</span>
+                        {tbl.count !== undefined && tbl.count > 0 && (
+                          <span className="item-count">{tbl.count} cols</span>
+                        )}
+                        {selectedTable === tbl.name && (
+                          <Check size={14} className="item-check" />
+                        )}
+                      </button>
+                      {tableEntities.has(tbl.id) && (
+                        <button
+                          className="item-info-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const entity = tableEntities.get(tbl.id);
+                            if (entity) {
+                              const transformed = transformEntityForInspector(entity);
+                              openInspector(transformed);
+                            }
+                          }}
+                          title="View table details"
+                        >
+                          <Info size={14} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Clear Context Button - Only show if something is selected */}
         {selectedConnection && (
