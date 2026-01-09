@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Redirecting...</title>
+    <script>
+      // Single Page App redirect for GitHub Pages
+      // Converts path to query string so index.html can restore it
+      const path = window.location.pathname;
+      const search = window.location.search;
+      const hash = window.location.hash;
+
+      // Redirect to root with path stored in session
+      sessionStorage.setItem('spa-redirect', path + search + hash);
+      window.location.replace(window.location.origin + '/metadata-quality-platform/');
+    </script>
+  </head>
+  <body>
+    Redirecting...
+  </body>
+</html>
