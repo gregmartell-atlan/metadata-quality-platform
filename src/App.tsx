@@ -46,7 +46,7 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.VITE_BASE_PATH || '/'}>
         <div className="app">
           <Sidebar />
           <main className="main-content">
