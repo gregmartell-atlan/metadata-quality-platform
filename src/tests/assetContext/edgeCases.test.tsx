@@ -139,18 +139,19 @@ describe('Edge Cases and Gotchas', () => {
 
   describe('Context Type Edge Cases', () => {
     it('should handle manual context with empty label', () => {
-      const { setContext, context } = useAssetContextStore.getState();
+      const { setContext } = useAssetContextStore.getState();
 
       act(() => {
         setContext('manual', {}, '', [createMockAsset('guid1', 'Table1')]);
       });
 
+      const { context } = useAssetContextStore.getState();
       expect(context?.label).toBe('');
       expect(context?.type).toBe('manual');
     });
 
     it('should handle context with all filter types', () => {
-      const { setContext, context } = useAssetContextStore.getState();
+      const { setContext } = useAssetContextStore.getState();
 
       act(() => {
         setContext(
@@ -167,6 +168,7 @@ describe('Edge Cases and Gotchas', () => {
         );
       });
 
+      const { context } = useAssetContextStore.getState();
       expect(context?.filters.connectionName).toBe('Conn');
       expect(context?.filters.databaseName).toBe('DB');
       expect(context?.filters.schemaName).toBe('Schema');

@@ -1,92 +1,96 @@
+/* Atlantis Stats Row Component */
+
 .stats-row {
   grid-column: span 9;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--gap-md);
+  gap: var(--space-4);
 }
 
 .stat-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 1rem 1.25rem;
-  transition: all 0.2s;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  transition: all var(--transition-fast);
+  box-shadow: var(--card-shadow);
 }
 
 .stat-card:hover {
-  border-color: var(--border-color, #333);
+  border-color: var(--border-strong);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-sm);
 }
 
 .stat-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 0.75rem;
+  margin-bottom: var(--space-3);
 }
 
 .stat-icon {
   width: 40px;
   height: 40px;
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .stat-icon.green {
-  background: rgba(0, 212, 170, 0.15);
-  color: var(--accent-primary);
+  background: var(--state-success-bg);
+  color: var(--color-success-500);
 }
 
 .stat-icon.yellow {
-  background: rgba(245, 158, 11, 0.15);
-  color: var(--accent-warning);
+  background: var(--state-warning-bg);
+  color: var(--color-warning-500);
 }
 
 .stat-icon.red {
-  background: rgba(239, 68, 68, 0.15);
-  color: var(--accent-danger);
+  background: var(--state-danger-bg);
+  color: var(--color-danger-500);
 }
 
 .stat-icon.blue {
-  background: rgba(59, 130, 246, 0.15);
-  color: var(--accent-info);
+  background: var(--state-info-bg);
+  color: var(--color-blue-500);
 }
 
 .stat-trend {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 3px 8px;
-  border-radius: 12px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
 }
 
 .stat-trend.up {
-  color: var(--accent-primary);
-  background: rgba(0, 212, 170, 0.1);
+  color: var(--state-success-text);
+  background: var(--state-success-bg);
 }
 
 .stat-trend.down {
-  color: var(--accent-danger);
-  background: rgba(239, 68, 68, 0.1);
+  color: var(--state-danger-text);
+  background: var(--state-danger-bg);
 }
 
 .stat-value {
-  font-family: var(--font-mono);
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 0.25rem;
+  font-family: var(--font-sans);
+  font-size: 28px;
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--space-1);
   line-height: 1;
+  color: var(--text-default);
 }
 
 .stat-label {
-  font-size: 0.8rem;
+  font-size: var(--font-size-sm);
   color: var(--text-muted);
-  margin-bottom: 0.75rem;
+  margin-bottom: var(--space-3);
 }
 
 /* Progress bar */
@@ -96,21 +100,116 @@
 
 .stat-progress-track {
   height: 4px;
-  background: var(--bg-tertiary, #1a1a1d);
-  border-radius: 2px;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-sm);
   overflow: hidden;
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-2);
 }
 
 .stat-progress-fill {
   height: 100%;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   transition: width 0.5s ease-out;
 }
 
 .stat-progress-label {
-  font-size: 11px;
-  color: var(--text-muted, #666);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+/* Interactive stat cards */
+.stat-card {
+  cursor: help;
+}
+
+/* Stat Tooltip Styles */
+.stat-tooltip {
+  min-width: 250px;
+}
+
+.stat-tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.stat-tooltip-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-tooltip-icon.green {
+  background: var(--state-success-bg);
+  color: var(--color-success-500);
+}
+
+.stat-tooltip-icon.yellow {
+  background: var(--state-warning-bg);
+  color: var(--color-warning-500);
+}
+
+.stat-tooltip-icon.blue {
+  background: var(--state-info-bg);
+  color: var(--color-blue-500);
+}
+
+.stat-tooltip-header strong {
+  font-size: var(--font-size-sm);
+}
+
+.stat-tooltip-desc {
+  margin: var(--space-2) 0 var(--space-3) 0;
+  color: var(--color-gray-300);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.stat-tooltip-stats {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+  padding: var(--space-3);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+}
+
+.stat-tooltip-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.stat-tooltip-value {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: #ffffff;
+}
+
+.stat-tooltip-label {
+  font-size: 10px;
+  color: var(--color-gray-400);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.stat-tooltip-impact {
+  padding: var(--space-2);
+  background: rgba(59, 130, 246, 0.1);
+  border-left: 2px solid var(--color-blue-400);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-300);
+  line-height: 1.5;
+}
+
+.stat-tooltip-impact strong {
+  color: var(--color-blue-300);
 }
 
 /* Responsive */

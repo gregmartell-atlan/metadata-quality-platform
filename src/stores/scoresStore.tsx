@@ -18,6 +18,7 @@ import { scoreAssets, initializeScoringService, setScoringModeGetter } from '../
 import { getAtlanConfig } from '../services/atlan/api';
 import type { AtlanAsset as ScoringAtlanAsset } from '../scoring/contracts';
 import { logger } from '../utils/logger';
+import { getOwnerNames, getMeaningTexts, isValidScoringType } from '../utils/typeGuards';
 
 interface AssetWithScores {
   asset: AtlanAsset;
@@ -86,9 +87,9 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
         });
       }
     });
-    console.log(`[ScoresStore] Found ${tagDisplayNamesFromAssets.size} tag display names directly from atlanTags`);
+    logger.debug(`[ScoresStore] Found ${tagDisplayNamesFromAssets.size} tag display names directly from atlanTags`);
     if (tagDisplayNamesFromAssets.size > 0) {
-      console.log('[ScoresStore] Sample atlanTags displayNames:', Object.fromEntries([...tagDisplayNamesFromAssets.entries()].slice(0, 5)));
+      logger.debug('[ScoresStore] Sample atlanTags displayNames:', Object.fromEntries([...tagDisplayNamesFromAssets.entries()].slice(0, 5)));
     }
 
     // Collect tag type names that still need resolution
@@ -125,7 +126,7 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
       }
     }
     tagNameMap = mergedTagNameMap;
-    console.log(`[ScoresStore] Final merged tag name map size: ${tagNameMap.size}`);
+    logger.debug(`[ScoresStore] Final merged tag name map size: ${tagNameMap.size}`);
 
     // Update the pivot dimensions cache for consistent name resolution
     setNameCaches(domainNameMap, tagNameMap);
@@ -136,38 +137,38 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
     if (scoringMode === "config-driven") {
       try {
         // Transform to scoring format
-        const scoringAssets: ScoringAtlanAsset[] = assets.map(asset => ({
-          guid: asset.guid,
-          typeName: asset.typeName as any,
-          name: asset.name,
-          qualifiedName: asset.qualifiedName,
-          connectionName: asset.connectionName,
-          description: asset.description,
-          userDescription: asset.userDescription,
-          ownerUsers: Array.isArray(asset.ownerUsers) 
-            ? asset.ownerUsers.map((u: any) => typeof u === 'string' ? u : u.name || u.guid || '')
-            : asset.ownerUsers || null,
-          ownerGroups: Array.isArray(asset.ownerGroups)
-            ? asset.ownerGroups.map((g: any) => typeof g === 'string' ? g : g.name || g.guid || '')
-            : asset.ownerGroups || null,
-          certificateStatus: asset.certificateStatus,
-          certificateUpdatedAt: asset.certificateUpdatedAt,
-          classificationNames: asset.classificationNames,
-          meanings: asset.meanings?.map((m: { guid: string; displayText: string } | string) =>
-            typeof m === 'string' ? m : m.displayText
-          ) ?? null,
-          domainGUIDs: asset.domainGUIDs,
-          updateTime: asset.updateTime,
-          sourceUpdatedAt: asset.sourceUpdatedAt,
-          sourceLastReadAt: asset.sourceLastReadAt,
-          lastRowChangedAt: asset.lastRowChangedAt,
-          popularityScore: asset.popularityScore,
-          viewScore: asset.viewScore,
-          starredCount: asset.starredCount,
-          __hasLineage: asset.__hasLineage,
-          readme: asset.readme ? { hasReadme: true } : null,
-          isDiscoverable: asset.isDiscoverable,
-        }));
+        const scoringAssets: ScoringAtlanAsset[] = assets.map(asset => {
+          const ownerUsers = getOwnerNames(asset.ownerUsers);
+          const ownerGroups = getOwnerNames(asset.ownerGroups);
+          const meanings = getMeaningTexts(asset.meanings);
+
+          return {
+            guid: asset.guid,
+            typeName: isValidScoringType(asset.typeName) ? asset.typeName : 'Table',
+            name: asset.name,
+            qualifiedName: asset.qualifiedName,
+            connectionName: asset.connectionName,
+            description: asset.description,
+            userDescription: asset.userDescription,
+            ownerUsers: ownerUsers.length > 0 ? ownerUsers : null,
+            ownerGroups: ownerGroups.length > 0 ? ownerGroups : null,
+            certificateStatus: asset.certificateStatus,
+            certificateUpdatedAt: asset.certificateUpdatedAt,
+            classificationNames: asset.classificationNames,
+            meanings: meanings.length > 0 ? meanings : null,
+            domainGUIDs: asset.domainGUIDs,
+            updateTime: asset.updateTime,
+            sourceUpdatedAt: asset.sourceUpdatedAt,
+            sourceLastReadAt: asset.sourceLastReadAt,
+            lastRowChangedAt: asset.lastRowChangedAt,
+            popularityScore: asset.popularityScore,
+            viewScore: asset.viewScore,
+            starredCount: asset.starredCount,
+            __hasLineage: asset.__hasLineage,
+            readme: asset.readme ? { hasReadme: true } : null,
+            isDiscoverable: asset.isDiscoverable,
+          };
+        });
 
         const results = await scoreAssets(scoringAssets);
         
@@ -243,7 +244,7 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
     let staleAssets = 0;
     let certifiedAssets = 0;
 
-    assetsWithScores.forEach(({ metadata, asset }) => {
+    assetsWithScores.forEach(({ metadata }) => {
       if (metadata.description) assetsWithDescriptions++;
       if (metadata.owner || metadata.ownerGroup) assetsWithOwners++;
       if (metadata.lastUpdated && new Date(metadata.lastUpdated).getTime() < ninetyDaysAgo) {
@@ -260,122 +261,98 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
     };
   }, [assetsWithScores]);
 
-  // Group by owner
-  const byOwner = useMemo(() => {
-    const map = new Map<string, AssetWithScores[]>();
-    assetsWithScores.forEach((item) => {
-      const owner = item.metadata.owner || item.metadata.ownerGroup || 'Unowned';
-      if (!map.has(owner)) {
-        map.set(owner, []);
-      }
-      map.get(owner)!.push(item);
-    });
-    return map;
-  }, [assetsWithScores]);
+  /**
+   * Generic grouping helper - consolidates duplicate groupBy logic
+   * @param keyExtractor - Function to extract key(s) from an asset
+   * @param defaultKey - Default key when no value exists
+   */
+  const createGroupedMap = useCallback(
+    (
+      keyExtractor: (item: AssetWithScores) => string | string[],
+      defaultKey: string
+    ): Map<string, AssetWithScores[]> => {
+      const map = new Map<string, AssetWithScores[]>();
 
-  // Group by domain
-  const byDomain = useMemo(() => {
-    const map = new Map<string, AssetWithScores[]>();
-    assetsWithScores.forEach((item) => {
-      const domain = item.metadata.domain || 'No Domain';
-      if (!map.has(domain)) {
-        map.set(domain, []);
-      }
-      map.get(domain)!.push(item);
-    });
-    return map;
-  }, [assetsWithScores]);
+      assetsWithScores.forEach((item) => {
+        const keys = keyExtractor(item);
+        const keyArray = Array.isArray(keys) ? keys : [keys];
 
-  // Group by schema
-  const bySchema = useMemo(() => {
-    const map = new Map<string, AssetWithScores[]>();
-    assetsWithScores.forEach((item) => {
-      const tableAsset = item.asset as any; // Type assertion for table-specific properties
-      const schema = item.metadata.customProperties?.schemaName || 
-                     tableAsset.schemaQualifiedName?.split('.').pop() || 
-                     tableAsset.schemaName ||
-                     'No Schema';
-      if (!map.has(schema)) {
-        map.set(schema, []);
-      }
-      map.get(schema)!.push(item);
-    });
-    return map;
-  }, [assetsWithScores]);
+        if (keyArray.length === 0) {
+          if (!map.has(defaultKey)) map.set(defaultKey, []);
+          map.get(defaultKey)!.push(item);
+        } else {
+          keyArray.forEach((key) => {
+            if (!map.has(key)) map.set(key, []);
+            map.get(key)!.push(item);
+          });
+        }
+      });
 
-  // Group by connection
-  const byConnection = useMemo(() => {
-    const map = new Map<string, AssetWithScores[]>();
-    assetsWithScores.forEach((item) => {
-      const connection = item.metadata.connection || 'No Connection';
-      if (!map.has(connection)) {
-        map.set(connection, []);
-      }
-      map.get(connection)!.push(item);
-    });
-    return map;
-  }, [assetsWithScores]);
+      return map;
+    },
+    [assetsWithScores]
+  );
 
-  // Group by tag
-  const byTag = useMemo(() => {
-    const map = new Map<string, AssetWithScores[]>();
-    assetsWithScores.forEach((item) => {
-      const tags = item.metadata.tags || [];
-      if (tags.length === 0) {
-        const key = 'No Tags';
-        if (!map.has(key)) map.set(key, []);
-        map.get(key)!.push(item);
-      } else {
-        tags.forEach((tag) => {
-          if (!map.has(tag)) map.set(tag, []);
-          map.get(tag)!.push(item);
-        });
-      }
-    });
-    return map;
-  }, [assetsWithScores]);
+  // All grouped data computed from single helper
+  const byOwner = useMemo(() =>
+    createGroupedMap(
+      (item) => item.metadata.owner || item.metadata.ownerGroup || 'Unowned',
+      'Unowned'
+    ), [createGroupedMap]);
 
-  // Group by certification status
-  const byCertification = useMemo(() => {
-    const map = new Map<string, AssetWithScores[]>();
-    assetsWithScores.forEach((item) => {
-      const cert = item.metadata.certificationStatus || 'none';
-      const key = cert === 'certified' ? 'Certified' : cert === 'draft' ? 'Draft' : cert === 'deprecated' ? 'Deprecated' : 'Not Certified';
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(item);
-    });
-    return map;
-  }, [assetsWithScores]);
+  const byDomain = useMemo(() =>
+    createGroupedMap(
+      (item) => item.metadata.domain || 'No Domain',
+      'No Domain'
+    ), [createGroupedMap]);
 
-  // Group by classification
-  const byClassification = useMemo(() => {
-    const map = new Map<string, AssetWithScores[]>();
-    assetsWithScores.forEach((item) => {
-      const classifications = item.metadata.tags || []; // Using tags as classifications
-      if (classifications.length === 0) {
-        const key = 'No Classification';
-        if (!map.has(key)) map.set(key, []);
-        map.get(key)!.push(item);
-      } else {
-        classifications.forEach((cls) => {
-          if (!map.has(cls)) map.set(cls, []);
-          map.get(cls)!.push(item);
-        });
-      }
-    });
-    return map;
-  }, [assetsWithScores]);
+  const bySchema = useMemo(() =>
+    createGroupedMap(
+      (item) => {
+        const tableAsset = item.asset as any;
+        return item.metadata.customProperties?.schemaName ||
+               tableAsset.schemaQualifiedName?.split('.').pop() ||
+               tableAsset.schemaName ||
+               'No Schema';
+      },
+      'No Schema'
+    ), [createGroupedMap]);
 
-  // Group by asset type
-  const byAssetType = useMemo(() => {
-    const map = new Map<string, AssetWithScores[]>();
-    assetsWithScores.forEach((item) => {
-      const type = item.metadata.assetType || 'Unknown';
-      if (!map.has(type)) map.set(type, []);
-      map.get(type)!.push(item);
-    });
-    return map;
-  }, [assetsWithScores]);
+  const byConnection = useMemo(() =>
+    createGroupedMap(
+      (item) => item.metadata.connection || 'No Connection',
+      'No Connection'
+    ), [createGroupedMap]);
+
+  const byTag = useMemo(() =>
+    createGroupedMap(
+      (item) => item.metadata.tags || [],
+      'No Tags'
+    ), [createGroupedMap]);
+
+  const byCertification = useMemo(() =>
+    createGroupedMap(
+      (item) => {
+        const cert = item.metadata.certificationStatus || 'none';
+        return cert === 'certified' ? 'Certified'
+             : cert === 'draft' ? 'Draft'
+             : cert === 'deprecated' ? 'Deprecated'
+             : 'Not Certified';
+      },
+      'Not Certified'
+    ), [createGroupedMap]);
+
+  const byClassification = useMemo(() =>
+    createGroupedMap(
+      (item) => item.metadata.tags || [],
+      'No Classification'
+    ), [createGroupedMap]);
+
+  const byAssetType = useMemo(() =>
+    createGroupedMap(
+      (item) => item.metadata.assetType || 'Unknown',
+      'Unknown'
+    ), [createGroupedMap]);
 
   // Generic groupBy function for any metadata field
   const groupBy = useCallback((field: string): Map<string, AssetWithScores[]> => {

@@ -3,7 +3,7 @@ import { OrchestratedScoringEngine } from "../scoring/engine";
 import { AtlanClient } from "../api/atlanClient";
 import { loadQualityConfig } from "../config/quality";
 import { scoreAssetQuality } from "./qualityMetrics";
-import type { AtlanAsset as LegacyAtlanAsset } from "../services/atlan/types";
+import { getOwnerNames, getMeaningTexts } from "../utils/typeGuards";
 
 // Type adapter for legacy scoring
 interface AtlanAssetSummary {
@@ -121,6 +121,10 @@ export async function scoreAssets(assets: AtlanAsset[]): Promise<Map<string, Pro
  * Helper to transform AtlanAsset to AtlanAssetSummary for legacy scoring
  */
 function transformAtlanAssetToSummary(asset: AtlanAsset): AtlanAssetSummary {
+  const ownerUsers = getOwnerNames(asset.ownerUsers);
+  const ownerGroups = getOwnerNames(asset.ownerGroups);
+  const meanings = getMeaningTexts(asset.meanings);
+
   return {
     guid: asset.guid,
     typeName: asset.typeName,
@@ -129,12 +133,12 @@ function transformAtlanAssetToSummary(asset: AtlanAsset): AtlanAssetSummary {
     connectionName: asset.connectionName,
     description: asset.description || undefined,
     userDescription: asset.userDescription || undefined,
-    ownerUsers: Array.isArray(asset.ownerUsers) ? asset.ownerUsers.map(u => typeof u === "string" ? u : (u as any).name || "") : undefined,
-    ownerGroups: Array.isArray(asset.ownerGroups) ? asset.ownerGroups.map(g => typeof g === "string" ? g : (g as any).name || "") : undefined,
+    ownerUsers: ownerUsers.length > 0 ? ownerUsers : undefined,
+    ownerGroups: ownerGroups.length > 0 ? ownerGroups : undefined,
     certificateStatus: asset.certificateStatus || undefined,
     certificateUpdatedAt: asset.certificateUpdatedAt || undefined,
     classificationNames: asset.classificationNames || undefined,
-    meanings: asset.meanings?.map(m => typeof m === "string" ? m : (m as any).displayText || "") || undefined,
+    meanings: meanings.length > 0 ? meanings : undefined,
     domainGUIDs: asset.domainGUIDs || undefined,
     updateTime: asset.updateTime || undefined,
     sourceUpdatedAt: asset.sourceUpdatedAt || undefined,

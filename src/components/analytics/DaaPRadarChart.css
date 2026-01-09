@@ -1,0 +1,245 @@
+/* DaaP Radar Chart - Data as a Product visualization */
+
+.daap-radar-chart {
+  width: 100%;
+  background: var(--card-bg);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+}
+
+.daap-radar-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-default);
+  margin: 0 0 var(--space-4) 0;
+}
+
+.daap-radar-container {
+  width: 100%;
+  height: 350px;
+  min-height: 350px;  /* Ensure container maintains height for ResponsiveContainer */
+}
+
+/* Responsive sizing */
+@media (min-width: 768px) {
+  .daap-radar-container {
+    height: 400px;
+  }
+}
+
+/* Header with info tooltip */
+.daap-radar-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.daap-radar-header .daap-radar-title {
+  margin: 0;
+}
+
+/* Custom Tooltip */
+.daap-tooltip {
+  min-width: 220px;
+  max-width: 280px;
+  padding: var(--space-3);
+  background: var(--color-gray-900);
+  color: #ffffff;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  box-shadow: var(--shadow-sm);
+}
+
+.daap-tooltip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.daap-tooltip-dimension {
+  font-weight: var(--font-weight-semibold);
+}
+
+.daap-tooltip-band {
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+}
+
+.daap-band-excellent {
+  background: var(--score-excellent);
+  color: #000;
+}
+
+.daap-band-good {
+  background: var(--score-good);
+  color: #000;
+}
+
+.daap-band-fair {
+  background: var(--score-fair);
+  color: #000;
+}
+
+.daap-band-poor {
+  background: var(--score-poor);
+  color: #000;
+}
+
+.daap-band-critical {
+  background: var(--score-critical);
+  color: #fff;
+}
+
+.daap-tooltip-score {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.daap-tooltip-value {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+}
+
+.daap-tooltip-max {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-400);
+}
+
+.daap-tooltip-desc {
+  margin: var(--space-2) 0;
+  color: var(--color-gray-300);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+/* Score Breakdown */
+.daap-tooltip-breakdown {
+  margin: var(--space-3) 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-gray-700);
+}
+
+.daap-tooltip-breakdown-label {
+  display: block;
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-400);
+  margin-bottom: var(--space-2);
+}
+
+.daap-tooltip-factors {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.daap-tooltip-factors li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 3px 0;
+  font-size: var(--font-size-xs);
+}
+
+.daap-tooltip-factors .factor-icon {
+  width: 14px;
+  text-align: center;
+  font-weight: var(--font-weight-bold);
+}
+
+.daap-tooltip-factors .factor-present .factor-icon {
+  color: var(--color-success-400);
+}
+
+.daap-tooltip-factors .factor-missing .factor-icon {
+  color: var(--color-danger-400);
+}
+
+.daap-tooltip-factors .factor-name {
+  flex: 1;
+  color: var(--color-gray-200);
+}
+
+.daap-tooltip-factors .factor-weight {
+  color: var(--color-gray-400);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.daap-tooltip-factors .factor-present {
+  opacity: 1;
+}
+
+.daap-tooltip-factors .factor-missing {
+  opacity: 0.6;
+}
+
+.daap-tooltip-action {
+  padding: var(--space-2);
+  background: rgba(59, 130, 246, 0.1);
+  border-left: 2px solid var(--color-blue-400);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-blue-300);
+}
+
+/* Info Tooltip Content */
+.daap-info-tooltip {
+  min-width: 280px;
+}
+
+.daap-info-tooltip strong {
+  display: block;
+  margin-bottom: var(--space-2);
+}
+
+.daap-info-tooltip p {
+  margin: var(--space-2) 0;
+  color: var(--color-gray-300);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.daap-info-dimensions {
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-gray-700);
+  font-size: var(--font-size-xs);
+}
+
+.daap-info-dimensions span {
+  display: block;
+  color: var(--color-gray-400);
+  margin-bottom: var(--space-2);
+}
+
+.daap-info-dimensions ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.daap-info-dimensions li {
+  color: var(--color-gray-300);
+}
+
+.daap-info-dimensions li strong {
+  color: var(--color-blue-400);
+  display: inline;
+  margin-bottom: 0;
+}
+
+/* Dark mode adjustments */
+

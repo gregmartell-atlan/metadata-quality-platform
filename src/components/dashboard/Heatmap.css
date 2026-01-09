@@ -108,3 +108,250 @@
   border-radius: 2px;
 }
 
+/* Interactive Headers */
+.heatmap-header-label {
+  cursor: help;
+  transition: color var(--transition-fast);
+}
+
+.heatmap-header-label:hover {
+  color: var(--color-blue-500);
+}
+
+/* Interactive Cells */
+.heatmap-cell {
+  cursor: help;
+}
+
+.heatmap-overall-score {
+  cursor: help;
+  transition: color var(--transition-fast);
+}
+
+.heatmap-overall-score:hover {
+  color: var(--color-blue-500);
+}
+
+/* Tooltip Styles */
+.heatmap-dimension-tooltip {
+  min-width: 200px;
+}
+
+.heatmap-dimension-tooltip strong {
+  display: block;
+  margin-bottom: var(--space-2);
+}
+
+.heatmap-dimension-tooltip p {
+  margin: 0;
+  color: var(--color-gray-300);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.heatmap-quality-tooltip {
+  min-width: 220px;
+}
+
+.heatmap-quality-tooltip strong {
+  display: block;
+  margin-bottom: var(--space-2);
+}
+
+.heatmap-quality-tooltip p {
+  margin: var(--space-2) 0;
+  color: var(--color-gray-300);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.heatmap-quality-factors {
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-gray-700);
+  font-size: var(--font-size-xs);
+}
+
+.heatmap-quality-factors span {
+  display: block;
+  color: var(--color-gray-400);
+  margin-bottom: var(--space-1);
+}
+
+.heatmap-quality-factors ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.heatmap-quality-factors li {
+  padding: 2px 0;
+  padding-left: var(--space-3);
+  position: relative;
+  color: var(--color-gray-300);
+}
+
+.heatmap-quality-factors li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--color-blue-400);
+}
+
+/* Cell Tooltip */
+.heatmap-cell-tooltip {
+  min-width: 220px;
+}
+
+.heatmap-cell-tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+}
+
+.heatmap-cell-tooltip-header span:nth-child(2) {
+  color: var(--color-gray-500);
+}
+
+.heatmap-cell-tooltip-score {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.heatmap-cell-tooltip-score .score-value {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+}
+
+.heatmap-cell-tooltip-score .score-band {
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+}
+
+.score-band-excellent {
+  background: var(--score-excellent);
+  color: #000;
+}
+
+.score-band-good {
+  background: var(--score-good);
+  color: #000;
+}
+
+.score-band-fair {
+  background: var(--score-fair);
+  color: #000;
+}
+
+.score-band-poor {
+  background: var(--score-poor);
+  color: #000;
+}
+
+.score-band-critical {
+  background: var(--score-critical);
+  color: #fff;
+}
+
+.heatmap-cell-tooltip-desc {
+  margin: var(--space-2) 0;
+  color: var(--color-gray-300);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.heatmap-cell-tooltip-action {
+  margin-top: var(--space-3);
+  padding: var(--space-2);
+  background: rgba(59, 130, 246, 0.1);
+  border-left: 2px solid var(--color-blue-400);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-blue-300);
+}
+
+/* Overall Tooltip */
+.heatmap-overall-tooltip {
+  min-width: 200px;
+}
+
+.heatmap-overall-tooltip strong {
+  display: block;
+  margin-bottom: var(--space-2);
+}
+
+.heatmap-overall-tooltip p {
+  margin: var(--space-2) 0;
+  color: var(--color-gray-300);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.heatmap-overall-breakdown {
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-gray-700);
+  font-size: var(--font-size-xs);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.heatmap-overall-breakdown div {
+  display: flex;
+  justify-content: space-between;
+  color: var(--color-gray-300);
+}
+
+/* Clickable Rows for Asset Preview */
+.heatmap-row-clickable:hover {
+  background: var(--bg-hover);
+}
+
+.heatmap-row-label {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-right: var(--space-2);
+  transition: color var(--transition-fast);
+}
+
+.heatmap-row-label:hover {
+  color: var(--color-blue-500);
+}
+
+.heatmap-row-label:hover .heatmap-row-count {
+  background: var(--color-blue-500);
+  color: #ffffff;
+}
+
+.heatmap-row-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heatmap-row-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-muted);
+  transition: all var(--transition-fast);
+}
+

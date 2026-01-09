@@ -1,130 +1,118 @@
-# Testing Checklist: Global Asset Context System
+# Testing Checklist - Items 1-4
 
-## Engineering Perspective - Technical Correctness
+## Item 1: Connect Button Moved Right ✅
 
-### ✅ Core Functionality
-- [x] AssetContext store created and persists correctly
-- [x] AssetContext component renders and accepts drag/drop
-- [x] AssetBrowser shows connections as top-level nodes
-- [x] All views use context assets with fallback to selectedAssets
-- [x] Drag/drop data format compatibility verified
-- [x] Error handling for edge cases added
+**Expected**: Connect button should be on right side of header, not left
 
-### ⚠️ Edge Cases to Test
-- [ ] No connectors available - should show helpful message
-- [ ] API failures - should show error, not crash
-- [ ] Empty context - views should show appropriate empty states
-- [ ] Very large datasets (All Assets mode) - may need pagination
-- [ ] Context persistence across page navigation
-- [ ] Multiple rapid context changes - should handle gracefully
+**Test**:
+- Navigate to http://localhost:5175/pivot
+- Check header layout
+- Connect button should be after page title and actions
 
-### 🔍 Code Quality Checks
-- [x] No TypeScript errors
-- [x] No linter errors
-- [x] Proper error boundaries
-- [x] Loading states implemented
-- [ ] Memory leaks (check useEffect cleanup)
-- [ ] Performance (large asset lists)
+**Visual Check**: Look at header - should see:
+```
+[Context Bar] | [Title] | [Actions] [Connected]
+```
 
-## Data Steward Perspective - Usability & Workflow
+---
 
-### ✅ User Workflows
-- [x] Can drag connection from AssetBrowser to set context
-- [x] Can drag database/schema to set context
-- [x] Can select "All Assets" from dropdown
-- [x] Can select specific connection from dropdown
-- [x] Can clear context
-- [x] Context label shows clearly (e.g., "Snowflake > WideWorldImporters")
-- [x] Asset count displays correctly
+## Item 2: Hover Expansion on Context Dropdowns ✅
 
-### ⚠️ Workflow Issues to Verify
-- [ ] Context persists when navigating between pages
-- [ ] All views update immediately when context changes
-- [ ] Empty states are clear and actionable
-- [ ] Error messages are user-friendly
-- [ ] Loading indicators show during asset loading
-- [ ] Can still manually select assets (backward compatibility)
+**Expected**: Dropdowns expand from 420px to 480px on hover
 
-### 📊 Data Accuracy
-- [ ] Context shows correct asset count
-- [ ] Pivot tables show correct data for context
-- [ ] Scorecard shows correct scores for context assets
-- [ ] No duplicate assets in context
-- [ ] Filtering works correctly (hierarchy filter + context)
+**Test**:
+1. Click "Connection" dropdown
+2. Hover over dropdown panel
+3. Should see width increase and shadow lift
 
-## New User Perspective - Discoverability & Clarity
+**CSS Check**:
+```css
+.breadcrumb-dropdown {
+  min-width: 420px;
+  transition: min-width 200ms ease;
+}
 
-### ✅ Onboarding
-- [x] AssetContext component has visual hint when empty
-- [x] Drag/drop visual feedback (drag-over state)
-- [x] Clear labels and icons
-- [x] Context selector dropdown is discoverable
+.breadcrumb-dropdown:hover {
+  min-width: 480px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+}
+```
 
-### ⚠️ Clarity Issues to Address
-- [ ] Tooltip/help text explaining what context does
-- [ ] First-time user guidance (maybe a tour?)
-- [ ] Clear distinction between "context" and "selected assets"
-- [ ] Help text for "All Assets" mode (may be slow)
-- [ ] Visual indication when context is loading
+---
 
-### 🎯 User Experience
-- [ ] Context changes are obvious (visual feedback)
-- [ ] Can undo/clear context easily
-- [ ] Error messages explain what went wrong and how to fix
-- [ ] Loading states don't block UI unnecessarily
-- [ ] Empty states guide user to next action
+## Item 3: Entity Inspector (Info Icons) ✅
 
-## Test Scenarios
+**Expected**: Hover over database/schema rows shows Info icon, click to open inspector
 
-### Scenario 1: First-Time User
-1. Open app → See empty context header
-2. Drag connection from AssetBrowser → Context sets, views update
-3. Navigate to Pivot Builder → Context persists
-4. Change context → All views update
+**Test**:
+1. Click "snowflake" in context bar
+2. Click "Database" dropdown
+3. Hover over any database row
+4. Info icon should fade in on right side
+5. Click info icon
+6. AssetInspectorModal should open with full metadata
 
-### Scenario 2: Data Steward Workflow
-1. Set context to "All Assets" → Wait for loading
-2. Apply hierarchy filter in Pivot Builder → Filtered view shows
-3. Change context to specific connection → Filter resets appropriately
-4. Save pivot view → Context is saved with view
+**Implementation Check**:
+- Info icon opacity: 0 (default)
+- On hover: opacity: 1
+- Click handler calls `openInspector(entity)`
+- Full entity stored from getDatabases/getSchemas response
 
-### Scenario 3: Error Handling
-1. Try to set context when not connected → See helpful error
-2. Try "All Assets" with no connectors → See appropriate message
-3. API fails during loading → Error shown, app doesn't crash
-4. Clear context → Views show empty states correctly
+---
 
-### Scenario 4: Performance
-1. Set context to connection with 1000+ assets → Should load reasonably
-2. Switch contexts rapidly → Should handle gracefully
-3. "All Assets" with large dataset → May need optimization
+## Item 4: Light Sidebar Theme ✅
 
-## Known Issues / Future Improvements
+**Expected**: Sidebar uses light background, not dark navy
 
-1. **All Assets Mode**: May be slow with very large datasets - consider:
-   - Pagination
-   - Lazy loading
-   - Progress indicators
-   - Option to limit asset types
+**Visual Check**: Sidebar should be:
+- Background: white (#ffffff)
+- Text: slate gray (not white)
+- Border: subtle gray (not dark)
+- Active state: blue background
 
-2. **Context Persistence**: Currently persists in localStorage - verify:
-   - Works across browser sessions
-   - Doesn't cause issues with stale data
-   - Can be cleared if needed
+**CSS Tokens**:
+```css
+--sidebar-bg: var(--bg-surface); /* white */
+--sidebar-text: var(--text-secondary); /* gray-600 */
+--sidebar-item-hover: var(--bg-hover); /* gray-100 */
+--sidebar-item-active-bg: var(--bg-selected); /* blue-50 */
+```
 
-3. **Backward Compatibility**: 
-   - Manual asset selection still works
-   - Old pivot views may need migration
-   - Consider deprecation path
+**Pattern**: Matches Supabase/Linear (light sidebar with border)
 
-4. **Performance Optimizations**:
-   - Debounce rapid context changes
-   - Cache computed pivot data
-   - Virtual scrolling for large asset lists
+---
 
+## Additional Items to Verify
 
+### Design Principles:
+- [ ] Cards have borders only (no shadows)
+- [ ] Sharp 8px corners maximum
+- [ ] "FILTERED" badge shows when context active
+- [ ] 4px grid spacing throughout
 
+### Snowflake Issue:
+- [ ] Click Connection dropdown
+- [ ] Select "snowflake"
+- [ ] Click Database dropdown
+- [ ] Should show ALL databases (not empty or stuck loading)
+- [ ] Should include: WIDE_WORLD_IMPORTERS, MDLH, AI databases
 
+### Context Persistence:
+- [ ] Select context on Pivot page
+- [ ] Navigate to DaaP Analytics
+- [ ] Context should persist
+- [ ] "FILTERED" badge still shows
 
+---
 
+## Console Checks
 
+Current console shows:
+✅ `getDatabases called {"input":"snowflake","normalized":"snowflake"}`
+⚠️ Some empty error objects (msgid 9-12) - need to investigate
+
+---
+
+## Ready to Test
+
+All code is committed and dev server is running. The browser should show all 8 commits worth of changes after hard refresh.

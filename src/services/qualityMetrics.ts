@@ -636,13 +636,28 @@ export function aggregateQualityScores(assets: AssetMetadata[]): {
 
   const scores = assets.map((asset) => calculateAssetQuality(asset));
 
+  // Single-pass aggregation instead of 6 separate reduces
+  const totals = scores.reduce(
+    (acc, s) => {
+      acc.completeness += s.completeness;
+      acc.accuracy += s.accuracy;
+      acc.timeliness += s.timeliness;
+      acc.consistency += s.consistency;
+      acc.usability += s.usability;
+      acc.overall += s.overall;
+      return acc;
+    },
+    { completeness: 0, accuracy: 0, timeliness: 0, consistency: 0, usability: 0, overall: 0 }
+  );
+
+  const count = scores.length;
   return {
-    completeness: Math.round(scores.reduce((sum, s) => sum + s.completeness, 0) / scores.length),
-    accuracy: Math.round(scores.reduce((sum, s) => sum + s.accuracy, 0) / scores.length),
-    timeliness: Math.round(scores.reduce((sum, s) => sum + s.timeliness, 0) / scores.length),
-    consistency: Math.round(scores.reduce((sum, s) => sum + s.consistency, 0) / scores.length),
-    usability: Math.round(scores.reduce((sum, s) => sum + s.usability, 0) / scores.length),
-    overall: Math.round(scores.reduce((sum, s) => sum + s.overall, 0) / scores.length),
+    completeness: Math.round(totals.completeness / count),
+    accuracy: Math.round(totals.accuracy / count),
+    timeliness: Math.round(totals.timeliness / count),
+    consistency: Math.round(totals.consistency / count),
+    usability: Math.round(totals.usability / count),
+    overall: Math.round(totals.overall / count),
   };
 }
 

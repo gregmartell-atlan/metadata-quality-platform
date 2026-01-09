@@ -1,0 +1,146 @@
+/**
+ * Right Edge Flyout - Unified Component Styles
+ */
+
+.right-edge-flyout {
+  position: fixed;
+  right: 0;
+  top: 56px;
+  bottom: 0;
+  z-index: 99;
+  pointer-events: none;
+}
+
+.right-edge-flyout.open {
+  pointer-events: all;
+}
+
+/* Collapsed Tab */
+.flyout-tab-collapsed {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-right: none;
+  border-radius: 8px 0 0 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 99;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+  pointer-events: all;
+}
+
+.flyout-tab-collapsed:hover {
+  background: var(--bg-hover);
+  padding-right: 12px;
+}
+
+.tab-label-vertical {
+  writing-mode: vertical-rl;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+}
+
+/* Flyout Panel */
+.flyout-panel {
+  position: fixed;
+  right: 0;
+  top: 56px;
+  bottom: 0;
+  background: var(--bg-primary);
+  border-left: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.3);
+  animation: slideInFromRight 0.25s ease-out;
+  pointer-events: all;
+}
+
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Header */
+.flyout-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+.flyout-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+}
+
+.flyout-close-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.flyout-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.flyout-panel-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Body */
+.flyout-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Footer */
+.flyout-panel-footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .flyout-panel {
+    width: 100% !important;
+  }
+}

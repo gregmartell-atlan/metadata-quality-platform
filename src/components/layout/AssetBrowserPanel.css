@@ -2,7 +2,8 @@
 
 .asset-panel-backdrop {
   position: fixed;
-  top: 56px; /* Start below header so drags can reach context bar */
+  top: 56px;
+  /* Start below header so drags can reach context bar */
   left: 0;
   right: 0;
   bottom: 0;
@@ -13,9 +14,12 @@
 
 .asset-panel {
   position: fixed;
-  top: 56px; /* Below header */
-  left: 240px; /* After sidebar */
-  right: 0;
+  top: 56px;
+  /* Below header */
+  left: 240px;
+  /* After sidebar */
+  right: 48px;
+  /* Before inspector rail */
   max-height: calc(100vh - 56px - 100px);
   background: var(--bg-card, #141416);
   border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
@@ -32,8 +36,13 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideDown {
@@ -41,6 +50,7 @@
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);

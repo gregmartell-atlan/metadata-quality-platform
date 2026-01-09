@@ -5,15 +5,17 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link2, Link2Off, ChevronDown, BarChart3, X, Download, Loader2, AlertTriangle, Globe, FolderOpen, Settings } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Link2, Link2Off, Download, AlertTriangle, FolderOpen, Settings } from 'lucide-react';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
-import { getAtlanConfig, getConnectors, testAtlanConnection, configureAtlanApi, getSavedAtlanBaseUrl } from '../../services/atlan/api';
+import { getAtlanConfig, testAtlanConnection, configureAtlanApi, getSavedAtlanBaseUrl } from '../../services/atlan/api';
 import { loadAssetsForContext, generateContextLabel } from '../../utils/assetContextLoader';
 import { sanitizeError } from '../../utils/sanitize';
 import { logger } from '../../utils/logger';
 import { AssetBrowserPanel } from './AssetBrowserPanel';
-import { GlobalSettingsDrawer } from './GlobalSettingsDrawer';
+import { QuickContextSwitcher } from './QuickContextSwitcher';
+import { HierarchicalContextBar } from '../navigation/HierarchicalContextBar';
 import type { AtlanAsset } from '../../services/atlan/types';
 import type { AssetContextType, AssetContextFilters } from '../../stores/assetContextStore';
 import './AppHeader.css';
@@ -29,7 +31,7 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [showConnectModal, setShowConnectModal] = useState(false);
   const [apiKey, setApiKey] = useState('');
-  const [baseUrl, setBaseUrl] = useState('https://api.atlan.com');
+  const [baseUrl, setBaseUrl] = useState('');
   const [connectError, setConnectError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
 
@@ -37,25 +39,17 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
   const {
     context,
     contextAssets,
-    isLoading,
     error,
     setContext,
-    setAllAssets,
-    clearContext,
     setLoading,
     setError,
-    getContextLabel,
-    getAssetCount,
   } = useAssetContextStore();
 
   // Scores store for triggering score calculation
   const { setAssetsWithScores } = useScoresStore();
 
   const [isDraggingOver, setIsDraggingOver] = useState(false);
-  const [showContextMenu, setShowContextMenu] = useState(false);
   const [showBrowserPanel, setShowBrowserPanel] = useState(false);
-  const [showSettingsDrawer, setShowSettingsDrawer] = useState(false);
-  const [availableConnectors, setAvailableConnectors] = useState<Array<{ name: string; id: string }>>([]);
 
   // Check connection status on mount
   useEffect(() => {
@@ -67,18 +61,42 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
     setIsConnected(!!config);
   }, []);
 
-  // Load connectors when connected
+  // Auto-reload assets when context is restored but assets are empty
+  const hasTriedReload = useRef(false);
   useEffect(() => {
-    if (isConnected) {
-      getConnectors()
-        .then(connectors => {
-          if (connectors?.length > 0) {
-            setAvailableConnectors(connectors.map(c => ({ name: c.name, id: c.id })));
-          }
-        })
-        .catch(err => logger.error('Failed to load connectors', err));
-    }
-  }, [isConnected]);
+    const reloadAssets = async () => {
+      if (!context || !isConnected || hasTriedReload.current) return;
+
+      // Context exists but no assets - reload them
+      if (context.assetCount > 0 && contextAssets.length === 0) {
+        hasTriedReload.current = true;
+        logger.info('AppHeader: Reloading assets from persisted context', {
+          contextType: context.type,
+          contextLabel: context.label,
+          expectedCount: context.assetCount
+        });
+
+        setLoading(true);
+        try {
+          const assets = await loadAssetsForContext(context.type, context.filters);
+          logger.info('AppHeader: Assets reloaded', { count: assets.length });
+          useAssetContextStore.getState().setContextAssets(assets);
+        } catch (err) {
+          logger.error('AppHeader: Failed to reload assets', err);
+          setError('Failed to reload assets. Please reselect your context.');
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    reloadAssets();
+  }, [context, contextAssets.length, isConnected, setLoading, setError]);
+
+  // Reset reload flag when context changes
+  useEffect(() => {
+    hasTriedReload.current = false;
+  }, [context?.label]);
 
   // Trigger score calculation when context assets change
   const prevAssetsLengthRef = useRef(0);
@@ -104,8 +122,8 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
       setIsConnected(true);
       setShowConnectModal(false);
       window.dispatchEvent(new CustomEvent('atlan-connected', { detail: { baseUrl } }));
-    } catch (err: any) {
-      let errorMessage = err.message || 'Failed to connect to Atlan.';
+    } catch (err: unknown) {
+      let errorMessage = err instanceof Error ? err.message : 'Failed to connect to Atlan.';
       if (errorMessage.includes('ERR_CONNECTION_REFUSED') || errorMessage.includes('Proxy server not running')) {
         errorMessage = 'Proxy server not running. Start with: npm run proxy';
       }
@@ -188,49 +206,35 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
     }
   }, [setContext, setLoading, setError]);
 
-  const handleSelectAllAssets = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setShowContextMenu(false);
-    try {
-      const assets = await loadAssetsForContext('all', {});
-      if (assets.length === 0) {
-        setError('No assets found. Connect to Atlan first.');
-      } else {
-        setAllAssets(assets);
-      }
-    } catch (err) {
-      logger.error('Failed to load all assets', err);
-      setError(err instanceof Error ? err.message : 'Failed to load assets');
-    } finally {
-      setLoading(false);
-    }
-  }, [setAllAssets, setLoading, setError]);
-
-  const handleSelectConnection = useCallback(async (connectionName: string) => {
-    setLoading(true);
-    setError(null);
-    setShowContextMenu(false);
-    try {
-      const assets = await loadAssetsForContext('connection', { connectionName });
-      const label = generateContextLabel('connection', { connectionName });
-      setContext('connection', { connectionName }, label, assets);
-    } catch (err) {
-      logger.error('Failed to load connection assets', err);
-      setError(err instanceof Error ? err.message : 'Failed to load connection');
-    } finally {
-      setLoading(false);
-    }
-  }, [setContext, setLoading, setError]);
-
-  const contextLabel = getContextLabel();
-  const assetCount = getAssetCount();
-
   return (
     <>
       <header className="app-header">
-        {/* Left: Connection & Context */}
-        <div className="app-header-left">
+        {/* 1. Brand Section (Fixed Left) */}
+        <div className="app-header-brand">
+          {title && (
+            <div className="app-header-title-group">
+              <h1>{title}</h1>
+            </div>
+          )}
+        </div>
+
+        {/* 2. Context Section (Fluid Center) */}
+        <div className="app-header-context">
+          {isConnected ? (
+            <HierarchicalContextBar />
+          ) : (
+            <div className="context-placeholder">
+              <span>Connect to Atlan to explore assets</span>
+            </div>
+          )}
+        </div>
+
+        {/* 3. Actions Section (Fixed Right) */}
+        <div className="app-header-actions">
+          {children}
+
+          <div className="header-divider" />
+
           {/* Connection Status */}
           <button
             className={`connection-btn ${isConnected ? 'connected' : ''}`}
@@ -239,109 +243,6 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
             {isConnected ? <Link2 size={16} /> : <Link2Off size={16} />}
             <span>{isConnected ? 'Connected' : 'Connect'}</span>
           </button>
-
-          {/* Browse Assets Button */}
-          <button
-            className={`browse-btn ${showBrowserPanel ? 'active' : ''}`}
-            onClick={() => setShowBrowserPanel(!showBrowserPanel)}
-            title="Browse assets"
-          >
-            <FolderOpen size={16} />
-            <span>Browse</span>
-          </button>
-
-          {/* Context Bar */}
-          <div
-            className={`context-bar ${isDraggingOver ? 'drag-over' : ''} ${context ? 'has-context' : ''}`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
-            {isLoading ? (
-              <div className="context-loading">
-                <Loader2 size={14} className="spinning" />
-                <span>Loading...</span>
-              </div>
-            ) : context ? (
-              <>
-                <BarChart3 size={14} className="context-icon" />
-                <span className="context-label">{contextLabel}</span>
-                {assetCount > 0 && <span className="context-count">({assetCount.toLocaleString()})</span>}
-                <button className="context-clear" onClick={clearContext} title="Clear context">
-                  <X size={12} />
-                </button>
-              </>
-            ) : (
-              <>
-                <Download size={14} className="context-icon" />
-                <span className="context-placeholder">Drop assets here or select context</span>
-              </>
-            )}
-
-            {/* Context Menu Trigger */}
-            <button
-              className="context-menu-btn"
-              onClick={() => setShowContextMenu(!showContextMenu)}
-              title="Select context"
-            >
-              <ChevronDown size={14} />
-            </button>
-
-            {/* Context Dropdown */}
-            {showContextMenu && (
-              <div className="context-dropdown">
-                <button className="context-option" onClick={handleSelectAllAssets}>
-                  <Globe size={14} />
-                  <span>All Assets</span>
-                </button>
-                {availableConnectors.map(connector => (
-                  <button
-                    key={connector.id}
-                    className="context-option"
-                    onClick={() => handleSelectConnection(connector.name)}
-                  >
-                    <Link2 size={14} />
-                    <span>{connector.name}</span>
-                  </button>
-                ))}
-                {context && (
-                  <>
-                    <div className="context-divider" />
-                    <button className="context-option danger" onClick={() => { clearContext(); setShowContextMenu(false); }}>
-                      <X size={14} />
-                      <span>Clear Context</span>
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-
-          {error && (
-            <div className="context-error" title={error}>
-              <AlertTriangle size={14} />
-            </div>
-          )}
-        </div>
-
-        {/* Center: Title */}
-        {title && (
-          <div className="app-header-center">
-            <h1>{title}</h1>
-            {subtitle && <p>{subtitle}</p>}
-          </div>
-        )}
-
-        {/* Right: Page Actions */}
-        <div className="app-header-right">
-          <button
-            className={`settings-btn ${showSettingsDrawer ? 'active' : ''}`}
-            onClick={() => setShowSettingsDrawer(!showSettingsDrawer)}
-            title="Global settings"
-          >
-            <Settings size={16} />
-          </button>
-          {children}
         </div>
       </header>
 
@@ -349,12 +250,6 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
       <AssetBrowserPanel
         isOpen={showBrowserPanel}
         onClose={() => setShowBrowserPanel(false)}
-      />
-
-      {/* Global Settings Drawer */}
-      <GlobalSettingsDrawer
-        isOpen={showSettingsDrawer}
-        onClose={() => setShowSettingsDrawer(false)}
       />
 
       {/* Connection Modal */}

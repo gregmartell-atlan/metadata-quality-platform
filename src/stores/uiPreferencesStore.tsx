@@ -13,7 +13,6 @@ export type CertificationStatus = 'VERIFIED' | 'DRAFT' | 'DEPRECATED';
 export interface UIPreferences {
   // Display Settings
   density: 'compact' | 'comfortable' | 'spacious';
-  theme: 'dark' | 'light' | 'auto';
 
   // Asset Browser Defaults
   defaultConnection: string | null;
@@ -29,12 +28,15 @@ export interface UIPreferences {
   dashboardHeatmapDimension: string; // 'domain' | 'owner' | 'schema' | etc.
   dashboardOwnerPivotDimension: string; // 'ownerGroup' | 'tag' | 'certificationStatus' | etc.
   dashboardOwnerPivotColumn: string; // 'completeness' | 'accuracy' | etc.
+
+  // Pivot Builder Configuration
+  pivotDefaultRowDimensions: string[]; // Default dimensions for pivot rows
+  pivotDefaultMeasures: string[]; // Default measures to show
 }
 
 interface UIPreferencesActions {
   // Display
   setDensity: (density: UIPreferences['density']) => void;
-  setTheme: (theme: UIPreferences['theme']) => void;
 
   // Asset Browser
   setDefaultConnection: (connection: string | null) => void;
@@ -51,6 +53,10 @@ interface UIPreferencesActions {
   setDashboardOwnerPivotDimension: (dimension: string) => void;
   setDashboardOwnerPivotColumn: (column: string) => void;
 
+  // Pivot Configuration
+  setPivotDefaultRowDimensions: (dimensions: string[]) => void;
+  setPivotDefaultMeasures: (measures: string[]) => void;
+
   // Reset
   resetToDefaults: () => void;
 }
@@ -58,7 +64,6 @@ interface UIPreferencesActions {
 const defaultPreferences: UIPreferences = {
   // Display
   density: 'comfortable',
-  theme: 'dark',
 
   // Asset Browser
   defaultConnection: null,
@@ -74,6 +79,10 @@ const defaultPreferences: UIPreferences = {
   dashboardHeatmapDimension: 'domain',
   dashboardOwnerPivotDimension: 'ownerGroup',
   dashboardOwnerPivotColumn: 'completeness',
+
+  // Pivot
+  pivotDefaultRowDimensions: ['connection', 'database'],
+  pivotDefaultMeasures: ['assetCount', 'overallScore'],
 };
 
 export const useUIPreferences = create<UIPreferences & UIPreferencesActions>()(
@@ -83,7 +92,6 @@ export const useUIPreferences = create<UIPreferences & UIPreferencesActions>()(
 
       // Display actions
       setDensity: (density) => set({ density }),
-      setTheme: (theme) => set({ theme }),
 
       // Asset Browser actions
       setDefaultConnection: (defaultConnection) => set({ defaultConnection }),
@@ -100,12 +108,16 @@ export const useUIPreferences = create<UIPreferences & UIPreferencesActions>()(
       setDashboardOwnerPivotDimension: (dashboardOwnerPivotDimension) => set({ dashboardOwnerPivotDimension }),
       setDashboardOwnerPivotColumn: (dashboardOwnerPivotColumn) => set({ dashboardOwnerPivotColumn }),
 
+      // Pivot actions
+      setPivotDefaultRowDimensions: (pivotDefaultRowDimensions) => set({ pivotDefaultRowDimensions }),
+      setPivotDefaultMeasures: (pivotDefaultMeasures) => set({ pivotDefaultMeasures }),
+
       // Reset
       resetToDefaults: () => set(defaultPreferences),
     }),
     {
       name: 'ui-preferences-storage',
-      version: 1,
+      version: 2,
     }
   )
 );

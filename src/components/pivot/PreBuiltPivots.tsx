@@ -13,11 +13,12 @@ import { Snowflake, Database, Table, BarChart3, Workflow, Building2, Users, Link
 import { useAssetStore } from '../../stores/assetStore';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
+import { usePivotConfigStore } from '../../stores/pivotConfigStore';
 import { buildDynamicPivot, pivotDataToTableRows } from '../../utils/dynamicPivotBuilder';
 import { PivotSection } from './PivotSection';
 import { PivotTable } from './PivotTable';
 import { HierarchicalPivotTable } from './HierarchicalPivotTable';
-import { PivotConfiguratorFlyout } from './PivotConfiguratorFlyout';
+// PivotConfiguratorFlyout import removed
 import { getDimensionLabel, getDimensionIcon } from '../../utils/pivotDimensions';
 import { getMeasureLabel, formatMeasure, calculateMeasure } from '../../utils/pivotMeasures';
 import { extractDimensionValue } from '../../utils/pivotDimensions';
@@ -26,26 +27,8 @@ import { scoreAssetQuality } from '../../services/qualityMetrics';
 import type { AtlanAssetSummary } from '../../services/atlan/api';
 import type { RowDimension, Measure, MeasureDisplayMode } from '../../types/pivot';
 import { logger } from '../../utils/logger';
+import { getScoreClass, getHeatClass } from '../../utils/scoreThresholds';
 import './PreBuiltPivots.css';
-
-const getScoreClass = (score: number): string => {
-  if (score >= 80) return 'excellent';
-  if (score >= 60) return 'good';
-  if (score >= 40) return 'fair';
-  if (score >= 20) return 'poor';
-  return 'critical';
-};
-
-const getHeatClass = (score: number): string => {
-  if (score >= 90) return 'h-90';
-  if (score >= 80) return 'h-80';
-  if (score >= 70) return 'h-70';
-  if (score >= 60) return 'h-60';
-  if (score >= 50) return 'h-50';
-  if (score >= 40) return 'h-40';
-  if (score >= 30) return 'h-30';
-  return 'h-20';
-};
 
 const getConnectionIcon = (connName: string): React.ReactNode => {
   const lower = connName.toLowerCase();
@@ -97,10 +80,10 @@ export function PreBuiltPivots() {
   const context = useAssetContextStore((state) => state.context);
   const getAssetCount = useAssetContextStore((state) => state.getAssetCount);
   const { assetsWithScores } = useScoresStore();
-  
+
   // Use context assets if available, fallback to selectedAssets for backward compatibility
   const sourceAssets = contextAssets.length > 0 ? contextAssets : selectedAssets;
-  
+
   // Build scores map from scoresStore for efficient pivot calculations
   const scoresMap = useMemo(() => {
     if (assetsWithScores.length === 0) return undefined;
@@ -110,7 +93,7 @@ export function PreBuiltPivots() {
     });
     return map;
   }, [assetsWithScores]);
-  
+
   // Log asset sources for debugging
   useEffect(() => {
     logger.info('PreBuiltPivots: Asset source check', {
@@ -123,35 +106,39 @@ export function PreBuiltPivots() {
       assetCount: getAssetCount()
     });
   }, [contextAssets, selectedAssets, sourceAssets, context, getAssetCount]);
-  
-  // State for configurable pivot
-  const [rowDimensions, setRowDimensions] = useState<RowDimension[]>(['connection', 'type']);
-  const [measures, setMeasures] = useState<Measure[]>(['assetCount', 'descriptionCoverage', 'ownerCoverage', 'avgCompleteness']);
-  const [measureDisplayModes, setMeasureDisplayModes] = useState<Map<Measure, MeasureDisplayMode>>(new Map());
+
+  // Use global pivot config store
+  const { rowDimensions, measures, measureDisplayModes } = usePivotConfigStore();
 
   // Build dynamic pivot based on user selection
   const customPivot = useMemo(() => {
+    // Skip building pivot until scores are ready to avoid wasteful double-build
+    if (sourceAssets.length > 0 && !scoresMap) {
+      logger.debug('PreBuiltPivots: Waiting for scores before building custom pivot');
+      return null;
+    }
+
     const startTime = performance.now();
     logger.info('PreBuiltPivots: Building custom pivot', {
       assetCount: sourceAssets.length,
       rowDimensions: rowDimensions.length,
       measures: measures.length
     });
-    
+
     if (sourceAssets.length === 0 || rowDimensions.length === 0 || measures.length === 0) {
       logger.debug('PreBuiltPivots: Skipping custom pivot (empty input)');
       return null;
     }
-    
+
     const pivot = buildDynamicPivot(sourceAssets, rowDimensions, measures, undefined, scoresMap);
     pivot.measureDisplayModes = measureDisplayModes;
-    
+
     const duration = performance.now() - startTime;
     logger.info('PreBuiltPivots: Custom pivot built', {
       rowCount: pivot.rows.length,
       duration: `${duration.toFixed(2)}ms`
     });
-    
+
     return pivot;
   }, [sourceAssets, rowDimensions, measures, measureDisplayModes, scoresMap]);
 
@@ -162,14 +149,20 @@ export function PreBuiltPivots() {
 
   // PIVOT 1: Completeness by Connection & Asset Type (pre-built example)
   const completenessPivot = useMemo(() => {
+    // Skip building pivot until scores are ready to avoid wasteful double-build
+    if (sourceAssets.length > 0 && !scoresMap) {
+      logger.debug('PreBuiltPivots: Waiting for scores before building completeness pivot');
+      return null;
+    }
+
     const startTime = performance.now();
     logger.info('PreBuiltPivots: Building completeness pivot', { assetCount: sourceAssets.length });
-    
+
     if (sourceAssets.length === 0) {
       logger.debug('PreBuiltPivots: Skipping completeness pivot (no assets)');
       return null;
     }
-    
+
     const pivot = buildDynamicPivot(
       sourceAssets,
       ['connection', 'type'],
@@ -177,13 +170,13 @@ export function PreBuiltPivots() {
       undefined,
       scoresMap
     );
-    
+
     const duration = performance.now() - startTime;
     logger.info('PreBuiltPivots: Completeness pivot built', {
       rowCount: pivot.rows.length,
       duration: `${duration.toFixed(2)}ms`
     });
-    
+
     return pivot;
   }, [sourceAssets, scoresMap]);
 
@@ -194,14 +187,20 @@ export function PreBuiltPivots() {
 
   // PIVOT 2: Domain Health Scorecard
   const domainPivot = useMemo(() => {
+    // Skip building pivot until scores are ready to avoid wasteful double-build
+    if (sourceAssets.length > 0 && !scoresMap) {
+      logger.debug('PreBuiltPivots: Waiting for scores before building domain pivot');
+      return null;
+    }
+
     const startTime = performance.now();
     logger.info('PreBuiltPivots: Building domain pivot', { assetCount: sourceAssets.length });
-    
+
     if (sourceAssets.length === 0) {
       logger.debug('PreBuiltPivots: Skipping domain pivot (no assets)');
       return null;
     }
-    
+
     const pivot = buildDynamicPivot(
       sourceAssets,
       ['domain'],
@@ -209,20 +208,20 @@ export function PreBuiltPivots() {
       undefined,
       scoresMap
     );
-    
+
     const duration = performance.now() - startTime;
     logger.info('PreBuiltPivots: Domain pivot built', {
       rowCount: pivot.rows.length,
       duration: `${duration.toFixed(2)}ms`
     });
-    
+
     return pivot;
   }, [sourceAssets, scoresMap]);
 
   const domainRows = useMemo(() => {
     if (!domainPivot) return [];
     const rows: (string | React.ReactNode)[][] = [];
-    
+
     domainPivot.rows.forEach((row) => {
       const domainName = row.dimensionValues.domain || 'No Domain';
       const cells: (string | React.ReactNode)[] = [
@@ -260,6 +259,12 @@ export function PreBuiltPivots() {
 
   // PIVOT 3: Owner Accountability - Certification Coverage
   const ownerPivot = useMemo(() => {
+    // Skip building pivot until scores are ready to avoid wasteful double-build
+    if (sourceAssets.length > 0 && !scoresMap) {
+      logger.debug('PreBuiltPivots: Waiting for scores before building owner pivot');
+      return null;
+    }
+
     if (sourceAssets.length === 0) return null;
     return buildDynamicPivot(
       sourceAssets,
@@ -273,18 +278,18 @@ export function PreBuiltPivots() {
   // Calculate certification breakdown per owner group
   const ownerCertRows = useMemo(() => {
     if (!ownerPivot) return [];
-    
+
     const rows: (string | React.ReactNode)[][] = [];
-    
+
     ownerPivot.rows.forEach((row) => {
       const ownerGroup = row.dimensionValues.ownerGroup || 'Unowned';
       const assetGuids = row.assetGuids;
-      
+
       // Get assets for this owner group
-      const groupAssets = sourceAssets.filter((a) => 
+      const groupAssets = sourceAssets.filter((a) =>
         assetGuids.includes(a.guid)
       );
-      
+
       // Count by certification status
       const certified = groupAssets.filter((a) => a.certificateStatus === 'VERIFIED').length;
       const draft = groupAssets.filter((a) => a.certificateStatus === 'DRAFT').length;
@@ -292,7 +297,7 @@ export function PreBuiltPivots() {
       const none = groupAssets.filter((a) => !a.certificateStatus || a.certificateStatus === null).length;
       const total = groupAssets.length;
       const certRate = total > 0 ? Math.round((certified / total) * 100) : 0;
-      
+
       const cells: (string | React.ReactNode)[] = [
         <span key="owner" className="dim-cell">
           <Users size={16} className="dim-icon owner" />
@@ -335,51 +340,67 @@ export function PreBuiltPivots() {
 
   // PIVOT 4: Lineage Coverage
   const lineagePivot = useMemo(() => {
+    // Skip building pivot until scores are ready to avoid wasteful double-build
+    if (sourceAssets.length > 0 && !scoresMap) {
+      logger.debug('PreBuiltPivots: Waiting for scores before building lineage pivot');
+      return null;
+    }
+
     const startTime = performance.now();
     logger.info('PreBuiltPivots: Building lineage pivot', { assetCount: sourceAssets.length });
-    
+
     if (sourceAssets.length === 0) {
       logger.debug('PreBuiltPivots: Skipping lineage pivot (no assets)');
       return null;
     }
-    
+
     const pivot = buildDynamicPivot(
       sourceAssets,
-      ['connection'],
+      ['connection', 'database', 'schema'],
       ['assetCount', 'hasUpstream', 'hasDownstream', 'fullLineage', 'orphaned'],
       undefined,
       scoresMap
     );
-    
+
     const duration = performance.now() - startTime;
     logger.info('PreBuiltPivots: Lineage pivot built', {
       rowCount: pivot.rows.length,
       duration: `${duration.toFixed(2)}ms`
     });
-    
+
     return pivot;
   }, [sourceAssets, scoresMap]);
 
   const lineageRows = useMemo(() => {
     if (!lineagePivot) return [];
     const rows: (string | React.ReactNode)[][] = [];
-    
+
     lineagePivot.rows.forEach((row) => {
       const connection = row.dimensionValues.connection || 'Unknown';
+      const database = row.dimensionValues.database || '—';
+      const schema = row.dimensionValues.schema || '—';
       const assetGuids = row.assetGuids;
       const groupAssets = sourceAssets.filter((a) => assetGuids.includes(a.guid));
-      
+
       const hasUpstream = calculateMeasure('hasUpstream', groupAssets);
       const hasDownstream = calculateMeasure('hasDownstream', groupAssets);
       const fullLineage = calculateMeasure('fullLineage', groupAssets);
       const orphaned = calculateMeasure('orphaned', groupAssets);
       const total = groupAssets.length;
       const coverage = total > 0 ? Math.round(((total - orphaned) / total) * 100) : 0;
-      
+
       const cells: (string | React.ReactNode)[] = [
         <span key="conn" className="dim-cell">
           <span className="dim-icon connection">{getConnectionIcon(connection)}</span>
           {connection}
+        </span>,
+        <span key="db" className="dim-cell">
+          <Database size={14} style={{ opacity: 0.6, marginRight: 4 }} />
+          {database}
+        </span>,
+        <span key="schema" className="dim-cell">
+          <Table size={14} style={{ opacity: 0.6, marginRight: 4 }} />
+          {schema}
         </span>,
         <span key="total" className="numeric">{total}</span>,
         <div key="upstream" className="bar-cell">
@@ -420,6 +441,8 @@ export function PreBuiltPivots() {
 
     rows.push([
       <strong key="total-label">Total</strong>,
+      <span key="total-db"></span>,
+      <span key="total-schema"></span>,
       <span key="total-assets" className="numeric"><strong>{totalAssets}</strong></span>,
       <strong key="total-upstream">{avgUpstream}%</strong>,
       <strong key="total-downstream">{avgDownstream}%</strong>,
@@ -439,7 +462,7 @@ export function PreBuiltPivots() {
   // Check both sourceAssets and context to provide better messaging
   const hasContext = !!context && context.type !== null;
   const hasAssets = sourceAssets.length > 0;
-  
+
   logger.debug('PreBuiltPivots: Rendering check', {
     hasContext,
     hasAssets,
@@ -447,13 +470,13 @@ export function PreBuiltPivots() {
     contextType: context?.type,
     contextLabel: context?.label
   });
-  
+
   if (!hasAssets) {
     return (
       <div className="pre-built-pivots-empty">
         <h2>No Assets in Context</h2>
         <p>
-          {hasContext 
+          {hasContext
             ? `Context is set (${context?.label}) but no assets were loaded. Please try refreshing or selecting a different context.`
             : 'Please set an asset context by dragging a connection, database, or schema into the context header, or select assets from the Asset Browser.'}
         </p>
@@ -475,15 +498,7 @@ export function PreBuiltPivots() {
 
   return (
     <div className="pre-built-pivots">
-      {/* Pivot Configurator Flyout */}
-      <PivotConfiguratorFlyout
-        rowDimensions={rowDimensions}
-        measures={measures}
-        onRowDimensionsChange={setRowDimensions}
-        onMeasuresChange={setMeasures}
-        measureDisplayModes={measureDisplayModes}
-        onMeasureDisplayModesChange={setMeasureDisplayModes}
-      />
+      {/* Pivot Configurator Flyout Removed - now handled by RightInspectorSidebar */}
 
       {/* Custom Pivot View */}
       {customPivot && customPivotRows.length > 0 && (
@@ -604,9 +619,9 @@ export function PreBuiltPivots() {
               { label: <Clock size={14} />, value: `Updated ${new Date().toLocaleTimeString()}` },
             ]}
             rows={
-            <span className="chip">
-              <Building2 size={14} className="chip-icon" /> Domain
-            </span>
+              <span className="chip">
+                <Building2 size={14} className="chip-icon" /> Domain
+              </span>
             }
             columns={<span className="chip">Quality Dimensions (5)</span>}
             insights={[
@@ -723,6 +738,8 @@ export function PreBuiltPivots() {
           <PivotTable
             headers={[
               'Connection',
+              'Database',
+              'Schema',
               'Total',
               'Has Upstream',
               'Has Downstream',

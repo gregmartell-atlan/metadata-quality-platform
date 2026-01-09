@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, ConfirmModal } from '../components/shared';
 import { AppHeader } from '../components/layout/AppHeader';
-import { DemoPivots } from '../components/pivot/DemoPivots';
 import { RealPivotBuilder } from '../components/pivot/RealPivotBuilder';
 import { PreBuiltPivots } from '../components/pivot/PreBuiltPivots';
 import { useAssetStore } from '../stores/assetStore';
 import { useAssetContextStore } from '../stores/assetContextStore';
 import { usePivotStore } from '../stores/pivotStore';
-import { GitBranch } from 'lucide-react';
+import { useRightSidebarStore } from '../stores/rightSidebarStore';
+import { GitBranch, Sliders, Camera, Download, LayoutTemplate, Settings2 } from 'lucide-react';
+import { HeaderToolbar, HeaderActionGroup, HeaderButton, HeaderDivider } from '../components/layout/HeaderActions';
 import './PivotBuilder.css';
 
 export function PivotBuilder() {
@@ -17,9 +18,9 @@ export function PivotBuilder() {
   const contextAssets = useAssetContextStore((state) => state.contextAssets);
   const getAssetCount = useAssetContextStore((state) => state.getAssetCount);
   const { views, getCurrentView, setCurrentView, deleteView } = usePivotStore();
-  const [showDemo, setShowDemo] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'accountability' | 'domain' | 'lineage' | 'custom'>('all');
   const [deleteViewId, setDeleteViewId] = useState<string | null>(null);
+  const { toggleTab, activeTab: sidebarTab, isOpen: isSidebarOpen } = useRightSidebarStore();
   const currentView = getCurrentView();
 
   const effectiveAssets = contextAssets.length > 0 ? contextAssets : selectedAssets;
@@ -47,41 +48,73 @@ export function PivotBuilder() {
   return (
     <div className="pivot-builder-page">
       <AppHeader title="Pivot Builder">
-        {views.length > 0 && (
-          <select
-            value={currentView?.id || ''}
-            onChange={(e) => {
-              if (e.target.value) {
-                handleLoadView(e.target.value);
-              } else {
-                setCurrentView(null);
-              }
-            }}
-            className="view-select"
-          >
-            <option value="">No view loaded</option>
-            {views.map((view) => (
-              <option key={view.id} value={view.id}>
-                {view.name}
-              </option>
-            ))}
-          </select>
-        )}
-        {effectiveAssets.length > 0 && (
-          <Button
-            variant="secondary"
-            onClick={handleViewLineage}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-          >
-            <GitBranch size={16} />
-            Lineage
-          </Button>
-        )}
-        <Button variant="secondary" onClick={() => setShowDemo(!showDemo)}>
-          {showDemo ? 'Real Data' : 'Demo'}
-        </Button>
-        <Button variant="secondary">Export</Button>
+        <HeaderToolbar>
+          <HeaderActionGroup>
+            {/* View Selector mocked as a button for now, or keep the select if essential. 
+                For cleanliness, let's keep the select but wrap it nicely or leave it as is 
+                next to the toolbar. For now I will leave it outside the toolbar groups 
+                but inside the toolbar container. */}
+            {views.length > 0 && (
+              <div className="header-select-wrapper">
+                <select
+                  value={currentView?.id || ''}
+                  onChange={(e) => {
+                    if (e.target.value) handleLoadView(e.target.value);
+                    else setCurrentView(null);
+                  }}
+                  className="view-select-minimal"
+                  title="Load Saved View"
+                >
+                  <option value="">Select View...</option>
+                  {views.map((view) => (
+                    <option key={view.id} value={view.id}>{view.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <HeaderButton
+              icon={<LayoutTemplate />}
+              onClick={() => setActiveTab('custom')}
+              active={activeTab === 'custom'}
+              title="Custom Builder"
+            />
+          </HeaderActionGroup>
+
+          <HeaderDivider />
+
+          {/* Navigation & Context Actions */}
+          <HeaderActionGroup>
+            {effectiveAssets.length > 0 && (
+              <HeaderButton
+                icon={<GitBranch />}
+                onClick={handleViewLineage}
+                title="View Lineage for Context"
+              />
+            )}
+            <HeaderButton
+              icon={<Settings2 />}
+              onClick={() => toggleTab('config')}
+              active={isSidebarOpen && sidebarTab === 'config'}
+              title="Configure Pivot"
+            />
+          </HeaderActionGroup>
+
+          <HeaderDivider />
+
+          {/* Global Actions (Snapshot/Export) */}
+          <HeaderActionGroup>
+            <HeaderButton icon={<Camera />} disabled title="Snapshot (Coming Soon)" />
+            <HeaderButton icon={<Download />} title="Export to CSV" />
+          </HeaderActionGroup>
+
+          {/* Demo Toggle */}
+
+
+        </HeaderToolbar>
       </AppHeader>
+
+
 
       <div className="pivot-content">
         <div className="tabs">
@@ -117,9 +150,7 @@ export function PivotBuilder() {
           </button>
         </div>
 
-        {showDemo ? (
-          <DemoPivots />
-        ) : activeTab === 'custom' ? (
+        {activeTab === 'custom' ? (
           <RealPivotBuilder />
         ) : (
           <PreBuiltPivots />

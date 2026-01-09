@@ -40,16 +40,27 @@ app.get('/health', (req, res) => {
 
 // Proxy middleware - handles all /proxy/* requests
 app.use('/proxy', async (req, res) => {
+  // Always log incoming requests for debugging
+  console.log(`[Proxy] Incoming: ${req.method} ${req.originalUrl}`);
+  console.log(`[Proxy] Headers received:`, {
+    'x-atlan-url': req.headers['x-atlan-url'] ? 'present' : 'MISSING',
+    'x-atlan-api-key': req.headers['x-atlan-api-key'] ? 'present (hidden)' : 'MISSING',
+    'content-type': req.headers['content-type'],
+    'origin': req.headers['origin'],
+  });
+
   try {
     // Get target URL and API key from headers
     const atlanUrl = req.headers['x-atlan-url'];
     const apiKey = req.headers['x-atlan-api-key'];
 
     if (!atlanUrl) {
+      console.error('[Proxy] ERROR: Missing X-Atlan-URL header');
       return res.status(400).json({ error: 'Missing X-Atlan-URL header' });
     }
 
     if (!apiKey) {
+      console.error('[Proxy] ERROR: Missing X-Atlan-API-Key header');
       return res.status(400).json({ error: 'Missing X-Atlan-API-Key header' });
     }
 

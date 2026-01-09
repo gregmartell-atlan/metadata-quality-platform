@@ -1,72 +1,28 @@
+/* Atlantis Executive Dashboard */
+
 .executive-dashboard {
   flex: 1;
   display: flex;
   flex-direction: column;
-  margin-left: 240px; /* Sidebar only - asset browser now in header */
-  min-height: 100vh;
-  background: linear-gradient(180deg, var(--bg-primary) 0%, #0d0d0f 100%);
-  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 0;
+  background: var(--bg-canvas);
 }
 
-/* Adjust when sidebar is collapsed */
-.app:has(.sidebar.collapsed) .executive-dashboard {
-  margin-left: 64px;
+.dashboard-last-updated {
+  padding: 12px 24px;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.filter-btn.active {
-  background: rgba(0, 212, 170, 0.1);
-  border-color: var(--accent-primary);
-  color: var(--accent-primary);
-}
-
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: var(--gap-md);
-  padding: var(--gap-lg, 24px);
+/* Main Content Area */
+.dashboard-grid-container {
+  padding: var(--space-2) var(--space-4) var(--space-8) var(--space-4);
   flex: 1;
-  align-content: start;
-}
-
-/* Scorecard - Health Score */
-.scorecard-v2 {
-  grid-column: span 3;
-  grid-row: span 2;
-}
-
-/* Stats Row */
-.stats-row {
-  grid-column: span 9;
-}
-
-/* Heatmap */
-.heatmap-card {
-  grid-column: span 9;
-}
-
-/* Campaigns */
-.campaign-card {
-  grid-column: span 4;
-}
-
-/* Owner Pivot */
-.owner-pivot {
-  grid-column: span 12;
-}
-
-/* Trend Chart */
-.trend-card {
-  grid-column: span 4;
-}
-
-/* Tasks */
-.tasks-card {
-  grid-column: span 4;
-}
-
-/* Accountability */
-.accountability-card {
-  grid-column: span 4;
 }
 
 /* Responsive breakpoints */
@@ -75,15 +31,19 @@
     grid-column: span 4;
     grid-row: span 1;
   }
+
   .stats-row {
     grid-column: span 8;
   }
+
   .heatmap-card {
     grid-column: span 12;
   }
+
   .campaign-card {
     grid-column: span 6;
   }
+
   .trend-card,
   .tasks-card,
   .accountability-card {
@@ -95,17 +55,121 @@
   .executive-dashboard {
     margin-left: 0;
   }
+
   .scorecard-v2 {
     grid-column: span 12;
   }
+
   .stats-row {
     grid-column: span 12;
     grid-template-columns: repeat(2, 1fr);
   }
+
   .campaign-card,
   .trend-card,
   .tasks-card,
   .accountability-card {
     grid-column: span 12;
   }
+}
+
+/* Edit mode banner */
+.edit-mode-banner {
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-selected);
+  border-bottom: 1px solid var(--button-primary-bg);
+  color: var(--button-primary-bg);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-align: center;
+}
+
+/* Snapshot count badge - hidden for dot variant */
+.snapshot-count {
+  display: none;
+}
+
+/* Empty State */
+
+
+.header-action-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.03);
+  padding: 2px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.action-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border-subtle);
+  margin: 0 4px;
+}
+
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  border-radius: 6px !important;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.icon-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-default);
+}
+
+/* Specific button styles if needed override shared button styles */
+.icon-btn svg {
+  stroke-width: 2px;
+}
+
+/* Badge dot for notifications (e.g. history count) */
+.badge-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  background: var(--accent-primary);
+  border-radius: 50%;
+  border: 1px solid var(--bg-surface);
+}
+
+.dashboard-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12);
+  text-align: center;
+}
+
+.dashboard-empty-icon {
+  width: 64px;
+  height: 64px;
+  color: var(--text-muted);
+  margin-bottom: var(--space-4);
+}
+
+.dashboard-empty h3 {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-default);
+  margin: 0 0 var(--space-2) 0;
+}
+
+.dashboard-empty p {
+  font-size: var(--font-size-base);
+  color: var(--text-muted);
+  margin: 0 0 var(--space-4) 0;
+  max-width: 400px;
 }

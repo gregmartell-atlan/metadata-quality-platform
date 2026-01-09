@@ -63,8 +63,36 @@ export interface AtlanAssetSummary {
   isAIGenerated?: boolean;
 }
 
-// Proxy server URL (runs alongside Vite dev server)
-const PROXY_URL = import.meta.env.VITE_PROXY_URL || 'http://localhost:3002';
+// ===========================================
+// PROXY MODE CONFIGURATION
+// ===========================================
+// Supports multiple deployment modes:
+//
+// 1. LOCAL DEV (default): Browser → localhost:3002/proxy → Atlan
+//    No env vars needed, just run `npm run proxy` and `npm run dev`
+//
+// 2. DOCKER: Same as local, proxy runs in container
+//    Set VITE_PROXY_HOST if proxy is on different host
+//
+// 3. APP FRAMEWORK: Browser → /api/atlan → FastAPI backend → Atlan
+//    Set VITE_APP_FRAMEWORK_MODE=true
+//    FastAPI handles auth via Atlan App Framework SDK
+//
+// Detection order:
+// 1. VITE_APP_FRAMEWORK_MODE=true → Use /api/atlan/* (FastAPI backend)
+// 2. VITE_PROXY_URL set → Use that URL directly
+// 3. Default → http://localhost:3002 (local proxy server)
+// ===========================================
+
+const APP_FRAMEWORK_MODE = import.meta.env.VITE_APP_FRAMEWORK_MODE === 'true';
+const PROXY_HOST = import.meta.env.VITE_PROXY_HOST || 'localhost';
+const PROXY_URL = import.meta.env.VITE_PROXY_URL || `http://${PROXY_HOST}:3002`;
+
+// Log mode on startup (only in dev)
+if (import.meta.env.DEV) {
+  logger.info('[Atlan API] Mode:', APP_FRAMEWORK_MODE ? 'App Framework' : 'Direct Proxy');
+  logger.info('[Atlan API] Proxy URL:', APP_FRAMEWORK_MODE ? '/api/atlan/*' : `${PROXY_URL}/proxy/*`);
+}
 const SAVED_BASE_URL_KEY = 'atlan_base_url';
 
 export interface AtlanApiConfig {
@@ -73,6 +101,14 @@ export interface AtlanApiConfig {
 }
 
 let config: AtlanApiConfig | null = null;
+
+// Cache for type definitions (forward declaration - used by clearAtlanConfig)
+// These are populated by getClassificationTypeDefs and getBusinessMetadataTypeDefs
+let classificationTypeDefsCache: Map<string, string> | null = null;
+let businessMetadataTypeDefsCache: {
+  setNames: Map<string, string>;
+  attributeNames: Map<string, Map<string, string>>;
+} | null = null;
 
 /**
  * Configure the Atlan API client
@@ -124,6 +160,9 @@ export function clearAtlanConfig() {
   sessionStorage.removeItem(SAVED_BASE_URL_KEY);
   clearCache();
   resetAtlanAssetCache();
+  // Clear type definition caches when switching tenants
+  classificationTypeDefsCache = null;
+  businessMetadataTypeDefsCache = null;
 }
 
 /**
@@ -144,6 +183,7 @@ interface CacheEntry<T> {
 
 const cache = new Map<string, CacheEntry<unknown>>();
 const CACHE_TTL = 60_000; // 60 seconds
+const MAX_CACHE_SIZE = 100; // Prevent unbounded memory growth
 
 /**
  * Get cached response if still valid
@@ -158,9 +198,33 @@ function getCached<T>(key: string): T | null {
 }
 
 /**
- * Store response in cache
+ * Store response in cache with LRU eviction
  */
 function setCache<T>(key: string, data: T): void {
+  // Evict oldest entries if cache is full
+  if (cache.size >= MAX_CACHE_SIZE) {
+    const keysToDelete: string[] = [];
+    const now = Date.now();
+
+    // First, remove expired entries
+    for (const [k, v] of cache) {
+      if (now - v.timestamp >= CACHE_TTL) {
+        keysToDelete.push(k);
+      }
+    }
+    keysToDelete.forEach(k => cache.delete(k));
+
+    // If still too large, remove oldest entries (Map maintains insertion order)
+    if (cache.size >= MAX_CACHE_SIZE) {
+      const iterator = cache.keys();
+      const toRemove = cache.size - MAX_CACHE_SIZE + 1;
+      for (let i = 0; i < toRemove; i++) {
+        const oldestKey = iterator.next().value;
+        if (oldestKey) cache.delete(oldestKey);
+      }
+    }
+  }
+
   cache.set(key, { data, timestamp: Date.now() });
 }
 
@@ -186,8 +250,8 @@ interface AtlanApiResponse<T> {
 }
 
 /**
- * Make an authenticated request to Atlan API via proxy
- * The proxy handles CORS by making server-side requests
+ * Make an authenticated request to Atlan API via FastAPI backend
+ * FastAPI backend proxies requests to Atlan API server-side
  * Now uses enhanced apiFetch with retry logic and timeouts
  */
 async function atlanFetch<T>(
@@ -199,10 +263,17 @@ async function atlanFetch<T>(
     return { error: 'Not configured. Call configureAtlanApi first.', status: 0 };
   }
 
-  // Route through proxy to avoid CORS
-  // endpoint like "/api/me" becomes "http://localhost:3002/proxy/api/me"
-  const proxyPath = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
-  const url = `${PROXY_URL}/proxy/${proxyPath}`;
+  // Build URL based on mode
+  let url: string;
+  if (APP_FRAMEWORK_MODE) {
+    // App Framework mode: /api/atlan/* → FastAPI backend handles auth
+    const backendPath = endpoint.startsWith('/api/') ? endpoint.slice(5) : endpoint;
+    url = `/api/atlan/${backendPath}`;
+  } else {
+    // Direct proxy mode: http://localhost:3002/proxy/* → proxy server handles auth
+    const proxyPath = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    url = `${PROXY_URL}/proxy/${proxyPath}`;
+  }
 
   // Create deduplication key from endpoint, method, and body (for POST requests)
   const method = options.method || 'GET';
@@ -244,9 +315,9 @@ async function atlanFetch<T>(
         }
       }
 
-      // Handle proxy-specific error messages
+      // Handle backend connection error messages
       if (response.error.includes('connection refused') || response.error.includes('ERR_CONNECTION_REFUSED')) {
-        response.error = 'Proxy server not running. Start it with: npm run proxy';
+        response.error = 'Backend server not running. The FastAPI backend must be running to connect to Atlan.';
       }
 
       logger.error('Atlan API request failed', {
@@ -532,8 +603,9 @@ function buildBoolQuery(filters: {
  * Build connector filter
  */
 function connectorFilter(connector: string): Record<string, unknown> {
-  // Use connectorName without .keyword suffix - matches getDatabases behavior
-  return { term: { 'connectorName': connector } };
+  // Normalize to lowercase for case-insensitive matching
+  const normalized = connector.toLowerCase();
+  return { term: { 'connectorName': normalized } };
 }
 
 /**
@@ -1051,19 +1123,246 @@ export async function getAsset(guid: string, attributes: string[] = []): Promise
     return null;
   }
 
-  // Transform to AtlanAsset format (similar to searchAssets)
+  // Transform to AtlanAsset format with all available attributes
+  const attrs = entity.attributes || {};
+  const businessAttrs = entity.businessAttributes || attrs.businessAttributes || {};
+
   return {
     guid: entity.guid,
     typeName: entity.typeName,
-    name: entity.attributes?.name || entity.attributes?.displayName || '',
-    qualifiedName: entity.attributes?.qualifiedName || '',
-    description: entity.attributes?.description,
-    // ... map other attributes as needed
+    name: attrs.name || attrs.displayName || '',
+    qualifiedName: attrs.qualifiedName || '',
+    description: attrs.description,
+    userDescription: attrs.userDescription,
+
+    // Ownership & Stewardship
+    ownerUsers: attrs.ownerUsers,
+    ownerGroups: attrs.ownerGroups,
+    adminUsers: attrs.adminUsers,
+    adminGroups: attrs.adminGroups,
+
+    // Governance & Certification
+    certificateStatus: attrs.certificateStatus,
+    certificateStatusMessage: attrs.certificateStatusMessage,
+    certificateUpdatedBy: attrs.certificateUpdatedBy,
+    certificateUpdatedAt: attrs.certificateUpdatedAt,
+
+    // Classifications & Tags
+    classificationNames: attrs.classificationNames || entity.classificationNames,
+    classifications: entity.classifications || attrs.classifications,
+    atlanTags: attrs.atlanTags,
+
+    // Glossary Terms
+    meanings: attrs.meanings,
+    assignedTerms: attrs.assignedTerms,
+
+    // Connection & Location
+    connectionName: attrs.connectionName,
+    connectionQualifiedName: attrs.connectionQualifiedName,
+    connectorName: attrs.connectorName,
+    connectorType: attrs.connectorType,
+    databaseName: attrs.databaseName,
+    schemaName: attrs.schemaName,
+
+    // Lineage
+    __hasLineage: attrs.__hasLineage || attrs.hasLineage,
+
+    // Usage & Popularity Metrics
+    popularityScore: attrs.popularityScore,
+    viewScore: attrs.viewScore,
+    starredCount: attrs.starredCount,
+    starredBy: attrs.starredBy,
+    sourceReadCount: attrs.sourceReadCount,
+    sourceReadUserCount: attrs.sourceReadUserCount,
+    sourceReadQueryCost: attrs.sourceReadQueryCost,
+    sourceLastReadAt: attrs.sourceLastReadAt,
+    sourceTotalCost: attrs.sourceTotalCost,
+
+    // Include the full attributes object for the drawer to access
+    attributes: {
+      ...attrs,
+
+      // Timestamps & Audit
+      createTime: attrs.createTime,
+      updateTime: attrs.updateTime,
+      createdBy: attrs.createdBy,
+      updatedBy: attrs.updatedBy,
+      sourceCreatedAt: attrs.sourceCreatedAt,
+      sourceUpdatedAt: attrs.sourceUpdatedAt,
+      sourceCreatedBy: attrs.sourceCreatedBy,
+      sourceUpdatedBy: attrs.sourceUpdatedBy,
+      lastSyncRunAt: attrs.lastSyncRunAt,
+      lastSyncWorkflowName: attrs.lastSyncWorkflowName,
+
+      // Technical Metadata
+      rowCount: attrs.rowCount,
+      columnCount: attrs.columnCount,
+      sizeBytes: attrs.sizeBytes,
+      tableType: attrs.tableType,
+      viewDefinition: attrs.viewDefinition,
+      isProfiled: attrs.isProfiled,
+      lastProfiledAt: attrs.lastProfiledAt,
+      queryCount: attrs.queryCount,
+      queryUserCount: attrs.queryUserCount,
+
+      // Schema & Structure (for columns)
+      columns: attrs.columns,
+      dataType: attrs.dataType,
+      order: attrs.order,
+      isPrimary: attrs.isPrimary,
+      isForeign: attrs.isForeign,
+      isNullable: attrs.isNullable,
+      isPartition: attrs.isPartition,
+      maxLength: attrs.maxLength,
+      precision: attrs.precision,
+      scale: attrs.scale,
+      defaultValue: attrs.defaultValue,
+
+      // Classifications & Tags
+      classifications: entity.classifications || attrs.classifications,
+      atlanTags: attrs.atlanTags,
+      tags: attrs.tags,
+
+      // Glossary Terms
+      meanings: attrs.meanings,
+      assignedTerms: attrs.assignedTerms,
+
+      // Documentation
+      readme: attrs.readme,
+      links: attrs.links,
+      resources: attrs.resources,
+
+      // Announcements
+      announcementTitle: attrs.announcementTitle,
+      announcementMessage: attrs.announcementMessage,
+      announcementType: attrs.announcementType,
+      announcementUpdatedAt: attrs.announcementUpdatedAt,
+
+      // Data Products & Domains
+      dataProducts: attrs.dataProducts,
+      dataProductGuids: attrs.dataProductGuids,
+      dataDomain: attrs.dataDomain,
+      dataDomainGuid: attrs.dataDomainGuid,
+      outputPortDataProducts: attrs.outputPortDataProducts,
+      inputPortDataProducts: attrs.inputPortDataProducts,
+
+      // Quality & Health Metrics
+      dataQualityScore: attrs.dataQualityScore,
+      dataQualitySummary: attrs.dataQualitySummary,
+      assetDbtJobLastRun: attrs.assetDbtJobLastRun,
+      assetDbtJobLastRunStatus: attrs.assetDbtJobLastRunStatus,
+      assetMcIncidentCount: attrs.assetMcIncidentCount,
+      assetMcMonitorCount: attrs.assetMcMonitorCount,
+      assetSodaCheckCount: attrs.assetSodaCheckCount,
+      assetSodaLastSyncRunAt: attrs.assetSodaLastSyncRunAt,
+      assetSodaLastScanAt: attrs.assetSodaLastScanAt,
+
+      // Usage metrics lists
+      sourceReadRecentUserList: attrs.sourceReadRecentUserList,
+      sourceReadTopUserList: attrs.sourceReadTopUserList,
+      sourceReadCostUnit: attrs.sourceReadCostUnit,
+
+      // Custom Metadata (business attributes)
+      businessAttributes: businessAttrs,
+    },
   } as AtlanAsset;
 }
 
 // ============================================
-// CLASSIFICATION TYPE DEFINITIONS
+// WORKFLOW API
+// ============================================
+
+import type { WorkflowStatus, AuditWorkflowRequest, AuditWorkflowResult, StartWorkflowResponse } from '../../types/workflow';
+
+// Backend API URL for workflow operations (set via environment variable)
+const WORKFLOW_API_URL = import.meta.env.VITE_WORKFLOW_API_URL || '';
+
+function getWorkflowApiUrl(): string {
+  if (!WORKFLOW_API_URL) {
+    throw new Error('Workflow API not configured. Set VITE_WORKFLOW_API_URL environment variable.');
+  }
+  return WORKFLOW_API_URL;
+}
+
+/**
+ * Start an audit workflow
+ */
+export async function startAudit(request: AuditWorkflowRequest): Promise<StartWorkflowResponse> {
+  const baseUrl = getWorkflowApiUrl();
+  const response = await fetch(`${baseUrl}/audit/run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to start audit: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get workflow status
+ */
+export async function getWorkflowStatus(workflowId: string): Promise<WorkflowStatus> {
+  const baseUrl = getWorkflowApiUrl();
+  const response = await fetch(`${baseUrl}/audit/status/${workflowId}`);
+
+  if (!response.ok) {
+    throw new Error(`Failed to get workflow status: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get workflow result
+ */
+export async function getWorkflowResult(workflowId: string): Promise<AuditWorkflowResult> {
+  const baseUrl = getWorkflowApiUrl();
+  const response = await fetch(`${baseUrl}/audit/result/${workflowId}`);
+
+  if (!response.ok) {
+    throw new Error(`Failed to get workflow result: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Poll workflow until complete
+ * @param maxPollingTime Maximum time to poll in ms (default 5 minutes)
+ */
+export async function pollWorkflowUntilComplete(
+  workflowId: string,
+  onProgress?: (status: WorkflowStatus) => void,
+  pollingInterval: number = 2000,
+  maxPollingTime: number = 5 * 60 * 1000
+): Promise<AuditWorkflowResult> {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < maxPollingTime) {
+    const status = await getWorkflowStatus(workflowId);
+    onProgress?.(status);
+
+    if (status.status === 'completed') {
+      return getWorkflowResult(workflowId);
+    } else if (status.status === 'failed') {
+      throw new Error(`Workflow failed: ${status.error || 'Unknown error'}`);
+    } else if (status.status === 'cancelled') {
+      throw new Error('Workflow was cancelled');
+    }
+
+    // Wait before polling again
+    await new Promise(resolve => setTimeout(resolve, pollingInterval));
+  }
+
+  throw new Error(`Workflow polling timed out after ${maxPollingTime / 1000}s`);
+}
+
+// ============================================
+// TYPE DEFINITIONS (Classifications & Custom Metadata)
 // ============================================
 
 /**
@@ -1077,32 +1376,57 @@ export interface ClassificationTypeDef {
 }
 
 /**
+ * Business Metadata (Custom Metadata) attribute definition
+ */
+export interface BusinessMetadataAttributeDef {
+  name: string;
+  displayName?: string;
+  typeName?: string;
+  description?: string;
+  cardinality?: string;
+  options?: Record<string, any>;
+}
+
+/**
+ * Business Metadata (Custom Metadata) type definition from Atlan typedefs API
+ */
+export interface BusinessMetadataTypeDef {
+  name: string;
+  displayName?: string;
+  guid?: string;
+  description?: string;
+  attributeDefs?: BusinessMetadataAttributeDef[];
+}
+
+// Note: Cache variables are declared at the top of the file (after config)
+
+/**
  * Fetch all classification type definitions from Atlan
- * Returns a map of type name -> display name for name resolution
+ * Returns a map of type name (hashed) -> display name (human-readable)
  */
 export async function getClassificationTypeDefs(): Promise<Map<string, string>> {
+  // Return cached if available
+  if (classificationTypeDefsCache) {
+    return classificationTypeDefsCache;
+  }
+
   const response = await atlanFetch<{
     classificationDefs?: ClassificationTypeDef[];
   }>('/api/meta/types/typedefs?type=classification', {
     method: 'GET',
   });
 
-  console.log('[getClassificationTypeDefs] API response status:', response.status, 'error:', response.error || 'none');
+  logger.debug('[getClassificationTypeDefs] API response status:', { status: response.status, error: response.error || 'none' });
 
   if (response.error || !response.data) {
-    console.warn('Failed to fetch classification type definitions:', response.error || 'No data');
+    logger.warn('Failed to fetch classification type definitions:', response.error || 'No data');
     return new Map();
   }
 
   const result = new Map<string, string>();
   const classificationDefs = response.data.classificationDefs || [];
 
-  console.log(`[getClassificationTypeDefs] Fetched ${classificationDefs.length} classification definitions`);
-  if (classificationDefs.length > 0) {
-    console.log('[getClassificationTypeDefs] Sample definitions:',
-      classificationDefs.slice(0, 5).map(d => ({ name: d.name, displayName: d.displayName }))
-    );
-  }
+  logger.debug(`[getClassificationTypeDefs] Fetched ${classificationDefs.length} classification definitions`);
 
   for (const def of classificationDefs) {
     const typeName = def.name;
@@ -1110,7 +1434,73 @@ export async function getClassificationTypeDefs(): Promise<Map<string, string>> 
     result.set(typeName, displayName);
   }
 
+  // Cache the result
+  classificationTypeDefsCache = result;
   return result;
+}
+
+/**
+ * Fetch all business metadata (custom metadata) type definitions from Atlan
+ * Returns maps for:
+ * - setNames: hashed set name -> display name
+ * - attributeNames: hashed set name -> Map of (hashed attr name -> display name)
+ */
+export async function getBusinessMetadataTypeDefs(): Promise<{
+  setNames: Map<string, string>;
+  attributeNames: Map<string, Map<string, string>>;
+}> {
+  // Return cached if available
+  if (businessMetadataTypeDefsCache) {
+    return businessMetadataTypeDefsCache;
+  }
+
+  const response = await atlanFetch<{
+    businessMetadataDefs?: BusinessMetadataTypeDef[];
+  }>('/api/meta/types/typedefs?type=business_metadata', {
+    method: 'GET',
+  });
+
+  logger.debug('[getBusinessMetadataTypeDefs] API response status:', { status: response.status, error: response.error || 'none' });
+
+  if (response.error || !response.data) {
+    logger.warn('Failed to fetch business metadata type definitions:', response.error || 'No data');
+    return { setNames: new Map(), attributeNames: new Map() };
+  }
+
+  const setNames = new Map<string, string>();
+  const attributeNames = new Map<string, Map<string, string>>();
+  const businessMetadataDefs = response.data.businessMetadataDefs || [];
+
+  logger.debug(`[getBusinessMetadataTypeDefs] Fetched ${businessMetadataDefs.length} business metadata definitions`);
+
+  for (const def of businessMetadataDefs) {
+    const setHashedName = def.name;
+    const setDisplayName = def.displayName || def.name;
+    setNames.set(setHashedName, setDisplayName);
+
+    // Process attribute definitions for this set
+    const attrMap = new Map<string, string>();
+    if (def.attributeDefs) {
+      for (const attr of def.attributeDefs) {
+        const attrHashedName = attr.name;
+        const attrDisplayName = attr.displayName || attr.name;
+        attrMap.set(attrHashedName, attrDisplayName);
+      }
+    }
+    attributeNames.set(setHashedName, attrMap);
+  }
+
+  // Cache the result
+  businessMetadataTypeDefsCache = { setNames, attributeNames };
+  return businessMetadataTypeDefsCache;
+}
+
+/**
+ * Clear type definition caches (call when switching tenants)
+ */
+export function clearTypeDefCaches(): void {
+  classificationTypeDefsCache = null;
+  businessMetadataTypeDefsCache = null;
 }
 
 // ============================================
@@ -1132,6 +1522,7 @@ export interface ConnectorInfo {
   icon?: string;
   assetCount: number;
   isActive: boolean;
+  fullEntity?: any; // Full Atlan entity for inspector
 }
 
 /**
@@ -1187,6 +1578,43 @@ export async function getConnectors(): Promise<ConnectorInfo[]> {
 
   const buckets = response?.aggregations?.connectors?.buckets;
   if (buckets && buckets.length > 0) {
+    // Fetch actual Connection entities for full metadata
+    const connectionEntities = await search({
+      dsl: {
+        size: 50,
+        query: {
+          bool: {
+            must: [
+              { term: { '__typeName.keyword': 'Connection' } },
+              {
+                terms: {
+                  'connectorName': buckets.map((b: any) => b.key)
+                }
+              }
+            ],
+            must_not: [{ term: { '__state': 'DELETED' } }],
+          },
+        },
+      },
+      attributes: [
+        'name', 'qualifiedName', 'connectorName', 'connectorType',
+        'description', 'userDescription',
+        'ownerUsers', 'ownerGroups',
+        'certificateStatus', 'certificateStatusMessage',
+        'classificationNames', 'atlanTags',
+        'meanings', 'assignedTerms',
+        'createTime', 'updateTime',
+      ],
+    });
+
+    const entityMap = new Map();
+    connectionEntities?.entities?.forEach((e: any) => {
+      const connName = e.attributes.connectorName as string;
+      if (connName) {
+        entityMap.set(connName, e);
+      }
+    });
+
     const result = buckets
       .filter((bucket: { key: string; doc_count: number }) => bucket.doc_count > 0)
       .map((bucket: { key: string; doc_count: number }) => ({
@@ -1194,6 +1622,7 @@ export async function getConnectors(): Promise<ConnectorInfo[]> {
         name: bucket.key,
         assetCount: bucket.doc_count,
         isActive: true,
+        fullEntity: entityMap.get(bucket.key), // Add full entity for inspector
       }));
     setCache(cacheKey, result);
     return result;
@@ -1265,6 +1694,10 @@ export async function getDatabases(connector: string): Promise<HierarchyItem[]> 
     throw new Error('Atlan API not configured');
   }
 
+  // Normalize connector name to lowercase for case-insensitive matching
+  const normalizedConnector = connector.toLowerCase();
+  logger.debug('getDatabases called', { input: connector, normalized: normalizedConnector });
+
   // First, try the standard database types
   const query = {
     dsl: {
@@ -1272,7 +1705,7 @@ export async function getDatabases(connector: string): Promise<HierarchyItem[]> 
       query: {
         bool: {
           must: [
-            { term: { 'connectorName': connector } },
+            { term: { 'connectorName': normalizedConnector } },
             {
               terms: {
                 '__typeName.keyword': [
@@ -1528,17 +1961,6 @@ export async function getLineage(
     // Compute name with fallbacks
     const computedName = attributes.name || entity.displayText || 'Unknown';
 
-    // Debug logging - show raw entity structure
-    console.log('[normalizeEntity] RAW entity:', JSON.stringify({
-      guid: entity.guid,
-      typeName: entity.typeName,
-      displayText: entity.displayText,
-      hasAttributes: !!entity.attributes,
-      attributeKeys: entity.attributes ? Object.keys(entity.attributes) : [],
-      'attributes.name': attributes.name,
-    }, null, 2));
-    console.log('[normalizeEntity] Computed name:', computedName);
-
     // Spread attributes FIRST, then override with explicit values
     // This ensures our fallback logic takes precedence over undefined values
     const normalized = {
@@ -1560,9 +1982,6 @@ export async function getLineage(
       createdBy: entity.createdBy,
       updatedBy: entity.updatedBy,
     };
-
-    // Log the final normalized result
-    console.log('[normalizeEntity] RESULT:', { guid: normalized.guid, name: normalized.name, typeName: normalized.typeName });
 
     return normalized;
   }

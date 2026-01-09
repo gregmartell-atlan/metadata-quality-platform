@@ -15,9 +15,9 @@
 .command-bar {
   position: relative;
   padding: 20px;
-  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+  background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
   border-bottom: 2px solid var(--accent-primary);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .search-icon {
@@ -168,18 +168,36 @@
   animation: slideInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) backwards;
 }
 
-.asset-card:nth-child(1) { animation-delay: 0.05s; }
-.asset-card:nth-child(2) { animation-delay: 0.08s; }
-.asset-card:nth-child(3) { animation-delay: 0.11s; }
-.asset-card:nth-child(4) { animation-delay: 0.14s; }
-.asset-card:nth-child(5) { animation-delay: 0.17s; }
-.asset-card:nth-child(6) { animation-delay: 0.20s; }
+.asset-card:nth-child(1) {
+  animation-delay: 0.05s;
+}
+
+.asset-card:nth-child(2) {
+  animation-delay: 0.08s;
+}
+
+.asset-card:nth-child(3) {
+  animation-delay: 0.11s;
+}
+
+.asset-card:nth-child(4) {
+  animation-delay: 0.14s;
+}
+
+.asset-card:nth-child(5) {
+  animation-delay: 0.17s;
+}
+
+.asset-card:nth-child(6) {
+  animation-delay: 0.20s;
+}
 
 @keyframes slideInUp {
   from {
     opacity: 0;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -191,12 +209,12 @@
   background: var(--bg-hover);
   transform: translateY(-2px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2),
-              0 0 0 1px var(--accent-primary);
+    0 0 0 1px var(--accent-primary);
 }
 
 .asset-card.hot {
   border-left: 3px solid #fb7185;
-  background: linear-gradient(135deg, rgba(251, 113, 133, 0.05) 0%, var(--bg-card) 100%);
+  background: linear-gradient(135deg, rgba(251, 113, 133, 0.08) 0%, #ffffff 100%);
 }
 
 .asset-card.selected {
@@ -426,7 +444,7 @@
 
 .schema-assets {
   padding: 8px;
-  background: var(--bg-secondary);
+  background: #f9fafb;
   border-top: 1px solid var(--border-subtle);
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -551,19 +569,7 @@
   font-family: var(--font-mono);
 }
 
-/* ===== LIGHT THEME ADJUSTMENTS ===== */
-[data-theme="light"] .command-bar {
-  background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
 
-[data-theme="light"] .asset-card.hot {
-  background: linear-gradient(135deg, rgba(251, 113, 133, 0.08) 0%, #ffffff 100%);
-}
-
-[data-theme="light"] .schema-assets {
-  background: #f9fafb;
-}
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
@@ -582,8 +588,15 @@
 
 /* ===== ANIMATIONS ===== */
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
 }
 
 .zone-icon.hot {
