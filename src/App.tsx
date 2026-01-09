@@ -16,7 +16,6 @@ const LineageViewPage = lazy(() => import('./pages/LineageViewPage').then(m => (
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const HomePage = lazy(() => import('./pages/HomePage').then(m => ({ default: m.HomePage })));
-const ChartPrototypes = lazy(() => import('./pages/ChartPrototypes').then(m => ({ default: m.ChartPrototypes })));
 
 // Loading fallback for lazy components
 function PageLoader() {
@@ -71,7 +70,6 @@ function App() {
                   <Route path="/lineage" element={<LineageViewPage />} />
                   <Route path="/analytics" element={<AnalyticsPage />} />
                   <Route path="/trends" element={<div className="page-placeholder">Quality Trends</div>} />
-                  <Route path="/prototypes" element={<ChartPrototypes />} />
                   <Route path="/settings" element={<SettingsPage />} />
                 </Routes>
               </Suspense>

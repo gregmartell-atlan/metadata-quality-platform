@@ -78,6 +78,18 @@
   align-items: flex-start;
 }
 
+.setting-row.setting-row-full {
+  padding-bottom: var(--space-2);
+}
+
+.setting-row.setting-row-full:hover {
+  background: transparent;
+}
+
+.setting-preview-grid {
+  padding: 0 var(--space-4) var(--space-3);
+}
+
 .setting-info {
   display: flex;
   align-items: flex-start;

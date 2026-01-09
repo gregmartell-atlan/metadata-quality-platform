@@ -1,0 +1,110 @@
+/* Chart Style Preview */
+
+.chart-style-selector {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+}
+
+.chart-style-preview {
+  position: relative;
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--border-default);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chart-style-preview:hover {
+  border-color: var(--button-primary-bg);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.chart-style-preview.selected {
+  border-color: var(--button-primary-bg);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.preview-chart {
+  padding: var(--space-2);
+}
+
+.preview-info {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2) var(--space-3);
+  background: rgba(255, 255, 255, 0.9);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.preview-name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-default);
+}
+
+.preview-desc {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.preview-check {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  width: 20px;
+  height: 20px;
+  background: var(--button-primary-bg);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* Style-specific preview adjustments */
+.chart-style-preview.style-neon .preview-info {
+  background: rgba(26, 26, 46, 0.95);
+  border-top-color: rgba(0, 245, 255, 0.2);
+}
+
+.chart-style-preview.style-neon .preview-name {
+  color: #00f5ff;
+}
+
+.chart-style-preview.style-neon .preview-desc {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.chart-style-preview.style-bold {
+  border-width: 3px;
+  border-color: #18181b;
+  border-radius: 0;
+}
+
+.chart-style-preview.style-bold:hover,
+.chart-style-preview.style-bold.selected {
+  border-color: #18181b;
+  box-shadow: 4px 4px 0 #18181b;
+}
+
+.chart-style-preview.style-bold .preview-info {
+  border-top: 2px solid #18181b;
+}
+
+.chart-style-preview.style-minimal {
+  border-color: #e4e4e7;
+}
+
+.chart-style-preview.style-minimal:hover {
+  border-color: #a1a1aa;
+}
+
+@media (max-width: 480px) {
+  .chart-style-selector {
+    grid-template-columns: 1fr;
+  }
+}

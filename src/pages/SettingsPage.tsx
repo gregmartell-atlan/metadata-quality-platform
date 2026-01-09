@@ -24,7 +24,8 @@ import {
   Scale,
   CheckSquare,
 } from 'lucide-react';
-import { useUIPreferences, type CertificationStatus, type ChartStyle } from '../stores/uiPreferencesStore';
+import { useUIPreferences, type CertificationStatus } from '../stores/uiPreferencesStore';
+import { ChartStyleSelector } from '../components/settings/ChartStylePreview';
 import {
   useQualityRules,
   DEFAULT_THRESHOLDS,
@@ -226,7 +227,7 @@ export function SettingsPage() {
               </div>
             </div>
 
-            <div className="setting-row">
+            <div className="setting-row setting-row-full">
               <div className="setting-info">
                 <BarChart3 size={16} />
                 <div>
@@ -234,38 +235,9 @@ export function SettingsPage() {
                   <span>Visual style for analytics charts</span>
                 </div>
               </div>
-              <div className="setting-control">
-                <div className="segment-control chart-style-control">
-                  <button
-                    className={chartStyle === 'glass' ? 'active' : ''}
-                    onClick={() => setChartStyle('glass')}
-                    title="Soft gradients and frosted glass effects"
-                  >
-                    Glass
-                  </button>
-                  <button
-                    className={chartStyle === 'neon' ? 'active' : ''}
-                    onClick={() => setChartStyle('neon')}
-                    title="Dark background with glowing neon accents"
-                  >
-                    Neon
-                  </button>
-                  <button
-                    className={chartStyle === 'bold' ? 'active' : ''}
-                    onClick={() => setChartStyle('bold')}
-                    title="Sharp lines and brutalist typography"
-                  >
-                    Bold
-                  </button>
-                  <button
-                    className={chartStyle === 'minimal' ? 'active' : ''}
-                    onClick={() => setChartStyle('minimal')}
-                    title="Data-focused minimalist design"
-                  >
-                    Minimal
-                  </button>
-                </div>
-              </div>
+            </div>
+            <div className="setting-preview-grid">
+              <ChartStyleSelector value={chartStyle} onChange={setChartStyle} />
             </div>
           </div>
         </Card>
@@ -851,33 +823,6 @@ export function SettingsPage() {
                     <option value="usabilityScore">Usability</option>
                   </select>
                 </div>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Developer Tools Section */}
-        <Card className="settings-card">
-          <div className="settings-card-header">
-            <Palette size={20} />
-            <div>
-              <h3>Developer Tools</h3>
-              <p>Design prototypes and experimental features</p>
-            </div>
-          </div>
-          <div className="settings-card-body">
-            <div className="setting-row">
-              <div className="setting-info">
-                <BarChart3 size={16} />
-                <div>
-                  <label>Chart Style Prototypes</label>
-                  <span>Compare 4 visual styles for the Impact Matrix</span>
-                </div>
-              </div>
-              <div className="setting-control">
-                <a href="/prototypes" className="settings-link-button">
-                  View Prototypes
-                </a>
               </div>
             </div>
           </div>
