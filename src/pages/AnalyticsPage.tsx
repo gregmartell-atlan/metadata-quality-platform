@@ -6,7 +6,6 @@
 
 import { useState, useMemo } from 'react';
 import { Download, BarChart3, AlertTriangle, Lightbulb, Info, Zap } from 'lucide-react';
-import { AppHeader } from '../components/layout/AppHeader';
 import { DaaPRadarChart, CoverageHeatmap, QualityImpactMatrix } from '../components/analytics';
 import { Card, Tooltip, InfoTooltip } from '../components/shared';
 import { HeaderToolbar, HeaderActionGroup, HeaderButton, HeaderDivider } from '../components/layout/HeaderActions';
@@ -179,7 +178,8 @@ export function AnalyticsPage() {
 
   return (
     <div className="analytics-page">
-      <AppHeader title="DaaP Analytics">
+      {/* Page Toolbar */}
+      <div className="page-toolbar">
         <HeaderToolbar>
           <HeaderActionGroup>
             <HeaderButton
@@ -194,7 +194,7 @@ export function AnalyticsPage() {
             />
           </HeaderActionGroup>
         </HeaderToolbar>
-      </AppHeader>
+      </div>
 
       <div className="analytics-content">
         {/* Top Row: Radar Chart & Summary Stats */}

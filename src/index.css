@@ -361,6 +361,12 @@
   --sidebar-collapsed-width: 56px;
   --inspector-width: 440px;
   --rail-width: 48px;
+
+  /* ========================================
+     UNIFIED SHELL LAYOUT
+     ======================================== */
+  --shell-header-height: 56px;
+  --shell-border: 1px solid var(--border-subtle);
 }
 
 

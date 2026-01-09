@@ -52,10 +52,6 @@
 }
 
 @media (max-width: 1024px) {
-  .executive-dashboard {
-    margin-left: 0;
-  }
-
   .scorecard-v2 {
     grid-column: span 12;
   }

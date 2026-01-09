@@ -1,0 +1,470 @@
+/**
+ * Chart Style Prototypes
+ * Visual comparison page for 4 different scatter chart aesthetics
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap');
+
+.prototypes-page {
+  min-height: 100vh;
+  padding: 2rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.prototypes-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.prototypes-header h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.02em;
+}
+
+.prototypes-header p {
+  font-family: 'DM Sans', sans-serif;
+  color: #64748b;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.prototypes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* ============================================
+   BASE PROTOTYPE CARD STYLES
+   ============================================ */
+
+.prototype-card {
+  border-radius: 16px;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+}
+
+.prototype-card:hover,
+.prototype-card.hovered {
+  transform: translateY(-4px);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+}
+
+.card-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.style-tag {
+  font-size: 0.7rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 20px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.chart-container {
+  position: relative;
+  padding: 0 1rem;
+}
+
+.card-description {
+  padding: 1rem 1.25rem 1.25rem;
+}
+
+.card-description p {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.card-description ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.8rem;
+  line-height: 1.8;
+}
+
+/* Quadrant Labels Base */
+.quadrant-labels {
+  position: absolute;
+  inset: 20px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.quadrant-labels span {
+  position: absolute;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.6;
+}
+
+.ql-critical { top: 8px; left: 8px; }
+.ql-healthy { top: 8px; right: 8px; }
+.ql-techdebt { bottom: 8px; left: 8px; }
+.ql-quickwins { bottom: 8px; right: 8px; }
+
+/* ============================================
+   STYLE A: GLOWING NEON ON DARK
+   ============================================ */
+
+.prototype-card.neon {
+  background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.prototype-card.neon:hover {
+  box-shadow: 0 8px 40px rgba(0, 245, 255, 0.2), 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+.prototype-card.neon .card-header {
+  background: rgba(0, 245, 255, 0.05);
+  border-bottom: 1px solid rgba(0, 245, 255, 0.1);
+}
+
+.prototype-card.neon .card-header h2 {
+  font-family: 'JetBrains Mono', monospace;
+  color: #00f5ff;
+  text-shadow: 0 0 20px rgba(0, 245, 255, 0.5);
+}
+
+.prototype-card.neon .style-tag {
+  background: rgba(255, 0, 110, 0.2);
+  color: #ff006e;
+  border: 1px solid rgba(255, 0, 110, 0.3);
+}
+
+.neon-chart {
+  background: radial-gradient(ellipse at center, rgba(0, 245, 255, 0.03) 0%, transparent 70%);
+}
+
+.neon-labels span {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.neon-labels .ql-critical { color: #ff006e; }
+.neon-labels .ql-healthy { color: #39ff14; }
+.neon-labels .ql-techdebt { color: #666; }
+.neon-labels .ql-quickwins { color: #00f5ff; }
+
+.prototype-card.neon .card-description {
+  color: #94a3b8;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.prototype-card.neon .card-description p {
+  color: #cbd5e1;
+}
+
+/* Neon Tooltip */
+.tooltip-neon {
+  background: rgba(26, 26, 46, 0.95);
+  border: 1px solid rgba(0, 245, 255, 0.3);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
+}
+
+.tooltip-neon .tooltip-name {
+  font-family: 'JetBrains Mono', monospace;
+  color: #00f5ff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.tooltip-neon .tooltip-stats {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+/* ============================================
+   STYLE B: SOFT GRADIENTS & GLASS
+   ============================================ */
+
+.prototype-card.glass {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.prototype-card.glass:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.prototype-card.glass .card-header {
+  background: linear-gradient(135deg, rgba(248, 250, 252, 0.8) 0%, rgba(241, 245, 249, 0.8) 100%);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+.prototype-card.glass .card-header h2 {
+  font-family: 'DM Sans', sans-serif;
+  color: #334155;
+  font-weight: 600;
+}
+
+.prototype-card.glass .style-tag {
+  background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
+  color: #0284c7;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.glass-chart {
+  background: linear-gradient(
+    135deg,
+    rgba(249, 168, 212, 0.1) 0%,
+    rgba(196, 181, 253, 0.1) 25%,
+    rgba(147, 197, 253, 0.1) 50%,
+    rgba(134, 239, 172, 0.1) 75%,
+    rgba(253, 224, 71, 0.1) 100%
+  );
+  border-radius: 12px;
+  margin: 0 0.5rem;
+}
+
+.glass-labels span {
+  font-family: 'DM Sans', sans-serif;
+}
+
+.glass-labels .ql-critical { color: #f87171; }
+.glass-labels .ql-healthy { color: #4ade80; }
+.glass-labels .ql-techdebt { color: #94a3b8; }
+.glass-labels .ql-quickwins { color: #60a5fa; }
+
+.prototype-card.glass .card-description {
+  font-family: 'DM Sans', sans-serif;
+  color: #64748b;
+}
+
+.prototype-card.glass .card-description p {
+  color: #475569;
+}
+
+/* Glass Tooltip */
+.tooltip-glass {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.tooltip-glass .tooltip-name {
+  font-family: 'DM Sans', sans-serif;
+  color: #1e293b;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.tooltip-glass .tooltip-stats {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+/* ============================================
+   STYLE C: BOLD & GEOMETRIC
+   ============================================ */
+
+.prototype-card.bold {
+  background: #fafafa;
+  border: 3px solid #18181b;
+  box-shadow: 8px 8px 0 #18181b;
+}
+
+.prototype-card.bold:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 10px 10px 0 #18181b;
+}
+
+.prototype-card.bold .card-header {
+  background: #18181b;
+  border-bottom: none;
+}
+
+.prototype-card.bold .card-header h2 {
+  font-family: 'Space Grotesk', sans-serif;
+  color: #fafafa;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.prototype-card.bold .style-tag {
+  background: #fafafa;
+  color: #18181b;
+  font-weight: 700;
+}
+
+.bold-chart {
+  background: #ffffff;
+}
+
+.bold-labels span {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  opacity: 0.8;
+  font-size: 0.6rem;
+}
+
+.bold-labels .ql-critical { color: #dc2626; }
+.bold-labels .ql-healthy { color: #16a34a; }
+.bold-labels .ql-techdebt { color: #71717a; }
+.bold-labels .ql-quickwins { color: #2563eb; }
+
+.prototype-card.bold .card-description {
+  font-family: 'Space Grotesk', sans-serif;
+  color: #52525b;
+}
+
+.prototype-card.bold .card-description p {
+  color: #27272a;
+  font-weight: 500;
+}
+
+/* Bold Tooltip */
+.tooltip-bold {
+  background: #18181b;
+  border: 2px solid #18181b;
+  border-radius: 0;
+  padding: 0.6rem 0.9rem;
+}
+
+.tooltip-bold .tooltip-name {
+  font-family: 'Space Grotesk', sans-serif;
+  color: #fafafa;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 0.3rem;
+}
+
+.tooltip-bold .tooltip-stats {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  color: #a1a1aa;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+}
+
+/* ============================================
+   STYLE D: DATA-INK MINIMAL
+   ============================================ */
+
+.prototype-card.minimal {
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.prototype-card.minimal:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  border-color: #d4d4d8;
+}
+
+.prototype-card.minimal .card-header {
+  background: transparent;
+  border-bottom: 1px solid #f4f4f5;
+}
+
+.prototype-card.minimal .card-header h2 {
+  font-family: 'DM Sans', sans-serif;
+  color: #27272a;
+  font-weight: 500;
+}
+
+.prototype-card.minimal .style-tag {
+  background: #f4f4f5;
+  color: #71717a;
+  font-weight: 500;
+}
+
+.minimal-chart {
+  background: #ffffff;
+}
+
+.minimal-labels span {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  opacity: 0.4;
+}
+
+.minimal-labels .ql-critical { color: #ef4444; opacity: 0.7; }
+.minimal-labels .ql-healthy { color: #71717a; }
+.minimal-labels .ql-techdebt { color: #a1a1aa; }
+.minimal-labels .ql-quickwins { color: #a1a1aa; }
+
+.prototype-card.minimal .card-description {
+  font-family: 'DM Sans', sans-serif;
+  color: #71717a;
+}
+
+.prototype-card.minimal .card-description p {
+  color: #52525b;
+}
+
+/* Minimal Tooltip */
+.tooltip-minimal {
+  background: #fafafa;
+  border: 1px solid #e4e4e7;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  gap: 1rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  color: #52525b;
+}
+
+/* ============================================
+   FOOTER
+   ============================================ */
+
+.prototypes-footer {
+  text-align: center;
+  margin-top: 2.5rem;
+  padding: 1.5rem;
+}
+
+.prototypes-footer p {
+  font-family: 'DM Sans', sans-serif;
+  color: #64748b;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 1024px) {
+  .prototypes-grid {
+    grid-template-columns: 1fr;
+    max-width: 600px;
+  }
+}

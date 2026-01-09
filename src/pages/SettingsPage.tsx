@@ -5,7 +5,6 @@
  */
 
 import { useRef } from 'react';
-import { AppHeader } from '../components/layout/AppHeader';
 import { Card } from '../components/shared';
 import {
   Monitor,
@@ -158,8 +157,6 @@ export function SettingsPage() {
 
   return (
     <div className="settings-page">
-      <AppHeader title="Settings" />
-
       <div className="settings-content">
         {/* Appearance Section */}
         <Card className="settings-card">

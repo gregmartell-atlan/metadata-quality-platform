@@ -1,17 +1,19 @@
-/* Atlantis App Layout */
+/* Unified Shell Layout */
 
 .app {
   display: flex;
+  flex-direction: column;
   min-height: 100vh;
   background: var(--bg-canvas);
 }
 
-/* Main Content Area */
+/* Main Content Area - positioned below unified header */
 .main-content {
   flex: 1;
+  margin-top: var(--shell-header-height);
   margin-left: var(--sidebar-width);
   margin-right: var(--rail-width);
-  min-height: 100vh;
+  min-height: calc(100vh - var(--shell-header-height));
   transition: margin-left var(--layout-transition), margin-right var(--layout-transition);
   display: flex;
   flex-direction: column;
@@ -23,8 +25,8 @@
   margin-right: calc(var(--inspector-width) + var(--rail-width));
 }
 
-/* Adjust when sidebar is collapsed */
-.app:has(.sidebar.collapsed) .main-content {
+/* Adjust when sidebar is collapsed (controlled by app state) */
+.app.sidebar-collapsed .main-content {
   margin-left: var(--sidebar-collapsed-width);
 }
 
@@ -95,18 +97,24 @@
 /* Page placeholder */
 .page-placeholder {
   flex: 1;
-  margin-left: var(--sidebar-width);
   padding: var(--space-6);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: var(--font-size-xl);
   color: var(--text-secondary);
-  transition: margin-left var(--layout-transition);
 }
 
-.app:has(.sidebar.collapsed) .page-placeholder {
-  margin-left: var(--sidebar-collapsed-width);
+/* Page Toolbar - Secondary action bar for page-specific controls */
+.page-toolbar {
+  display: flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-surface);
+  border-bottom: var(--shell-border);
+  min-height: 44px;
+  gap: var(--space-3);
+  flex-shrink: 0;
 }
 
 /* Loading States */

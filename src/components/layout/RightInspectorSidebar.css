@@ -9,11 +9,11 @@
 
 .right-inspector-sidebar {
     position: fixed;
-    top: 0;
+    top: var(--shell-header-height);
     right: 0;
-    height: 100vh;
-    height: 100dvh;
-    z-index: 1001;
+    height: calc(100vh - var(--shell-header-height));
+    height: calc(100dvh - var(--shell-header-height));
+    z-index: 100;
     display: flex;
     pointer-events: none;
     flex-shrink: 0;

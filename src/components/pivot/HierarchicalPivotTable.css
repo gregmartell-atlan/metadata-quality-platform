@@ -45,6 +45,19 @@
   background: var(--bg-hover, #f9fafb);
 }
 
+/* Clickable rows for asset preview */
+.hierarchy-row.clickable-row {
+  cursor: pointer;
+}
+
+.hierarchy-row.clickable-row:hover {
+  background: var(--bg-selected, #e0e7ff);
+}
+
+.hierarchy-row.clickable-row:active {
+  background: var(--bg-active, #c7d2fe);
+}
+
 .hierarchy-cell {
   position: relative;
 }

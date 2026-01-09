@@ -1,6 +1,5 @@
 import { ReactFlowProvider } from '@xyflow/react';
 import { LineageView } from '../components/lineage/LineageView';
-import { AppHeader } from '../components/layout/AppHeader';
 import { HeaderToolbar, HeaderActionGroup, HeaderButton, HeaderDivider } from '../components/layout/HeaderActions';
 import { Camera, Download, Settings2 } from 'lucide-react';
 import { useRightSidebarStore } from '../stores/rightSidebarStore';
@@ -11,7 +10,8 @@ export function LineageViewPage() {
 
   return (
     <div className="lineage-view-page">
-      <AppHeader title="Lineage Explorer">
+      {/* Page Toolbar */}
+      <div className="page-toolbar">
         <HeaderToolbar>
           <HeaderActionGroup>
             <HeaderButton
@@ -29,7 +29,7 @@ export function LineageViewPage() {
             <HeaderButton icon={<Download />} title="Export Image" />
           </HeaderActionGroup>
         </HeaderToolbar>
-      </AppHeader>
+      </div>
       <div className="lineage-view-container">
         <ReactFlowProvider>
           <LineageView />

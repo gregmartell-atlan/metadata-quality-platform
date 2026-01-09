@@ -18,7 +18,7 @@ import { RemediationTab } from './inspector/RemediationTab';
 
 export function RightInspectorSidebar() {
     const { activeTab, isOpen, toggleTab, close } = useRightSidebarStore();
-    const { selectedAsset, isOpen: isAssetOpen, isLoading: isAssetLoading, closePreview } = useAssetPreviewStore();
+    const { selectedAsset, selectedAssets, isOpen: isAssetOpen, isLoading: isAssetLoading, closePreview, openPreview } = useAssetPreviewStore();
 
     // Sync with Asset Preview Store
     useEffect(() => {
@@ -73,7 +73,9 @@ export function RightInspectorSidebar() {
                     {activeTab === 'asset' && (
                         <AssetPreviewTab
                             asset={selectedAsset}
+                            assets={selectedAssets}
                             isLoading={isAssetLoading}
+                            onAssetSelect={openPreview}
                         />
                     )}
 

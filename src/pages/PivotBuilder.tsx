@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, ConfirmModal } from '../components/shared';
-import { AppHeader } from '../components/layout/AppHeader';
+import { ConfirmModal } from '../components/shared';
 import { RealPivotBuilder } from '../components/pivot/RealPivotBuilder';
 import { PreBuiltPivots } from '../components/pivot/PreBuiltPivots';
 import { useAssetStore } from '../stores/assetStore';
 import { useAssetContextStore } from '../stores/assetContextStore';
 import { usePivotStore } from '../stores/pivotStore';
 import { useRightSidebarStore } from '../stores/rightSidebarStore';
-import { GitBranch, Sliders, Camera, Download, LayoutTemplate, Settings2 } from 'lucide-react';
+import { GitBranch, Camera, Download, LayoutTemplate, Settings2 } from 'lucide-react';
 import { HeaderToolbar, HeaderActionGroup, HeaderButton, HeaderDivider } from '../components/layout/HeaderActions';
 import './PivotBuilder.css';
 
@@ -47,13 +46,10 @@ export function PivotBuilder() {
 
   return (
     <div className="pivot-builder-page">
-      <AppHeader title="Pivot Builder">
+      {/* Page Toolbar */}
+      <div className="page-toolbar">
         <HeaderToolbar>
           <HeaderActionGroup>
-            {/* View Selector mocked as a button for now, or keep the select if essential. 
-                For cleanliness, let's keep the select but wrap it nicely or leave it as is 
-                next to the toolbar. For now I will leave it outside the toolbar groups 
-                but inside the toolbar container. */}
             {views.length > 0 && (
               <div className="header-select-wrapper">
                 <select
@@ -72,7 +68,6 @@ export function PivotBuilder() {
                 </select>
               </div>
             )}
-
             <HeaderButton
               icon={<LayoutTemplate />}
               onClick={() => setActiveTab('custom')}
@@ -83,7 +78,6 @@ export function PivotBuilder() {
 
           <HeaderDivider />
 
-          {/* Navigation & Context Actions */}
           <HeaderActionGroup>
             {effectiveAssets.length > 0 && (
               <HeaderButton
@@ -102,19 +96,12 @@ export function PivotBuilder() {
 
           <HeaderDivider />
 
-          {/* Global Actions (Snapshot/Export) */}
           <HeaderActionGroup>
             <HeaderButton icon={<Camera />} disabled title="Snapshot (Coming Soon)" />
             <HeaderButton icon={<Download />} title="Export to CSV" />
           </HeaderActionGroup>
-
-          {/* Demo Toggle */}
-
-
         </HeaderToolbar>
-      </AppHeader>
-
-
+      </div>
 
       <div className="pivot-content">
         <div className="tabs">

@@ -34,7 +34,7 @@ interface AssetContextState {
   contextAssets: AtlanAsset[]; // Computed assets matching current context
   isLoading: boolean;
   error: string | null;
-  
+
   // Actions
   setContext: (type: AssetContextType, filters: AssetContextFilters, label: string, assets: AtlanAsset[]) => void;
   setAllAssets: (assets: AtlanAsset[]) => void;
@@ -42,7 +42,7 @@ interface AssetContextState {
   clearContext: () => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  
+
   // Computed getters
   getContextAssets: () => AtlanAsset[];
   getContextLabel: () => string;
@@ -75,13 +75,13 @@ export const useAssetContextStore = create<AssetContextState>()(
           assetCount: safeAssets.length,
           lastUpdated: new Date().toISOString(),
         };
-        
+
         set({
           context: newContext,
           contextAssets: safeAssets,
           error: null,
         });
-        
+
         // Broadcast to other tabs
         assetContextSync.broadcast({ context: newContext, assets }, 'context-updated');
       },
@@ -112,7 +112,7 @@ export const useAssetContextStore = create<AssetContextState>()(
             context: updatedContext,
             contextAssets: assets,
           });
-          
+
           // Broadcast to other tabs
           assetContextSync.broadcast({ context: updatedContext, assets }, 'assets-updated');
         } else {
@@ -127,7 +127,7 @@ export const useAssetContextStore = create<AssetContextState>()(
           contextAssets: [],
           error: null,
         });
-        
+
         // Broadcast to other tabs
         assetContextSync.broadcast({ context: null, assets: [] }, 'context-cleared');
       },
@@ -163,6 +163,7 @@ export const useAssetContextStore = create<AssetContextState>()(
         // Don't persist assets - they'll be reloaded based on context
       }),
       version: 1, // Add version for future migrations
+      migrate: (persistedState: any) => persistedState,
     }
   )
 );

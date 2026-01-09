@@ -1,7 +1,5 @@
-import { AppHeader } from '../layout/AppHeader';
 import { HeaderToolbar, HeaderActionGroup, HeaderButton, HeaderDivider } from '../layout/HeaderActions';
 import { BreadcrumbNav } from '../layout/BreadcrumbNav';
-import { Button } from '../shared';
 import { useState, useEffect, useCallback } from 'react';
 import { Edit3, LayoutTemplate, Save, RotateCcw, Camera, Clock } from 'lucide-react';
 import { DashboardGrid } from './DashboardGrid';
@@ -91,9 +89,9 @@ export function ExecutiveDashboard() {
 
   return (
     <div className="executive-dashboard">
-      <AppHeader title="Executive Overview">
+      {/* Page Toolbar */}
+      <div className="page-toolbar">
         <HeaderToolbar>
-          {/* Action Group: View & Edit */}
           <HeaderActionGroup>
             <HeaderButton
               icon={<LayoutTemplate />}
@@ -121,7 +119,6 @@ export function ExecutiveDashboard() {
 
           <HeaderDivider />
 
-          {/* Action Group: History & Snapshots */}
           <HeaderActionGroup>
             <HeaderButton
               icon={<Camera />}
@@ -141,7 +138,6 @@ export function ExecutiveDashboard() {
 
           <HeaderDivider />
 
-          {/* Primary Refresh */}
           <HeaderActionGroup>
             <HeaderButton
               icon={<RotateCcw />}
@@ -150,11 +146,8 @@ export function ExecutiveDashboard() {
             />
           </HeaderActionGroup>
         </HeaderToolbar>
-      </AppHeader>
+      </div>
 
-      {/* Breadcrumb navigation removed - now in AppHeader */}
-
-      {/* Last updated info move from header to body */}
       <div className="dashboard-last-updated">
         Last updated {getTimeAgo(lastUpdated)}
       </div>

@@ -12,6 +12,7 @@ interface HierarchicalPivotTableProps {
   data: PivotTableData;
   assets: AtlanAsset[];
   className?: string;
+  onRowClick?: (assets: AtlanAsset[]) => void;
 }
 
 interface TreeNode extends HierarchicalPivotRow {
@@ -33,7 +34,7 @@ function getConnectionIcon(connName: string): React.ReactNode {
   return <Database size={16} />;
 }
 
-export function HierarchicalPivotTable({ data, assets, className = '' }: HierarchicalPivotTableProps) {
+export function HierarchicalPivotTable({ data, assets, className = '', onRowClick }: HierarchicalPivotTableProps) {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
   // Build recursive tree structure
@@ -209,10 +210,16 @@ export function HierarchicalPivotTable({ data, assets, className = '' }: Hierarc
           const currentDimension = data.dimensionOrder[level];
           const currentValue = row.dimensionValues[currentDimension] || 'Unknown';
 
+          // Get assets for this row for click handling - all rows are clickable
+          const rowAssets = assets.filter((a) => row.assetGuids.includes(a.guid));
+          const isClickable = onRowClick && rowAssets.length > 0;
+
           return (
-            <tr 
-              key={row.rowKey} 
-              className={`hierarchy-row level-${level} ${isParent ? 'parent-row' : 'child-row'}`}
+            <tr
+              key={row.rowKey}
+              className={`hierarchy-row level-${level} ${isParent ? 'parent-row' : 'child-row'} ${isClickable ? 'clickable-row' : ''}`}
+              onClick={isClickable ? () => onRowClick(rowAssets) : undefined}
+              title={isClickable ? `Preview ${rowAssets.length} asset${rowAssets.length > 1 ? 's' : ''} in ${currentValue}` : undefined}
             >
               {/* Dimension cell */}
               <td className="dim-cell hierarchy-cell">
@@ -223,7 +230,10 @@ export function HierarchicalPivotTable({ data, assets, className = '' }: Hierarc
                   {isParent && hasChildren && (
                     <button
                       className="expand-toggle"
-                      onClick={() => toggleNode(row.rowKey)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleNode(row.rowKey);
+                      }}
                       aria-label={isExpanded ? 'Collapse' : 'Expand'}
                     >
                       {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}

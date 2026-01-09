@@ -6,14 +6,8 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  margin-left: 240px;
-  min-height: 100vh;
+  min-height: 100%;
   background: var(--bg-canvas);
-  transition: margin-left var(--transition-slow);
-}
-
-.app:has(.sidebar.collapsed) .settings-page {
-  margin-left: 64px;
 }
 
 .settings-content {
@@ -715,12 +709,6 @@
 }
 
 /* Responsive */
-@media (max-width: 1024px) {
-  .settings-page {
-    margin-left: 0;
-  }
-}
-
 @media (max-width: 768px) {
   .threshold-grid {
     grid-template-columns: repeat(3, 1fr);

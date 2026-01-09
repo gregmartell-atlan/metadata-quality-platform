@@ -14,6 +14,7 @@ import { useAssetStore } from '../../stores/assetStore';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
 import { usePivotConfigStore } from '../../stores/pivotConfigStore';
+import { useAssetPreviewStore } from '../../stores/assetPreviewStore';
 import { buildDynamicPivot, pivotDataToTableRows } from '../../utils/dynamicPivotBuilder';
 import { PivotSection } from './PivotSection';
 import { PivotTable } from './PivotTable';
@@ -80,6 +81,14 @@ export function PreBuiltPivots() {
   const context = useAssetContextStore((state) => state.context);
   const getAssetCount = useAssetContextStore((state) => state.getAssetCount);
   const { assetsWithScores } = useScoresStore();
+  const { openMultiPreview } = useAssetPreviewStore();
+
+  // Handle row click to preview assets (supports single or multiple)
+  const handleRowClick = (assets: AtlanAsset[]) => {
+    if (assets.length > 0) {
+      openMultiPreview(assets);
+    }
+  };
 
   // Use context assets if available, fallback to selectedAssets for backward compatibility
   const sourceAssets = contextAssets.length > 0 ? contextAssets : selectedAssets;
@@ -539,6 +548,7 @@ export function PreBuiltPivots() {
             <HierarchicalPivotTable
               data={customPivot}
               assets={sourceAssets}
+              onRowClick={handleRowClick}
             />
           ) : (
             <PivotTable
@@ -600,6 +610,7 @@ export function PreBuiltPivots() {
           <HierarchicalPivotTable
             data={completenessPivot}
             assets={sourceAssets}
+            onRowClick={handleRowClick}
           />
         </PivotSection>
       )}

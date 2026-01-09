@@ -14,12 +14,14 @@ import { logger } from '../utils/logger';
 interface AssetPreviewState {
   // State
   selectedAsset: AtlanAsset | null;
+  selectedAssets: AtlanAsset[]; // For multi-asset group preview
   isOpen: boolean;
   isLoading: boolean;
   error: string | null;
 
   // Actions
   openPreview: (asset: AtlanAsset) => void;
+  openMultiPreview: (assets: AtlanAsset[]) => void;
   closePreview: () => void;
   togglePreview: () => void;
 }
@@ -160,13 +162,33 @@ const PREVIEW_ATTRIBUTES = [
 
 export const useAssetPreviewStore = create<AssetPreviewState>((set, get) => ({
   selectedAsset: null,
+  selectedAssets: [],
   isOpen: false,
   isLoading: false,
   error: null,
 
+  openMultiPreview: (assets: AtlanAsset[]) => {
+    if (assets.length === 0) return;
+
+    if (assets.length === 1) {
+      // Single asset - use the full preview with metadata fetch
+      get().openPreview(assets[0]);
+    } else {
+      // Multiple assets - show group summary (no API call needed)
+      logger.info('AssetPreviewStore: Opening multi-asset preview', { count: assets.length });
+      set({
+        selectedAsset: null,
+        selectedAssets: assets,
+        isOpen: true,
+        isLoading: false,
+        error: null,
+      });
+    }
+  },
+
   openPreview: async (asset: AtlanAsset) => {
-    // Immediately show the drawer with initial asset data
-    set({ selectedAsset: asset, isOpen: true, isLoading: true, error: null });
+    // Immediately show the drawer with initial asset data (clear multi-select)
+    set({ selectedAsset: asset, selectedAssets: [], isOpen: true, isLoading: true, error: null });
 
     // Fetch full asset metadata in background
     if (asset.guid) {
@@ -208,9 +230,9 @@ export const useAssetPreviewStore = create<AssetPreviewState>((set, get) => ({
 
   closePreview: () => {
     set({ isOpen: false, error: null });
-    // Delay clearing asset to allow animation to complete
+    // Delay clearing assets to allow animation to complete
     setTimeout(() => {
-      set({ selectedAsset: null, isLoading: false });
+      set({ selectedAsset: null, selectedAssets: [], isLoading: false });
     }, 300);
   },
 

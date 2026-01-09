@@ -2,16 +2,9 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  margin-left: 240px; /* Sidebar only - asset browser now in header */
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
   background: var(--bg-primary);
-  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Adjust when sidebar is collapsed */
-.app:has(.sidebar.collapsed) .lineage-view-page {
-  margin-left: 64px;
 }
 
 .lineage-view-container {

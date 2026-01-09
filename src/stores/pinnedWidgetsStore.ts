@@ -90,7 +90,8 @@ export const usePinnedWidgetsStore = create<PinnedWidgetsState>()(
     }),
     {
       name: 'pinned-widgets-storage',
-      version: 1
+      version: 1,
+      migrate: (persistedState: any) => persistedState
     }
   )
 );

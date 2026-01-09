@@ -118,6 +118,7 @@ export const useUIPreferences = create<UIPreferences & UIPreferencesActions>()(
     {
       name: 'ui-preferences-storage',
       version: 2,
+      migrate: (persistedState: any) => persistedState,
     }
   )
 );

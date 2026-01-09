@@ -1,33 +1,22 @@
 /**
- * Sidebar - Main navigation sidebar with collapse functionality
+ * Sidebar - Main navigation sidebar (logo now in UnifiedHeader)
  */
 
-import { useState } from 'react';
-import { Home, LayoutGrid, BarChart3, Target, Users, RefreshCw, Zap, GitBranch, ChevronLeft, ChevronRight, Radar, Settings } from 'lucide-react';
+import { Home, LayoutGrid, RefreshCw, GitBranch, Radar, Settings } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import './Sidebar.css';
 
-export function Sidebar() {
+interface SidebarProps {
+  isCollapsed: boolean;
+}
+
+export function Sidebar({ isCollapsed }: SidebarProps) {
   const location = useLocation();
-  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const isActive = (path: string) => location.pathname === path;
 
   return (
     <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
-      <div className="logo">
-        <div className="logo-icon">MQ</div>
-        <span className="logo-text">Metadata Quality</span>
-      </div>
-
-      <button
-        className="sidebar-toggle"
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-      >
-        {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-      </button>
-
       <nav>
         <div className="nav-section">
           <Link

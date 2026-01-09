@@ -63,9 +63,23 @@ export function extractDatabase(asset: AtlanAsset): string | null {
   if (asset.typeName === 'Database') {
     return asset.name || null;
   }
+  // Try direct databaseName attribute first
+  const databaseName = (asset as any).databaseName || asset.attributes?.databaseName;
+  if (databaseName) {
+    return databaseName;
+  }
+  // Fallback to parsing qualified name
   if ('databaseQualifiedName' in asset && asset.databaseQualifiedName) {
     const parts = asset.databaseQualifiedName.split('/');
     return parts[parts.length - 1] || null;
+  }
+  // Try parsing from qualifiedName (format: connection/database/schema/table)
+  const qn = asset.qualifiedName || asset.attributes?.qualifiedName;
+  if (qn) {
+    const parts = qn.split('/');
+    if (parts.length >= 2) {
+      return parts[1] || null;
+    }
   }
   return null;
 }
@@ -74,9 +88,23 @@ export function extractSchema(asset: AtlanAsset): string | null {
   if (asset.typeName === 'Schema') {
     return asset.name || null;
   }
+  // Try direct schemaName attribute first
+  const schemaName = (asset as any).schemaName || asset.attributes?.schemaName;
+  if (schemaName) {
+    return schemaName;
+  }
+  // Fallback to parsing qualified name
   if ('schemaQualifiedName' in asset && asset.schemaQualifiedName) {
     const parts = asset.schemaQualifiedName.split('/');
     return parts[parts.length - 1] || null;
+  }
+  // Try parsing from qualifiedName (format: connection/database/schema/table)
+  const qn = asset.qualifiedName || asset.attributes?.qualifiedName;
+  if (qn) {
+    const parts = qn.split('/');
+    if (parts.length >= 3) {
+      return parts[2] || null;
+    }
   }
   return null;
 }

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { ErrorBoundary, GlobalSearch, useGlobalSearch } from './components/shared';
+import { UnifiedHeader } from './components/layout/UnifiedHeader';
 import { Sidebar } from './components/layout/Sidebar';
 import { RightInspectorSidebar } from './components/layout/RightInspectorSidebar';
 import { AssetInspectorModal } from './components/AssetInspector/AssetInspectorModal';
@@ -15,6 +16,7 @@ const LineageViewPage = lazy(() => import('./pages/LineageViewPage').then(m => (
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const HomePage = lazy(() => import('./pages/HomePage').then(m => ({ default: m.HomePage })));
+const ChartPrototypes = lazy(() => import('./pages/ChartPrototypes').then(m => ({ default: m.ChartPrototypes })));
 
 // Loading fallback for lazy components
 function PageLoader() {
@@ -32,6 +34,7 @@ function App() {
   const { density } = useUIPreferences();
   const { selectedAsset, isOpen: isPreviewOpen, isLoading: isPreviewLoading, closePreview } = useAssetPreviewStore();
   const { isOpen: isSearchOpen, closeSearch } = useGlobalSearch();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Apply theme and density to document
   useEffect(() => {
@@ -46,9 +49,18 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <BrowserRouter>
-        <div className="app">
-          <Sidebar />
+      <BrowserRouter basename={import.meta.env.VITE_BASE_PATH || '/'}>
+        <div className={`app ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+          {/* Unified Header - spans full width */}
+          <UnifiedHeader
+            isSidebarCollapsed={isSidebarCollapsed}
+            onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          />
+
+          {/* Sidebar - now positioned below header */}
+          <Sidebar isCollapsed={isSidebarCollapsed} />
+
+          {/* Main Content Area */}
           <main className="main-content">
             <ErrorBoundary>
               <Suspense fallback={<PageLoader />}>
@@ -59,6 +71,7 @@ function App() {
                   <Route path="/lineage" element={<LineageViewPage />} />
                   <Route path="/analytics" element={<AnalyticsPage />} />
                   <Route path="/trends" element={<div className="page-placeholder">Quality Trends</div>} />
+                  <Route path="/prototypes" element={<ChartPrototypes />} />
                   <Route path="/settings" element={<SettingsPage />} />
                 </Routes>
               </Suspense>
