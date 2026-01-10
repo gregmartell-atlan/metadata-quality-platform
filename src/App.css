@@ -105,18 +105,6 @@
   color: var(--text-secondary);
 }
 
-/* Page Toolbar - Secondary action bar for page-specific controls */
-.page-toolbar {
-  display: flex;
-  align-items: center;
-  padding: var(--space-2) var(--space-4);
-  background: var(--bg-surface);
-  border-bottom: var(--shell-border);
-  min-height: 44px;
-  gap: var(--space-3);
-  flex-shrink: 0;
-}
-
 /* Loading States */
 .loading-overlay {
   position: fixed;

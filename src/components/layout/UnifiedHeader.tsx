@@ -1,15 +1,17 @@
 /**
  * UnifiedHeader - Integrated top bar spanning full width
  *
- * Combines brand/logo with navigation context and actions into
- * a single cohesive header that connects sidebar and content.
+ * Combines brand/logo with navigation context, page actions, and global actions
+ * into a single cohesive header. Page-specific actions are rendered contextually
+ * via the pageActionsStore.
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Link2, Link2Off, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
+import { Link2, Link2Off, ChevronLeft, ChevronRight, Search, RotateCcw } from 'lucide-react';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
+import { usePageActionsStore, type PageAction } from '../../stores/pageActionsStore';
 import { getAtlanConfig, testAtlanConnection, configureAtlanApi, getSavedAtlanBaseUrl } from '../../services/atlan/api';
 import { loadAssetsForContext, generateContextLabel } from '../../utils/assetContextLoader';
 import { sanitizeError } from '../../utils/sanitize';
@@ -36,6 +38,44 @@ interface UnifiedHeaderProps {
   onToggleSidebar: () => void;
 }
 
+// Action button component
+function HeaderActionButton({ action }: { action: PageAction }) {
+  return (
+    <button
+      className={`header-action-btn ${action.active ? 'active' : ''} ${action.disabled ? 'disabled' : ''}`}
+      onClick={action.onClick}
+      disabled={action.disabled}
+      title={action.title}
+    >
+      {action.icon}
+      {action.label && <span className="header-action-label">{action.label}</span>}
+      {action.badge === true && <span className="header-action-badge-dot" />}
+      {typeof action.badge === 'number' && action.badge > 0 && (
+        <span className="header-action-badge-count">{action.badge}</span>
+      )}
+    </button>
+  );
+}
+
+// Group actions by their group property
+function groupActions(actions: PageAction[]): Map<string, PageAction[]> {
+  const groups = new Map<string, PageAction[]>();
+  const order = ['view', 'capture', 'export', 'settings'];
+
+  // Initialize groups in order
+  order.forEach(g => groups.set(g, []));
+  groups.set('default', []);
+
+  // Sort actions into groups
+  actions.forEach(action => {
+    const group = action.group || 'default';
+    const existing = groups.get(group) || [];
+    groups.set(group, [...existing, action]);
+  });
+
+  return groups;
+}
+
 export function UnifiedHeader({ isSidebarCollapsed, onToggleSidebar }: UnifiedHeaderProps) {
   const location = useLocation();
   const pageTitle = pageTitles[location.pathname] || 'Metadata Quality';
@@ -47,6 +87,10 @@ export function UnifiedHeader({ isSidebarCollapsed, onToggleSidebar }: UnifiedHe
   const [baseUrl, setBaseUrl] = useState('');
   const [connectError, setConnectError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+
+  // Page actions from store
+  const { actions: pageActions, lastUpdated, pageSubtitle } = usePageActionsStore();
+  const groupedActions = useMemo(() => groupActions(pageActions), [pageActions]);
 
   // Asset context state
   const {
@@ -122,10 +166,8 @@ export function UnifiedHeader({ isSidebarCollapsed, onToggleSidebar }: UnifiedHe
   }, [context?.label]);
 
   // Trigger score calculation when context assets change
-  // Use a combination of context label and asset count to detect changes
   const prevScoreKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    // Create a key that changes when either context or asset count changes
     const scoreKey = `${context?.label || 'none'}:${contextAssets.length}`;
 
     if (contextAssets.length > 0 && scoreKey !== prevScoreKeyRef.current) {
@@ -164,6 +206,21 @@ export function UnifiedHeader({ isSidebarCollapsed, onToggleSidebar }: UnifiedHe
     }
   };
 
+  // Format time ago
+  const getTimeAgo = useCallback((date: Date) => {
+    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  }, []);
+
+  // Check if we have any actions to show
+  const hasActions = pageActions.length > 0;
+
   return (
     <>
       <header className={`unified-header ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
@@ -184,7 +241,18 @@ export function UnifiedHeader({ isSidebarCollapsed, onToggleSidebar }: UnifiedHe
 
         {/* Page Title + Context */}
         <div className="unified-header-content">
-          <div className="header-page-title">{pageTitle}</div>
+          <div className="header-title-area">
+            <div className="header-page-title">{pageTitle}</div>
+            {pageSubtitle && (
+              <span className="header-page-subtitle">{pageSubtitle}</span>
+            )}
+            {lastUpdated && (
+              <span className="header-last-updated">
+                Updated {getTimeAgo(lastUpdated)}
+              </span>
+            )}
+          </div>
+
           <div className="header-context">
             {isConnected ? (
               <HierarchicalContextBar />
@@ -192,21 +260,38 @@ export function UnifiedHeader({ isSidebarCollapsed, onToggleSidebar }: UnifiedHe
               <span className="context-placeholder">Connect to Atlan to explore assets</span>
             )}
           </div>
-          {/* Global Search Bar - Always Visible */}
-          {isConnected && (
-            <button
-              className="header-search-trigger"
-              onClick={() => setShowGlobalSearch(true)}
-              title="Search assets, pages, actions (Cmd+K)"
-            >
-              <Search size={16} />
-              <span className="header-search-placeholder">Search assets...</span>
-              <kbd className="header-search-kbd">K</kbd>
-            </button>
-          )}
         </div>
 
-        {/* Actions */}
+        {/* Page Actions - Contextual based on current page */}
+        {hasActions && (
+          <div className="unified-header-page-actions">
+            {Array.from(groupedActions.entries()).map(([group, actions]) => {
+              if (actions.length === 0) return null;
+              return (
+                <div key={group} className="header-action-group">
+                  {actions.map(action => (
+                    <HeaderActionButton key={action.id} action={action} />
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Search Trigger */}
+        {isConnected && (
+          <button
+            className="header-search-trigger"
+            onClick={() => setShowGlobalSearch(true)}
+            title="Search assets, pages, actions (Cmd+K)"
+          >
+            <Search size={15} />
+            <span className="header-search-placeholder">Search...</span>
+            <kbd className="header-search-kbd">K</kbd>
+          </button>
+        )}
+
+        {/* Global Actions */}
         <div className="unified-header-actions">
           <button
             className={`connection-btn ${isConnected ? 'connected' : ''}`}

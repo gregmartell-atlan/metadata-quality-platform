@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ConfirmModal } from '../components/shared';
 import { RealPivotBuilder } from '../components/pivot/RealPivotBuilder';
@@ -7,8 +7,8 @@ import { useAssetStore } from '../stores/assetStore';
 import { useAssetContextStore } from '../stores/assetContextStore';
 import { usePivotStore } from '../stores/pivotStore';
 import { useRightSidebarStore } from '../stores/rightSidebarStore';
+import { usePageActionsStore, type PageAction } from '../stores/pageActionsStore';
 import { GitBranch, Camera, Download, LayoutTemplate, Settings2 } from 'lucide-react';
-import { HeaderToolbar, HeaderActionGroup, HeaderButton, HeaderDivider } from '../components/layout/HeaderActions';
 import './PivotBuilder.css';
 
 export function PivotBuilder() {
@@ -22,16 +22,19 @@ export function PivotBuilder() {
   const { toggleTab, activeTab: sidebarTab, isOpen: isSidebarOpen } = useRightSidebarStore();
   const currentView = getCurrentView();
 
+  // Page actions store
+  const { setActions, clearActions, setPageSubtitle } = usePageActionsStore();
+
   const effectiveAssets = contextAssets.length > 0 ? contextAssets : selectedAssets;
   const effectiveCount = contextAssets.length > 0 ? getAssetCount() : selectedCount;
 
-  const handleViewLineage = () => {
+  const handleViewLineage = useCallback(() => {
     if (effectiveAssets.length > 0) {
       const firstAsset = effectiveAssets[0];
       addAsset(firstAsset);
       navigate(`/lineage?guid=${firstAsset.guid}`);
     }
-  };
+  }, [effectiveAssets, addAsset, navigate]);
 
   const handleLoadView = (viewId: string) => {
     setCurrentView(viewId);
@@ -44,65 +47,92 @@ export function PivotBuilder() {
     }
   };
 
+  const handleExportCSV = useCallback(() => {
+    // Dispatch event for pivot table to export
+    window.dispatchEvent(new CustomEvent('pivot-export-csv'));
+  }, []);
+
+  // Update page subtitle based on context
+  useEffect(() => {
+    if (effectiveCount > 0) {
+      setPageSubtitle(`${effectiveCount.toLocaleString()} assets`);
+    } else {
+      setPageSubtitle(null);
+    }
+  }, [effectiveCount, setPageSubtitle]);
+
+  // Register page actions with the header
+  useEffect(() => {
+    const actions: PageAction[] = [
+      // View group - custom builder and config
+      {
+        id: 'custom-builder',
+        icon: <LayoutTemplate size={16} />,
+        title: 'Custom Builder',
+        onClick: () => setActiveTab('custom'),
+        active: activeTab === 'custom',
+        group: 'view',
+      },
+      {
+        id: 'config',
+        icon: <Settings2 size={16} />,
+        title: 'Configure Pivot',
+        onClick: () => toggleTab('config'),
+        active: isSidebarOpen && sidebarTab === 'config',
+        group: 'view',
+      },
+    ];
+
+    // Add lineage button if we have assets
+    if (effectiveAssets.length > 0) {
+      actions.push({
+        id: 'lineage',
+        icon: <GitBranch size={16} />,
+        title: 'View Lineage for Context',
+        onClick: handleViewLineage,
+        group: 'view',
+      });
+    }
+
+    // Export group
+    actions.push(
+      {
+        id: 'snapshot',
+        icon: <Camera size={16} />,
+        title: 'Snapshot (Coming Soon)',
+        onClick: () => {},
+        disabled: true,
+        group: 'export',
+      },
+      {
+        id: 'export-csv',
+        icon: <Download size={16} />,
+        title: 'Export to CSV',
+        onClick: handleExportCSV,
+        group: 'export',
+      }
+    );
+
+    setActions(actions);
+
+    return () => {
+      clearActions();
+    };
+  }, [
+    activeTab,
+    setActiveTab,
+    effectiveAssets.length,
+    handleViewLineage,
+    handleExportCSV,
+    toggleTab,
+    sidebarTab,
+    isSidebarOpen,
+    setActions,
+    clearActions,
+  ]);
+
   return (
     <div className="pivot-builder-page">
-      {/* Page Toolbar */}
-      <div className="page-toolbar">
-        <HeaderToolbar>
-          <HeaderActionGroup>
-            {views.length > 0 && (
-              <div className="header-select-wrapper">
-                <select
-                  value={currentView?.id || ''}
-                  onChange={(e) => {
-                    if (e.target.value) handleLoadView(e.target.value);
-                    else setCurrentView(null);
-                  }}
-                  className="view-select-minimal"
-                  title="Load Saved View"
-                >
-                  <option value="">Select View...</option>
-                  {views.map((view) => (
-                    <option key={view.id} value={view.id}>{view.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            <HeaderButton
-              icon={<LayoutTemplate />}
-              onClick={() => setActiveTab('custom')}
-              active={activeTab === 'custom'}
-              title="Custom Builder"
-            />
-          </HeaderActionGroup>
-
-          <HeaderDivider />
-
-          <HeaderActionGroup>
-            {effectiveAssets.length > 0 && (
-              <HeaderButton
-                icon={<GitBranch />}
-                onClick={handleViewLineage}
-                title="View Lineage for Context"
-              />
-            )}
-            <HeaderButton
-              icon={<Settings2 />}
-              onClick={() => toggleTab('config')}
-              active={isSidebarOpen && sidebarTab === 'config'}
-              title="Configure Pivot"
-            />
-          </HeaderActionGroup>
-
-          <HeaderDivider />
-
-          <HeaderActionGroup>
-            <HeaderButton icon={<Camera />} disabled title="Snapshot (Coming Soon)" />
-            <HeaderButton icon={<Download />} title="Export to CSV" />
-          </HeaderActionGroup>
-        </HeaderToolbar>
-      </div>
-
       <div className="pivot-content">
         <div className="tabs">
           <button

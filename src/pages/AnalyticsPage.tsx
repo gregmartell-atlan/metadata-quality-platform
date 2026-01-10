@@ -4,17 +4,17 @@
  * Shows DaaP compliance scores and requirements coverage
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Download, BarChart3, AlertTriangle, Lightbulb, Info, Zap } from 'lucide-react';
 import { DaaPRadarChart, CoverageHeatmap, QualityImpactMatrix } from '../components/analytics';
 import { Card, Tooltip, InfoTooltip } from '../components/shared';
-import { HeaderToolbar, HeaderActionGroup, HeaderButton, HeaderDivider } from '../components/layout/HeaderActions';
 import { useFieldCoverage, getOverallCompleteness, getTopGaps } from '../hooks/useFieldCoverage';
 import { getFieldInfo } from '../constants/metadataDescriptions';
 import { exportAnalyticsReport } from '../utils/analyticsExport';
 import { useScoresStore } from '../stores/scoresStore';
 import { useAssetPreviewStore } from '../stores/assetPreviewStore';
 import { useRightSidebarStore } from '../stores/rightSidebarStore';
+import { usePageActionsStore, type PageAction } from '../stores/pageActionsStore';
 import type { RequirementsMatrix } from '../types/requirements';
 import type { AtlanAsset } from '../services/atlan/types';
 import type { AssetMetadata, QualityScores } from '../services/qualityMetrics';
@@ -154,7 +154,8 @@ export function AnalyticsPage() {
   const topGaps = getTopGaps(fieldCoverage, 3);
   const { assetsWithScores: storeAssets } = useScoresStore();
   const { openPreview } = useAssetPreviewStore();
-  const { toggleTab } = useRightSidebarStore();
+  const { toggleTab, activeTab: sidebarTab, isOpen: isSidebarOpen } = useRightSidebarStore();
+  const { setActions, clearActions } = usePageActionsStore();
 
   // Use real assets if available, otherwise use sample data for demo
   const isUsingDemoData = storeAssets.length === 0;
@@ -165,9 +166,9 @@ export function AnalyticsPage() {
   // Determine if we're showing demo data anywhere
   const showingDemoData = isUsingDemoData || isCoverageDemo;
 
-  const handleExport = () => {
+  const handleExport = useCallback(() => {
     exportAnalyticsReport(matrix, fieldCoverage);
-  };
+  }, [matrix, fieldCoverage]);
 
   const handleAssetClick = (asset: typeof assetsWithScores[0]) => {
     // Only open preview for real assets, not sample data
@@ -176,26 +177,35 @@ export function AnalyticsPage() {
     }
   };
 
+  // Register page actions with the header
+  useEffect(() => {
+    const actions: PageAction[] = [
+      {
+        id: 'remediation',
+        icon: <Zap size={16} />,
+        title: 'View Remediation Plan',
+        onClick: () => toggleTab('remediation'),
+        active: isSidebarOpen && sidebarTab === 'remediation',
+        group: 'view',
+      },
+      {
+        id: 'export',
+        icon: <Download size={16} />,
+        title: 'Export Report',
+        onClick: handleExport,
+        group: 'export',
+      },
+    ];
+
+    setActions(actions);
+
+    return () => {
+      clearActions();
+    };
+  }, [toggleTab, sidebarTab, isSidebarOpen, handleExport, setActions, clearActions]);
+
   return (
     <div className="analytics-page">
-      {/* Page Toolbar */}
-      <div className="page-toolbar">
-        <HeaderToolbar>
-          <HeaderActionGroup>
-            <HeaderButton
-              icon={<Zap />}
-              onClick={() => toggleTab('remediation')}
-              title="View Remediation Plan"
-            />
-            <HeaderButton
-              icon={<Download />}
-              onClick={handleExport}
-              title="Export Report"
-            />
-          </HeaderActionGroup>
-        </HeaderToolbar>
-      </div>
-
       <div className="analytics-content">
         {/* Top Row: Radar Chart & Summary Stats */}
         <div className="analytics-top-grid">

@@ -8,15 +8,19 @@
   background: var(--bg-canvas);
 }
 
-.dashboard-last-updated {
-  padding: 12px 24px;
-  font-size: 12px;
-  color: var(--text-muted);
-  background: var(--bg-subtle);
-  border-bottom: 1px solid var(--border-subtle);
+/* Edit bar - shown when in edit mode */
+.dashboard-edit-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-selected);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.edit-mode-hint {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
 }
 
 /* Main Content Area */
