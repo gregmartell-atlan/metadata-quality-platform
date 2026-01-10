@@ -30,6 +30,9 @@
 
 .unified-header.sidebar-collapsed .unified-header-brand {
   width: var(--sidebar-collapsed-width);
+  padding: 0 var(--space-2);
+  justify-content: center;
+  gap: var(--space-2);
 }
 
 .brand-logo {
@@ -66,6 +69,21 @@
 .unified-header.sidebar-collapsed .logo-text {
   opacity: 0;
   width: 0;
+  display: none;
+}
+
+/* Keep logo icon visible when collapsed */
+.unified-header.sidebar-collapsed .brand-logo {
+  gap: 0;
+  overflow: visible;
+}
+
+.unified-header.sidebar-collapsed .logo-icon {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  font-size: 10px;
 }
 
 .unified-header-brand .sidebar-toggle {
@@ -90,8 +108,7 @@
 }
 
 .unified-header.sidebar-collapsed .sidebar-toggle {
-  margin-left: auto;
-  margin-right: auto;
+  flex-shrink: 0;
 }
 
 /* Content Section - Page title and context */
