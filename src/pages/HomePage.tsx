@@ -4,8 +4,9 @@
  * Shows key metrics at a glance with quick access to all features
  */
 
+import { useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Card } from '../components/shared';
+import { Card, SampleIndicator, LoadingProgress } from '../components/shared';
 import { PinnedWidgets } from '../components/home/PinnedWidgets';
 import { ConnectionCards } from '../components/home/ConnectionCards';
 import { SmartQuestions } from '../components/home/SmartQuestions';
@@ -26,6 +27,12 @@ import {
 } from 'lucide-react';
 import { useScoresStore } from '../stores/scoresStore';
 import { useQualitySnapshotStore } from '../stores/qualitySnapshotStore';
+import { useAssetContextStore } from '../stores/assetContextStore';
+import {
+  loadAssetsForConnectionWithMetadata,
+  loadAllAssetsWithMetadata,
+} from '../utils/assetContextLoader';
+import { logger } from '../utils/logger';
 import './HomePage.css';
 
 // Quick action module types
@@ -69,13 +76,96 @@ const quickActions: QuickAction[] = [
 ];
 
 export function HomePage() {
-  const { assetsWithScores, stats } = useScoresStore();
+  const { assetsWithScores } = useScoresStore();
   const { snapshots } = useQualitySnapshotStore();
+  const {
+    contextAssets,
+    context,
+    isLoading,
+    loadingProgress,
+    setLoading,
+    setLoadingProgress,
+    setContextWithMetadata,
+  } = useAssetContextStore();
 
-  // Calculate quick stats
-  const totalAssets = assetsWithScores.length;
-  const healthScore = stats.assetsWithDescriptions > 0 ? (stats.assetsWithDescriptions / totalAssets) * 100 : 0;
-  const criticalAssets = assetsWithScores.filter(a => a.scores.overall < 40).length;
+  // Abort controller for cancelling bulk loads
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Handler for "Load All" button - fetches complete dataset
+  const handleLoadAll = async () => {
+    if (!context) return;
+
+    // Cancel any in-progress load
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = new AbortController();
+
+    setLoading(true);
+    setLoadingProgress(null);
+
+    try {
+      // Use connection-specific loader if filtering by connection, otherwise load all
+      const result = context.filters.connectionName
+        ? await loadAssetsForConnectionWithMetadata(context.filters.connectionName, {
+            assetTypes: ['Table', 'View', 'MaterializedView'],
+            limit: 500000, // Load up to 500k assets
+            signal: abortControllerRef.current.signal,
+            onProgress: (loaded, total) => {
+              setLoadingProgress({ loaded, total });
+            },
+          })
+        : await loadAllAssetsWithMetadata({
+            assetTypes: ['Table', 'View', 'MaterializedView'],
+            limit: 500000,
+            signal: abortControllerRef.current.signal,
+            onProgress: (loaded, total) => {
+              setLoadingProgress({ loaded, total });
+            },
+          });
+
+      // Update context with all loaded assets
+      setContextWithMetadata(
+        context.type,
+        context.filters,
+        context.label,
+        result.assets,
+        {
+          totalCount: result.totalCount,
+          isSampled: result.isSampled,
+          sampleRate: result.sampleRate,
+        }
+      );
+    } catch (err) {
+      // Don't log abort errors as failures
+      if (err instanceof Error && err.name === 'AbortError') {
+        logger.info('Load all assets cancelled by user');
+      } else {
+        logger.error('Failed to load all assets:', err);
+      }
+    }
+
+    abortControllerRef.current = null;
+    setLoadingProgress(null);
+    setLoading(false);
+  };
+
+  // Handler for cancelling bulk load
+  const handleCancelLoad = () => {
+    abortControllerRef.current?.abort();
+  };
+
+  // Filter assetsWithScores to only those in current context
+  const contextAssetGuids = new Set(contextAssets.map(a => a.guid));
+  const filteredAssets = contextAssetGuids.size > 0
+    ? assetsWithScores.filter(a => contextAssetGuids.has(a.asset.guid))
+    : assetsWithScores; // If no context, show all
+
+  // Calculate quick stats from filtered assets
+  const totalAssets = filteredAssets.length;
+
+  // Calculate stats for filtered assets
+  const assetsWithDescriptions = filteredAssets.filter(a => a.metadata.description).length;
+  const healthScore = totalAssets > 0 ? (assetsWithDescriptions / totalAssets) * 100 : 0;
+  const criticalAssets = filteredAssets.filter(a => a.scores.overall < 40).length;
   const recentSnapshots = snapshots.slice(0, 3);
 
   // Get health status
@@ -102,12 +192,40 @@ export function HomePage() {
             </div>
           </div>
 
-          <div className="hero-stat">
+          <div className="hero-stat hero-stat-wide">
             <div className="hero-stat-icon"><Database size={20} /></div>
             <div className="hero-stat-content">
               <div className="hero-stat-value">{totalAssets.toLocaleString()}</div>
               <div className="hero-stat-label">Assets Tracked</div>
-              <div className="hero-stat-status">In current scope</div>
+              <div className="hero-stat-status">
+                {context?.label || 'All Assets'}
+              </div>
+              {/* Sample indicator with Load All button */}
+              {context?.totalCount && context.totalCount > context.assetCount && (
+                <div className="hero-stat-sample">
+                  <SampleIndicator
+                    loaded={context.assetCount}
+                    total={context.totalCount}
+                    showLoadAllButton={true}
+                    onLoadAll={handleLoadAll}
+                    isLoading={isLoading}
+                  />
+                </div>
+              )}
+              {/* Progress bar during bulk loading */}
+              {loadingProgress && (
+                <div className="hero-stat-progress">
+                  <LoadingProgress
+                    loaded={loadingProgress.loaded}
+                    total={loadingProgress.total}
+                    label="Loading all assets"
+                    variant="bar"
+                    size="sm"
+                    showCancelButton={true}
+                    onCancel={handleCancelLoad}
+                  />
+                </div>
+              )}
             </div>
           </div>
 

@@ -55,3 +55,16 @@ export {
   clearTagCache,
 } from './tagResolver';
 
+// Bulk loading for large datasets
+export {
+  loadAssetsBulk,
+  loadAssetsPaginated,
+  loadAssetsWithCursor,
+  loadAssetsSampled,
+  loadAssetsProgressive,
+  loadAllAssetsUnlimited,
+  getAssetCount,
+} from './bulkLoader';
+
+export type { BulkLoadOptions, BulkLoadResult } from './bulkLoader';
+

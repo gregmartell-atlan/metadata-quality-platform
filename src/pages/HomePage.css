@@ -137,6 +137,27 @@
   letter-spacing: 0;
 }
 
+/* Wide stat card for sample indicator */
+.hero-stat-wide {
+  grid-column: span 1;
+}
+
+@media (min-width: 768px) {
+  .hero-stat-wide {
+    min-width: 280px;
+  }
+}
+
+.hero-stat-sample {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-subtle, #E2E8F0);
+}
+
+.hero-stat-progress {
+  margin-top: 0.75rem;
+}
+
 /* Section Headers */
 .home-section {
   animation: fadeInUp 0.5s ease;

@@ -313,6 +313,8 @@ export interface AtlanSearchResponse {
   entities: AtlanAsset[];
   approximateCount?: number;
   hasMore?: boolean;
+  /** Sort values from last entity - use as search_after for next page */
+  lastSort?: (string | number)[];
 }
 
 /**

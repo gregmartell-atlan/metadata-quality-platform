@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Link2, Link2Off, Download, AlertTriangle, FolderOpen, Settings } from 'lucide-react';
+import { Link2, Link2Off, Download, AlertTriangle, FolderOpen, Settings, Search } from 'lucide-react';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
 import { getAtlanConfig, testAtlanConnection, configureAtlanApi, getSavedAtlanBaseUrl } from '../../services/atlan/api';
@@ -16,6 +16,7 @@ import { logger } from '../../utils/logger';
 import { AssetBrowserPanel } from './AssetBrowserPanel';
 import { QuickContextSwitcher } from './QuickContextSwitcher';
 import { HierarchicalContextBar } from '../navigation/HierarchicalContextBar';
+import { GlobalSearch } from '../shared/GlobalSearch';
 import type { AtlanAsset } from '../../services/atlan/types';
 import type { AssetContextType, AssetContextFilters } from '../../stores/assetContextStore';
 import './AppHeader.css';
@@ -50,6 +51,19 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
 
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showBrowserPanel, setShowBrowserPanel] = useState(false);
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false);
+
+  // Keyboard shortcut for global search (Cmd/Ctrl + K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowGlobalSearch(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Check connection status on mount
   useEffect(() => {
@@ -221,7 +235,19 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
         {/* 2. Context Section (Fluid Center) */}
         <div className="app-header-context">
           {isConnected ? (
-            <HierarchicalContextBar />
+            <>
+              <HierarchicalContextBar />
+              {/* Global Search Bar - Always Visible */}
+              <button
+                className="header-search-trigger"
+                onClick={() => setShowGlobalSearch(true)}
+                title="Search assets, pages, actions (Cmd+K)"
+              >
+                <Search size={16} />
+                <span className="header-search-placeholder">Search assets...</span>
+                <kbd className="header-search-kbd">K</kbd>
+              </button>
+            </>
           ) : (
             <div className="context-placeholder">
               <span>Connect to Atlan to explore assets</span>
@@ -282,6 +308,12 @@ export function AppHeader({ title, subtitle, children }: AppHeaderProps) {
           </form>
         </div>
       )}
+
+      {/* Global Search Modal */}
+      <GlobalSearch
+        isOpen={showGlobalSearch}
+        onClose={() => setShowGlobalSearch(false)}
+      />
     </>
   );
 }

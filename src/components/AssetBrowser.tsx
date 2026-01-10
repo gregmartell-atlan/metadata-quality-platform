@@ -42,7 +42,7 @@ interface TreeNode {
   id: string;
   name: string;
   qualifiedName: string;
-  type: 'connector' | 'database' | 'schema' | 'table';
+  type: 'all' | 'connector' | 'database' | 'schema' | 'table';
   connectorName?: string;
   children?: TreeNode[];
   isExpanded?: boolean;
@@ -51,6 +51,10 @@ interface TreeNode {
   asset?: AtlanAsset;
   childCount?: number;
   fullEntity?: any; // Full Atlan entity for schemas/databases
+  // Popularity metrics for non-table nodes (databases, schemas)
+  popularityScore?: number;
+  sourceReadCount?: number;
+  sourceReadUserCount?: number;
 }
 
 interface AssetBrowserProps {
@@ -71,9 +75,11 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
   const [loadingNodes, setLoadingNodes] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
-  // Popularity features
-  const [sortBy, setSortBy] = useState<SortOption>('name');
+  // Popularity and search features
+  const [sortBy, setSortBy] = useState<SortOption>('popularity'); // Default to popularity for large datasets
   const [showPopularOnly, setShowPopularOnly] = useState(false);
+  const [hierarchySearchQuery, setHierarchySearchQuery] = useState('');
+  const [totalAssetCount, setTotalAssetCount] = useState<number | undefined>();
 
   const isCheckingConnection = React.useRef(false);
   const hasLoadedConnectors = React.useRef(false);
@@ -145,14 +151,24 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
     }
   }, []);
 
-  // Load connections as top-level nodes
+  // Load connections under an "All Assets" root node
   const loadConnections = useCallback(async () => {
     setError(null);
     try {
       logger.debug('Loading connections');
       const connectorList = await getConnectors();
       logger.debug('Loaded connectors', { count: connectorList.length });
-      
+
+      // Calculate total asset count across all connectors
+      const totalCount = connectorList.reduce((sum, c) => sum + c.assetCount, 0);
+      setTotalAssetCount(totalCount);
+
+      // Smart default: auto-enable popular filter for large datasets (>10k assets)
+      if (totalCount > 10000 && !showPopularOnly) {
+        logger.info('Large dataset detected, enabling popular filter by default', { totalCount });
+        // Note: We don't auto-enable to avoid confusion, but we sort by popularity
+      }
+
       const connectionNodes: TreeNode[] = connectorList.map((connector) => ({
         id: `connector-${connector.name}`,
         name: connector.name,
@@ -162,23 +178,41 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
         children: [],
         isLoaded: false,
         childCount: connector.assetCount,
+        fullEntity: connector.fullEntity,
       }));
 
-      setTreeData(connectionNodes);
+      // Create the "All Assets" root node with connections as children
+      const allAssetsNode: TreeNode = {
+        id: 'all-assets',
+        name: 'All Assets',
+        qualifiedName: 'all',
+        type: 'all',
+        children: connectionNodes,
+        isLoaded: true,
+        childCount: totalCount,
+      };
+
+      setTreeData([allAssetsNode]);
+      // Auto-expand the "All Assets" node
+      setExpandedNodes((prev) => new Set(prev).add('all-assets'));
     } catch (err) {
       logger.error('Failed to load connections', err);
       const sanitizedError = sanitizeError(err instanceof Error ? err : new Error('Failed to load connections'));
       setError(sanitizedError);
     }
-  }, []);
+  }, [showPopularOnly]);
 
   const loadDatabases = useCallback(async (connector: string, parentNodeId: string) => {
     setLoadingNodes((prev) => new Set(prev).add(parentNodeId));
     setError(null);
 
     try {
-      logger.debug('Loading databases for connector', { connector });
-      const databases = await getDatabases(connector);
+      logger.debug('Loading databases for connector', { connector, popularOnly: showPopularOnly });
+      // Pass popularOnly option to API for server-side filtering (scales to millions of assets)
+      const databases = await getDatabases(connector, {
+        popularOnly: showPopularOnly,
+        sortByPopularity: sortBy === 'popularity',
+      });
       logger.debug('Loaded databases', { connector, count: databases.length });
       const dbNodes: TreeNode[] = databases.map((db) => ({
         id: `db-${db.qualifiedName}`,
@@ -190,12 +224,31 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
         isLoaded: false,
         childCount: db.childCount,
         fullEntity: db.fullEntity, // Store full entity with metadata
+        // Extract popularity metrics from fullEntity if available
+        popularityScore: db.fullEntity?.attributes?.popularityScore,
+        sourceReadCount: db.fullEntity?.attributes?.sourceReadCount,
+        sourceReadUserCount: db.fullEntity?.attributes?.sourceReadUserCount,
       }));
 
+      // Update tree - navigate through All Assets node if present
       setTreeData((prev) =>
-        prev.map((node) =>
-          node.id === parentNodeId ? { ...node, children: dbNodes, isLoaded: true } : node
-        )
+        prev.map((allNode) => {
+          if (allNode.type === 'all' && allNode.children) {
+            return {
+              ...allNode,
+              children: allNode.children.map((connectorNode) =>
+                connectorNode.id === parentNodeId
+                  ? { ...connectorNode, children: dbNodes, isLoaded: true }
+                  : connectorNode
+              ),
+            };
+          }
+          // Fallback for direct connector nodes (if not using All Assets wrapper)
+          if (allNode.id === parentNodeId) {
+            return { ...allNode, children: dbNodes, isLoaded: true };
+          }
+          return allNode;
+        })
       );
     } catch (err) {
       logger.error('Failed to load databases', err, { connector });
@@ -208,7 +261,7 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
         return next;
       });
     }
-  }, []);
+  }, [showPopularOnly, sortBy]);
 
   // Check connection on mount and automatically when configuration becomes available
   useEffect(() => {
@@ -270,7 +323,11 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
     setError(null);
 
     try {
-      const schemas = await getSchemas(dbNode.qualifiedName);
+      // Pass popularOnly option to API for server-side filtering (scales to millions of assets)
+      const schemas = await getSchemas(dbNode.qualifiedName, {
+        popularOnly: showPopularOnly,
+        sortByPopularity: sortBy === 'popularity',
+      });
       const schemaNodes: TreeNode[] = schemas.map((schema) => ({
         id: `schema-${schema.qualifiedName}`,
         name: schema.name,
@@ -281,20 +338,41 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
         isLoaded: false,
         childCount: schema.childCount,
         fullEntity: schema.fullEntity, // Store full entity with metadata
+        // Extract popularity metrics from fullEntity if available
+        popularityScore: schema.fullEntity?.attributes?.popularityScore,
+        sourceReadCount: schema.fullEntity?.attributes?.sourceReadCount,
+        sourceReadUserCount: schema.fullEntity?.attributes?.sourceReadUserCount,
       }));
 
-      // Recursively update the database node within the tree
+      // Recursively update the database node within the tree (All Assets → Connector → Database)
       setTreeData((prev) =>
-        prev.map((connector) => {
-          if (connector.children) {
+        prev.map((allNode) => {
+          if (allNode.type === 'all' && allNode.children) {
             return {
-              ...connector,
-              children: connector.children.map((db) =>
+              ...allNode,
+              children: allNode.children.map((connector) => {
+                if (connector.children) {
+                  return {
+                    ...connector,
+                    children: connector.children.map((db) =>
+                      db.id === dbNode.id ? { ...db, children: schemaNodes, isLoaded: true } : db
+                    ),
+                  };
+                }
+                return connector;
+              }),
+            };
+          }
+          // Fallback for non-wrapped structure
+          if (allNode.children) {
+            return {
+              ...allNode,
+              children: allNode.children.map((db) =>
                 db.id === dbNode.id ? { ...db, children: schemaNodes, isLoaded: true } : db
               ),
             };
           }
-          return connector;
+          return allNode;
         })
       );
     } catch (err) {
@@ -307,7 +385,7 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
         return next;
       });
     }
-  }, []);
+  }, [showPopularOnly, sortBy]);
 
   const loadTables = useCallback(async (dbNode: TreeNode, schemaNode: TreeNode) => {
     if (schemaNode.isLoaded) return;
@@ -315,12 +393,16 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
     setLoadingNodes((prev) => new Set(prev).add(schemaNode.id));
     setError(null);
 
+    // Use larger limit for schemas with many tables
+    // For very large schemas (1000+), we still limit to keep UI responsive
+    const TABLE_LOAD_LIMIT = 1000;
+
     try {
       const assets = await fetchAssetsForModel({
         connector: schemaNode.connectorName || '',
         schemaQualifiedName: schemaNode.qualifiedName,
         assetTypes: ['Table', 'View', 'MaterializedView'],
-        size: 200,
+        size: TABLE_LOAD_LIMIT,
       });
 
       const tableNodes: TreeNode[] = assets
@@ -336,27 +418,63 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
           asset,
         }));
 
-      // Recursively update the schema node within the database within the connection
-      setTreeData((prev) =>
-        prev.map((connector) => {
-          if (connector.children) {
-            return {
-              ...connector,
-              children: connector.children.map((db) =>
-                db.id === dbNode.id
+      // Track if there are more tables than we loaded
+      const hasMoreTables = schemaNode.childCount
+        ? tableNodes.length < schemaNode.childCount
+        : assets.length >= TABLE_LOAD_LIMIT;
+
+      if (hasMoreTables) {
+        logger.info('Schema has more tables than loaded', {
+          schema: schemaNode.name,
+          loaded: tableNodes.length,
+          total: schemaNode.childCount || 'unknown',
+        });
+      }
+
+      // Helper to update schema within a database
+      const updateDbSchemas = (db: TreeNode) =>
+        db.id === dbNode.id
+          ? {
+              ...db,
+              children: db.children?.map((schema) =>
+                schema.id === schemaNode.id
                   ? {
-                      ...db,
-                      children: db.children?.map((schema) =>
-                        schema.id === schemaNode.id
-                          ? { ...schema, children: tableNodes, isLoaded: true }
-                          : schema
-                      ),
+                      ...schema,
+                      children: tableNodes,
+                      isLoaded: true,
+                      // Update childCount to reflect actual loaded count if we hit limit
+                      childCount: hasMoreTables ? schemaNode.childCount : tableNodes.length,
                     }
-                  : db
+                  : schema
               ),
+            }
+          : db;
+
+      // Recursively update: All Assets → Connector → Database → Schema
+      setTreeData((prev) =>
+        prev.map((allNode) => {
+          if (allNode.type === 'all' && allNode.children) {
+            return {
+              ...allNode,
+              children: allNode.children.map((connector) => {
+                if (connector.children) {
+                  return {
+                    ...connector,
+                    children: connector.children.map(updateDbSchemas),
+                  };
+                }
+                return connector;
+              }),
             };
           }
-          return connector;
+          // Fallback for non-wrapped structure
+          if (allNode.children) {
+            return {
+              ...allNode,
+              children: allNode.children.map(updateDbSchemas),
+            };
+          }
+          return allNode;
         })
       );
     } catch (err) {
@@ -437,9 +555,21 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
   const handleDragStart = (e: React.DragEvent, node: TreeNode) => {
     e.stopPropagation();
     e.dataTransfer.effectAllowed = 'copy';
-    
+
     let assets: AtlanAsset[] = [];
-    
+
+    // Helper to find a node by ID in the tree
+    const findNode = (nodes: TreeNode[], id: string): TreeNode | null => {
+      for (const n of nodes) {
+        if (n.id === id) return n;
+        if (n.children) {
+          const found = findNode(n.children, id);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
     if (node.type === 'table' && node.asset) {
       // Single table
       assets = [node.asset];
@@ -451,20 +581,15 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
       assets = collectAllTables(node);
     } else if (node.type === 'connector') {
       // All tables in all databases for this connector (from loaded tree)
-      // Find this connector node and collect all its children
-      const findNode = (nodes: TreeNode[], id: string): TreeNode | null => {
-        for (const n of nodes) {
-          if (n.id === id) return n;
-          if (n.children) {
-            const found = findNode(n.children, id);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
       const connectorNode = findNode(treeData, node.id);
       if (connectorNode) {
         assets.push(...collectAllTables(connectorNode));
+      }
+    } else if (node.type === 'all') {
+      // All tables from all connectors (entire data estate)
+      const allNode = findNode(treeData, node.id);
+      if (allNode) {
+        assets.push(...collectAllTables(allNode));
       }
     }
     
@@ -499,42 +624,86 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
     target.classList.remove('dragging');
   };
 
+  // Helper to calculate popularity score for a node (database, schema, or table)
+  const getNodePopularityScore = useCallback((node: TreeNode): number => {
+    if (node.type === 'table' && node.asset) {
+      return calculatePopularityScore(node.asset);
+    }
+    // For databases and schemas, use their own popularity metrics
+    if (node.popularityScore !== undefined || node.sourceReadCount !== undefined) {
+      const atlanScore = (node.popularityScore ?? 0) * 0.4;
+      const queryScore = Math.min(((node.sourceReadCount ?? 0) / 1000), 1) * 0.3;
+      const userScore = Math.min(((node.sourceReadUserCount ?? 0) / 10), 1) * 0.2;
+      return Math.min(atlanScore + queryScore + userScore, 1);
+    }
+    return 0;
+  }, []);
+
+  // Helper to check if a node is "hot" (highly popular)
+  const isNodeHot = useCallback((node: TreeNode): boolean => {
+    if (node.type === 'table' && node.asset) {
+      return isHotAsset(node.asset);
+    }
+    return getNodePopularityScore(node) > 0.7;
+  }, [getNodePopularityScore]);
+
+  // Helper to check if a node is "warm" (moderately popular)
+  const isNodeWarm = useCallback((node: TreeNode): boolean => {
+    if (node.type === 'table' && node.asset) {
+      return isWarmAsset(node.asset);
+    }
+    const score = getNodePopularityScore(node);
+    return score > 0.5 && score <= 0.7;
+  }, [getNodePopularityScore]);
+
   // Helper to sort tree nodes
   const sortNodes = useCallback((nodes: TreeNode[]): TreeNode[] => {
     return [...nodes].sort((a, b) => {
       if (sortBy === 'name') {
         return a.name.localeCompare(b.name);
-      } else if (sortBy === 'popularity' && a.asset && b.asset) {
-        return calculatePopularityScore(b.asset) - calculatePopularityScore(a.asset);
-      } else if (sortBy === 'recent' && a.asset && b.asset) {
-        const aTime = a.asset.sourceLastReadAt ?? 0;
-        const bTime = b.asset.sourceLastReadAt ?? 0;
+      } else if (sortBy === 'popularity') {
+        // Sort by popularity score for all node types
+        return getNodePopularityScore(b) - getNodePopularityScore(a);
+      } else if (sortBy === 'recent') {
+        // For tables, use asset's last read time; for others, use 0
+        const aTime = a.asset?.sourceLastReadAt ?? 0;
+        const bTime = b.asset?.sourceLastReadAt ?? 0;
         return bTime - aTime;
       }
       return 0;
     });
-  }, [sortBy]);
+  }, [sortBy, getNodePopularityScore]);
 
   // Helper to filter nodes by popularity
   const filterNodesByPopularity = useCallback((nodes: TreeNode[]): TreeNode[] => {
     if (!showPopularOnly) return nodes;
     return nodes.filter((node) => {
-      if (node.type === 'table' && node.asset) {
-        return isHotAsset(node.asset) || isWarmAsset(node.asset);
+      // Always show 'all' node
+      if (node.type === 'all') return true;
+
+      // Check if this node itself is popular (databases, schemas, tables)
+      if (isNodeHot(node) || isNodeWarm(node)) {
+        return true;
       }
-      // For non-table nodes, check if they have popular children
-      if (node.children) {
-        const hasPopularChildren = node.children.some((child) => {
-          if (child.type === 'table' && child.asset) {
-            return isHotAsset(child.asset) || isWarmAsset(child.asset);
-          }
-          return false;
-        });
-        return hasPopularChildren;
+
+      // For non-table nodes, also check if they have popular children (recursive)
+      if (node.children && node.children.length > 0) {
+        const hasPopularDescendants = (children: TreeNode[]): boolean => {
+          return children.some((child) => {
+            if (isNodeHot(child) || isNodeWarm(child)) return true;
+            if (child.children) return hasPopularDescendants(child.children);
+            return false;
+          });
+        };
+        return hasPopularDescendants(node.children);
       }
-      return true; // Keep connectors, databases, schemas by default
+
+      // Keep connectors by default (they contain assets)
+      if (node.type === 'connector') return true;
+
+      return false;
     });
-  }, [showPopularOnly]);
+  }, [showPopularOnly, isNodeHot, isNodeWarm]);
 
   const renderTreeNode = (node: TreeNode, level: number = 0, parent?: TreeNode) => {
     const isExpanded = expandedNodes.has(node.id);
@@ -588,6 +757,7 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
             </>
           )}
           <span className="tree-icon">
+            {node.type === 'all' && '🌐'}
             {node.type === 'connector' && '🔗'}
             {node.type === 'database' && '🗄️'}
             {node.type === 'schema' && '📁'}
@@ -595,24 +765,17 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
           </span>
           <span
             className={`tree-name ${
-              node.type === 'table' && node.asset && isHotAsset(node.asset)
-                ? 'popular-hot'
-                : node.type === 'table' && node.asset && isWarmAsset(node.asset)
-                ? 'popular-warm'
-                : ''
+              isNodeHot(node) ? 'popular-hot' : isNodeWarm(node) ? 'popular-warm' : ''
             } clickable`}
             onClick={async (e) => {
               e.stopPropagation();
-              console.log('🔍 CLICKED NODE:', { type: node.type, name: node.name, qualifiedName: node.qualifiedName });
 
               // Open inspector for any node type that has metadata
               if (node.type === 'table' && node.asset) {
-                console.log('Opening table asset directly');
                 openInspector(node.asset);
               } else if (node.type === 'connector' || node.type === 'database' || node.type === 'schema') {
                 // Use fullEntity if available (from tree loading)
                 if (node.fullEntity) {
-                  console.log('📦 Using fullEntity from tree:', node.fullEntity);
                   const e = node.fullEntity;
                   const fullAsset: AtlanAsset = {
                     guid: e.guid,
@@ -651,11 +814,9 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
                     isEditable: e.attributes?.isEditable,
                     isAIGenerated: e.attributes?.isAIGenerated,
                   };
-                  console.log('✅ Transformed asset:', fullAsset);
                   openInspector(fullAsset);
                 } else {
-                  // Fallback to minimal data
-                  console.log('⚠️ No fullEntity, using minimal data');
+                  // Fallback to minimal data - node doesn't have full entity metadata
                   const typeName = node.type === 'connector' ? 'Connection' : node.type === 'database' ? 'Database' : 'Schema';
                   const partialAsset: any = {
                     guid: node.id,
@@ -671,18 +832,21 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
             title={
               node.type === 'table' && node.asset
                 ? `Click to view details\n\n${node.qualifiedName}\n📊 Popularity: ${getPopularityDisplay(node.asset)}/10\n${formatQueryCount(node.asset.sourceReadCount)} queries${node.asset.sourceReadUserCount ? ` by ${node.asset.sourceReadUserCount} users` : ''}\nLast accessed: ${formatLastAccessed(node.asset.sourceLastReadAt)}`
+                : (node.type === 'database' || node.type === 'schema') && (node.sourceReadCount || node.popularityScore)
+                ? `Click to view details\n\n${node.qualifiedName}\n📊 Popularity: ${Math.round(getNodePopularityScore(node) * 10)}/10\n${formatQueryCount(node.sourceReadCount)} queries${node.sourceReadUserCount ? ` by ${node.sourceReadUserCount} users` : ''}`
                 : `Click to view details\n\n${node.qualifiedName}`
             }
           >
             {node.name}
           </span>
-          {node.type === 'table' && node.asset && isHotAsset(node.asset) && (
-            <span className="popularity-badge hot" title="Highly popular asset">
+          {/* Show popularity badges for databases, schemas, and tables */}
+          {node.type !== 'all' && node.type !== 'connector' && isNodeHot(node) && (
+            <span className="popularity-badge hot" title={`Highly popular ${node.type}`}>
               <Flame size={12} /> Hot
             </span>
           )}
-          {node.type === 'table' && node.asset && isWarmAsset(node.asset) && (
-            <span className="popularity-badge warm" title="Popular asset">
+          {node.type !== 'all' && node.type !== 'connector' && isNodeWarm(node) && (
+            <span className="popularity-badge warm" title={`Popular ${node.type}`}>
               <Star size={12} />
             </span>
           )}
@@ -791,6 +955,10 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
           onSortChange={setSortBy}
           showPopularOnly={showPopularOnly}
           onShowPopularOnlyChange={setShowPopularOnly}
+          searchQuery={hierarchySearchQuery}
+          onSearchChange={setHierarchySearchQuery}
+          totalCount={totalAssetCount}
+          displayedCount={allTableAssets.length}
         />
       )}
 
@@ -835,19 +1003,33 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
               selectedConnector={selectedConnector}
             />
             {sortNodes(filterNodesByPopularity(
-              treeData
-                .filter((node) => !selectedConnector || node.connectorName === selectedConnector || node.name === selectedConnector)
-                .filter((node) => {
-                if (!searchFilter) return true;
-                const term = searchFilter.toLowerCase();
-                // Check if this node or any of its children match
-                const matchesNode = (n: TreeNode): boolean => {
+              treeData.map((node) => {
+                // Combine external searchFilter prop with internal hierarchySearchQuery
+                const activeSearch = hierarchySearchQuery || searchFilter || '';
+                const hasSearch = activeSearch.length > 0;
+
+                // Helper to check if a node matches search
+                const matchesSearch = (n: TreeNode): boolean => {
+                  if (!hasSearch) return true;
+                  const term = activeSearch.toLowerCase();
                   if (n.name.toLowerCase().includes(term)) return true;
-                  if (n.children?.some(matchesNode)) return true;
+                  if (n.children?.some(matchesSearch)) return true;
                   return false;
                 };
-                return matchesNode(node);
-              })
+
+                // For "All Assets" node, filter its children by selected connector and search
+                if (node.type === 'all' && node.children) {
+                  const filteredChildren = node.children
+                    .filter((child) => !selectedConnector || child.connectorName === selectedConnector || child.name === selectedConnector)
+                    .filter((child) => matchesSearch(child));
+                  return { ...node, children: filteredChildren };
+                }
+                // Fallback for non-wrapped structures
+                if (!selectedConnector || node.connectorName === selectedConnector || node.name === selectedConnector) {
+                  if (matchesSearch(node)) return node;
+                }
+                return null;
+              }).filter((node): node is TreeNode => node !== null)
             )).map((node) => renderTreeNode(node))}
           </div>
         )}

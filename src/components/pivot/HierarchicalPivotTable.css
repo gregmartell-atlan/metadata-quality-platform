@@ -140,3 +140,8 @@
   font-size: 0.9em;
 }
 
+/* Popularity Badge in hierarchy rows */
+.hierarchy-content .popularity-badge {
+  margin-left: 6px;
+}
+

@@ -11,6 +11,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Search, X, Clock, Database, ArrowRight, Server, Layers, Home, LayoutDashboard, Table2, GitBranch, Radar, Settings } from 'lucide-react';
 import { useScoresStore } from '../../stores/scoresStore';
 import { useAssetContextStore } from '../../stores/assetContextStore';
+import { PopularityIndicator, shouldShowPopularity } from './PopularityBadge';
 import { getConnectors, getDatabases, getSchemas } from '../../services/atlan/api';
 import { loadAssetsForContext, generateContextLabel } from '../../utils/assetContextLoader';
 import { useNavigate } from 'react-router-dom';
@@ -333,10 +334,16 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
         connection.includes(lowerQuery) ||
         owner.includes(lowerQuery)
       ) {
+        const showPopularity = shouldShowPopularity(item.asset);
         searchResults.push({
           id: `asset-${item.asset.guid}`,
           type: 'asset',
-          title: item.asset.name,
+          title: (
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              {item.asset.name}
+              {showPopularity && <PopularityIndicator asset={item.asset} size="sm" />}
+            </span>
+          ),
           subtitle: `${item.metadata.assetType} • ${item.metadata.connection}`,
           icon: <Database size={16} />,
           action: () => {

@@ -112,6 +112,12 @@
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
+.inspector-badge.ai-generated {
+  background: rgba(139, 92, 246, 0.15);
+  color: #8b5cf6;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
 /* Breadcrumb */
 .breadcrumb {
   display: flex;

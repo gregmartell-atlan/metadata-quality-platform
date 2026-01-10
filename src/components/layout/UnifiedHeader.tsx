@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Link2, Link2Off, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Link2, Link2Off, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
 import { getAtlanConfig, testAtlanConnection, configureAtlanApi, getSavedAtlanBaseUrl } from '../../services/atlan/api';
@@ -15,6 +15,7 @@ import { loadAssetsForContext, generateContextLabel } from '../../utils/assetCon
 import { sanitizeError } from '../../utils/sanitize';
 import { logger } from '../../utils/logger';
 import { HierarchicalContextBar } from '../navigation/HierarchicalContextBar';
+import { GlobalSearch } from '../shared/GlobalSearch';
 import type { AtlanAsset } from '../../services/atlan/types';
 import type { AssetContextType, AssetContextFilters } from '../../stores/assetContextStore';
 import './UnifiedHeader.css';
@@ -58,6 +59,21 @@ export function UnifiedHeader({ isSidebarCollapsed, onToggleSidebar }: UnifiedHe
 
   // Scores store for triggering score calculation
   const { setAssetsWithScores } = useScoresStore();
+
+  // Global search state
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false);
+
+  // Keyboard shortcut for global search (Cmd/Ctrl + K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowGlobalSearch(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Check connection status on mount
   useEffect(() => {
@@ -106,16 +122,24 @@ export function UnifiedHeader({ isSidebarCollapsed, onToggleSidebar }: UnifiedHe
   }, [context?.label]);
 
   // Trigger score calculation when context assets change
-  const prevAssetsLengthRef = useRef(0);
+  // Use a combination of context label and asset count to detect changes
+  const prevScoreKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (contextAssets.length > 0 && contextAssets.length !== prevAssetsLengthRef.current) {
-      prevAssetsLengthRef.current = contextAssets.length;
-      logger.info('UnifiedHeader: Triggering score calculation', { assetCount: contextAssets.length });
+    // Create a key that changes when either context or asset count changes
+    const scoreKey = `${context?.label || 'none'}:${contextAssets.length}`;
+
+    if (contextAssets.length > 0 && scoreKey !== prevScoreKeyRef.current) {
+      prevScoreKeyRef.current = scoreKey;
+      logger.info('UnifiedHeader: Triggering score calculation', {
+        assetCount: contextAssets.length,
+        context: context?.label,
+        scoreKey
+      });
       setAssetsWithScores(contextAssets);
-    } else if (contextAssets.length === 0 && prevAssetsLengthRef.current > 0) {
-      prevAssetsLengthRef.current = 0;
+    } else if (contextAssets.length === 0) {
+      prevScoreKeyRef.current = null;
     }
-  }, [contextAssets, setAssetsWithScores]);
+  }, [contextAssets, context?.label, setAssetsWithScores]);
 
   // Handle connect form submit
   const handleConnect = async (e: React.FormEvent) => {
@@ -168,6 +192,18 @@ export function UnifiedHeader({ isSidebarCollapsed, onToggleSidebar }: UnifiedHe
               <span className="context-placeholder">Connect to Atlan to explore assets</span>
             )}
           </div>
+          {/* Global Search Bar - Always Visible */}
+          {isConnected && (
+            <button
+              className="header-search-trigger"
+              onClick={() => setShowGlobalSearch(true)}
+              title="Search assets, pages, actions (Cmd+K)"
+            >
+              <Search size={16} />
+              <span className="header-search-placeholder">Search assets...</span>
+              <kbd className="header-search-kbd">K</kbd>
+            </button>
+          )}
         </div>
 
         {/* Actions */}
@@ -212,6 +248,12 @@ export function UnifiedHeader({ isSidebarCollapsed, onToggleSidebar }: UnifiedHe
           </form>
         </div>
       )}
+
+      {/* Global Search Modal */}
+      <GlobalSearch
+        isOpen={showGlobalSearch}
+        onClose={() => setShowGlobalSearch(false)}
+      />
     </>
   );
 }

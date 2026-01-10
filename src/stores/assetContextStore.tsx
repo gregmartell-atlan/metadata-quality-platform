@@ -27,26 +27,46 @@ export interface AssetContext {
   label: string; // Human-readable label (e.g., "All Assets", "Snowflake > WideWorldImporters")
   assetCount: number;
   lastUpdated: string;
+  // Sample metadata - for showing "X of Y assets (Z% sample)"
+  totalCount?: number;      // Total available assets (may be more than loaded)
+  isSampled?: boolean;      // true if not all assets were loaded
+  sampleRate?: number;      // e.g., 0.07 for 7% sample
+}
+
+export interface LoadingProgress {
+  loaded: number;
+  total: number;
 }
 
 interface AssetContextState {
   context: AssetContext | null;
   contextAssets: AtlanAsset[]; // Computed assets matching current context
   isLoading: boolean;
+  loadingProgress: LoadingProgress | null;  // Progress during loading
   error: string | null;
 
   // Actions
   setContext: (type: AssetContextType, filters: AssetContextFilters, label: string, assets: AtlanAsset[]) => void;
+  setContextWithMetadata: (
+    type: AssetContextType,
+    filters: AssetContextFilters,
+    label: string,
+    assets: AtlanAsset[],
+    metadata: { totalCount: number; isSampled: boolean; sampleRate?: number }
+  ) => void;
   setAllAssets: (assets: AtlanAsset[]) => void;
   setContextAssets: (assets: AtlanAsset[]) => void;
   clearContext: () => void;
   setLoading: (loading: boolean) => void;
+  setLoadingProgress: (progress: LoadingProgress | null) => void;
   setError: (error: string | null) => void;
 
   // Computed getters
   getContextAssets: () => AtlanAsset[];
   getContextLabel: () => string;
   getAssetCount: () => number;
+  getTotalCount: () => number;
+  isSampled: () => boolean;
 }
 
 // Default context used when no context is set
@@ -64,11 +84,12 @@ export const useAssetContextStore = create<AssetContextState>()(
       context: null,
       contextAssets: [],
       isLoading: false,
+      loadingProgress: null,
       error: null,
 
       setContext: (type, filters, label, assets) => {
         const safeAssets = assets || [];
-        const newContext = {
+        const newContext: AssetContext = {
           type,
           filters,
           label,
@@ -79,6 +100,31 @@ export const useAssetContextStore = create<AssetContextState>()(
         set({
           context: newContext,
           contextAssets: safeAssets,
+          loadingProgress: null,
+          error: null,
+        });
+
+        // Broadcast to other tabs
+        assetContextSync.broadcast({ context: newContext, assets }, 'context-updated');
+      },
+
+      setContextWithMetadata: (type, filters, label, assets, metadata) => {
+        const safeAssets = assets || [];
+        const newContext: AssetContext = {
+          type,
+          filters,
+          label,
+          assetCount: safeAssets.length,
+          lastUpdated: new Date().toISOString(),
+          totalCount: metadata.totalCount,
+          isSampled: metadata.isSampled,
+          sampleRate: metadata.sampleRate,
+        };
+
+        set({
+          context: newContext,
+          contextAssets: safeAssets,
+          loadingProgress: null,
           error: null,
         });
 
@@ -136,13 +182,16 @@ export const useAssetContextStore = create<AssetContextState>()(
         set({ isLoading: loading });
       },
 
+      setLoadingProgress: (progress) => {
+        set({ loadingProgress: progress });
+      },
+
       setError: (error) => {
         set({ error });
       },
 
       getContextAssets: () => {
         const assets = get().contextAssets;
-        // Removed console.log to prevent performance issues
         return assets;
       },
 
@@ -154,6 +203,16 @@ export const useAssetContextStore = create<AssetContextState>()(
       getAssetCount: () => {
         const context = get().context;
         return context?.assetCount || 0;
+      },
+
+      getTotalCount: () => {
+        const context = get().context;
+        return context?.totalCount || context?.assetCount || 0;
+      },
+
+      isSampled: () => {
+        const context = get().context;
+        return context?.isSampled || false;
       },
     }),
     {

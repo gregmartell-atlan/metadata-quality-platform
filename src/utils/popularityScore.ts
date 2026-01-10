@@ -153,3 +153,21 @@ export function getPopularityInfo(asset: AtlanAsset): PopularityInfo {
     display: Math.round(score * 10 * 10) / 10,
   };
 }
+
+/**
+ * Get popularity emoji for display
+ * Returns 🔥 for hot, ⚡ for warm, empty string for normal
+ */
+export function getPopularityEmoji(asset: AtlanAsset): string {
+  const score = calculatePopularityScore(asset);
+  if (score > HOT_THRESHOLD) return '🔥';
+  if (score > WARM_THRESHOLD) return '⚡';
+  return '';
+}
+
+/**
+ * Check if any popularity indicator should be shown
+ */
+export function shouldShowPopularityIndicator(asset: AtlanAsset): boolean {
+  return calculatePopularityScore(asset) > WARM_THRESHOLD;
+}

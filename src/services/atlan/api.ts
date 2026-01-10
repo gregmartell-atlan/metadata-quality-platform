@@ -102,6 +102,15 @@ export interface AtlanApiConfig {
 
 let config: AtlanApiConfig | null = null;
 
+// Auto-connect in development mode if environment variables are set
+if (import.meta.env.DEV && import.meta.env.VITE_ATLAN_API_KEY && import.meta.env.VITE_ATLAN_BASE_URL) {
+  config = {
+    apiKey: import.meta.env.VITE_ATLAN_API_KEY,
+    baseUrl: import.meta.env.VITE_ATLAN_BASE_URL,
+  };
+  logger.info('[Atlan API] Auto-connected using environment variables');
+}
+
 // Cache for type definitions (forward declaration - used by clearAtlanConfig)
 // These are populated by getClassificationTypeDefs and getBusinessMetadataTypeDefs
 let classificationTypeDefsCache: Map<string, string> | null = null;
@@ -425,6 +434,7 @@ interface SearchRequest {
     query: Record<string, unknown>;
     aggregations?: Record<string, unknown>;
     sort?: Array<Record<string, unknown>>;
+    search_after?: (string | number)[];  // Cursor for deep pagination
   };
   attributes?: string[];
   relationAttributes?: string[];
@@ -527,6 +537,8 @@ interface AtlanEntity {
     columns?: Array<{ guid: string; attributes?: Record<string, unknown> }>;
     [key: string]: unknown;
   };
+  /** Sort values for this entity (used for cursor-based pagination) */
+  sort?: (string | number)[];
 }
 
 /**
@@ -719,12 +731,17 @@ function fieldExistsFilter(field: string): Record<string, unknown> {
 
 /**
  * Search for assets using Atlan Search API
+ * Supports cursor-based pagination via search_after for datasets >10k
  */
 export async function searchAssets(
   query: Record<string, any> | string,
   attributes: string[] = [],
   limit: number = 100,
-  offset: number = 0
+  offset: number = 0,
+  options?: {
+    searchAfter?: (string | number)[];  // Cursor for deep pagination
+    sort?: Array<Record<string, unknown>>;  // Sort fields (required for search_after)
+  }
 ): Promise<AtlanSearchResponse> {
   const defaultAttributes = [
     // Identity + grouping
@@ -835,9 +852,13 @@ export async function searchAssets(
 
   const requestBody: SearchRequest = {
     dsl: {
-      from: offset,
+      from: options?.searchAfter ? 0 : offset,  // Use 0 when using search_after
       size: limit,
       query: searchQuery,
+      // Add sort for cursor-based pagination (required for search_after)
+      sort: options?.sort || (options?.searchAfter ? [{ '__guid': 'asc' }] : undefined),
+      // Add search_after cursor if provided
+      search_after: options?.searchAfter,
     },
     attributes: requestedAttributes,
     relationAttributes: relationAttributes,
@@ -972,10 +993,16 @@ export async function searchAssets(
     return baseAsset as AtlanAsset;
   });
 
+  // Get sort values from the last raw entity for cursor pagination
+  const rawEntities = response.entities || [];
+  const lastRawEntity = rawEntities[rawEntities.length - 1];
+  const lastSort = lastRawEntity?.sort;
+
   return {
     entities,
     approximateCount: response.approximateCount,
     hasMore: (response.approximateCount || 0) > offset + limit,
+    lastSort,
   };
 }
 
@@ -1514,6 +1541,10 @@ export interface HierarchyItem {
   typeName: string;
   childCount?: number;
   fullEntity?: any; // Full Atlan entity with all metadata
+  // Popularity metrics
+  popularityScore?: number;
+  sourceReadCount?: number;
+  sourceReadUserCount?: number;
 }
 
 export interface ConnectorInfo {
@@ -1687,40 +1718,84 @@ export async function getConnectors(): Promise<ConnectorInfo[]> {
 }
 
 /**
+ * Options for hierarchy fetching with popularity filtering
+ */
+export interface HierarchyOptions {
+  popularOnly?: boolean;  // If true, only return assets with popularity data
+  sortByPopularity?: boolean;  // If true, sort by popularity descending
+  limit?: number;  // Max results to return (default varies by asset type)
+  offset?: number;  // For pagination - skip first N results
+}
+
+/**
+ * Result with pagination info for large datasets
+ */
+export interface HierarchyResult {
+  items: HierarchyItem[];
+  total: number;  // Total matching items (before limit)
+  hasMore: boolean;  // True if there are more results beyond the limit
+}
+
+/**
  * Get databases for a connector
  */
-export async function getDatabases(connector: string): Promise<HierarchyItem[]> {
+export async function getDatabases(connector: string, options: HierarchyOptions = {}): Promise<HierarchyItem[]> {
   if (!isConfigured()) {
     throw new Error('Atlan API not configured');
   }
 
+  const { popularOnly = false, sortByPopularity = false, limit = 100 } = options;
+
   // Normalize connector name to lowercase for case-insensitive matching
   const normalizedConnector = connector.toLowerCase();
-  logger.debug('getDatabases called', { input: connector, normalized: normalizedConnector });
+  logger.debug('getDatabases called', { input: connector, normalized: normalizedConnector, popularOnly });
+
+  // Build must conditions
+  const mustConditions: any[] = [
+    { term: { 'connectorName': normalizedConnector } },
+    {
+      terms: {
+        '__typeName.keyword': [
+          'Database',
+          'SnowflakeDatabase',
+          'DatabricksDatabase',
+          'BigQueryDataset',
+          'RedshiftDatabase',
+        ],
+      },
+    },
+  ];
+
+  // Add popularity filter if requested (server-side filtering for scale)
+  if (popularOnly) {
+    mustConditions.push({
+      bool: {
+        should: [
+          { range: { 'sourceReadCount': { gt: 0 } } },
+          { range: { 'popularityScore': { gt: 0 } } },
+        ],
+        minimum_should_match: 1,
+      },
+    });
+  }
 
   // First, try the standard database types
   const query = {
     dsl: {
-      size: 100,
+      size: limit,
       query: {
         bool: {
-          must: [
-            { term: { 'connectorName': normalizedConnector } },
-            {
-              terms: {
-                '__typeName.keyword': [
-                  'Database',
-                  'SnowflakeDatabase',
-                  'DatabricksDatabase',
-                  'BigQueryDataset',
-                  'RedshiftDatabase',
-                ],
-              },
-            },
-          ],
+          must: mustConditions,
           must_not: [{ term: { '__state': 'DELETED' } }],
         },
       },
+      // Sort by popularity if requested (most popular first)
+      ...(sortByPopularity && {
+        sort: [
+          { 'popularityScore': { order: 'desc', missing: '_last' } },
+          { 'sourceReadCount': { order: 'desc', missing: '_last' } },
+        ],
+      }),
     },
     attributes: [
       'name', 'qualifiedName', 'schemaCount', 'connectorName', '__typeName',
@@ -1734,6 +1809,8 @@ export async function getDatabases(connector: string): Promise<HierarchyItem[]> 
       // Technical
       'createTime', 'updateTime', 'createdBy', 'updatedBy',
       'isDiscoverable', 'isEditable', 'isAIGenerated',
+      // Popularity metrics
+      'popularityScore', 'sourceReadCount', 'sourceReadUserCount', 'sourceLastReadAt', 'starredCount',
     ],
     relationAttributes: ['classifications'],
   };
@@ -1749,6 +1826,10 @@ export async function getDatabases(connector: string): Promise<HierarchyItem[]> 
       typeName: e.typeName,
       childCount: e.attributes.schemaCount as number | undefined,
       fullEntity: e, // Store full entity for inspector
+      // Popularity data
+      popularityScore: e.attributes.popularityScore as number | undefined,
+      sourceReadCount: e.attributes.sourceReadCount as number | undefined,
+      sourceReadUserCount: e.attributes.sourceReadUserCount as number | undefined,
     }));
   }
   
@@ -1796,33 +1877,58 @@ export async function getDatabases(connector: string): Promise<HierarchyItem[]> 
 /**
  * Get schemas for a database
  */
-export async function getSchemas(databaseQualifiedName: string): Promise<HierarchyItem[]> {
+export async function getSchemas(databaseQualifiedName: string, options: HierarchyOptions = {}): Promise<HierarchyItem[]> {
   if (!isConfigured()) {
     throw new Error('Atlan API not configured');
   }
 
+  const { popularOnly = false, sortByPopularity = false, limit = 200 } = options;
+
+  // Build must conditions
+  const mustConditions: any[] = [
+    { term: { 'databaseQualifiedName': databaseQualifiedName } },
+    {
+      terms: {
+        '__typeName.keyword': [
+          'Schema',
+          'SnowflakeSchema',
+          'DatabricksSchema',
+          'BigQueryDataset',
+          'RedshiftSchema',
+        ],
+      },
+    },
+  ];
+
+  // Add popularity filter if requested (server-side filtering for scale)
+  if (popularOnly) {
+    mustConditions.push({
+      bool: {
+        should: [
+          { range: { 'sourceReadCount': { gt: 0 } } },
+          { range: { 'popularityScore': { gt: 0 } } },
+        ],
+        minimum_should_match: 1,
+      },
+    });
+  }
+
   const response = await search({
     dsl: {
-      size: 200,
+      size: limit,
       query: {
         bool: {
-          must: [
-            { term: { 'databaseQualifiedName': databaseQualifiedName } },
-            {
-              terms: {
-                '__typeName.keyword': [
-                  'Schema',
-                  'SnowflakeSchema',
-                  'DatabricksSchema',
-                  'BigQueryDataset',
-                  'RedshiftSchema',
-                ],
-              },
-            },
-          ],
+          must: mustConditions,
           must_not: [{ term: { '__state': 'DELETED' } }],
         },
       },
+      // Sort by popularity if requested
+      ...(sortByPopularity && {
+        sort: [
+          { 'popularityScore': { order: 'desc', missing: '_last' } },
+          { 'sourceReadCount': { order: 'desc', missing: '_last' } },
+        ],
+      }),
     },
     attributes: [
       'name', 'qualifiedName', 'tableCount', 'viewCount',
@@ -1836,6 +1942,8 @@ export async function getSchemas(databaseQualifiedName: string): Promise<Hierarc
       // Technical
       'createTime', 'updateTime', 'createdBy', 'updatedBy',
       'isDiscoverable', 'isEditable', 'isAIGenerated',
+      // Popularity metrics
+      'popularityScore', 'sourceReadCount', 'sourceReadUserCount', 'sourceLastReadAt', 'starredCount',
     ],
     relationAttributes: ['classifications'],
   });
@@ -1854,6 +1962,10 @@ export async function getSchemas(databaseQualifiedName: string): Promise<Hierarc
       qualifiedName: (e.attributes.qualifiedName as string) || e.guid,
       typeName: e.typeName,
       childCount: tableCount + viewCount,
+      // Popularity data
+      popularityScore: e.attributes.popularityScore as number | undefined,
+      sourceReadCount: e.attributes.sourceReadCount as number | undefined,
+      sourceReadUserCount: e.attributes.sourceReadUserCount as number | undefined,
     };
   });
 }

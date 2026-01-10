@@ -1,6 +1,6 @@
 /**
  * Asset Context Loader
- * 
+ *
  * Utility functions to load assets based on context type and filters
  */
 
@@ -14,6 +14,14 @@ import {
   fetchAssetsForModel,
   getAsset,
 } from '../services/atlan/api';
+import {
+  loadAssetsBulk,
+  loadAssetsSampled,
+  loadAllAssetsUnlimited,
+  getAssetCount,
+  type BulkLoadOptions,
+  type BulkLoadResult,
+} from '../services/atlan/bulkLoader';
 import { logger } from './logger';
 
 // Cache for loaded assets to avoid redundant API calls
@@ -94,69 +102,127 @@ if (typeof window !== 'undefined') {
 
 /**
  * Load all assets from all connections
- * Note: This may be a large dataset - consider pagination or limiting to specific types
+ * Uses bulk loader with smart strategy selection based on total count
  */
 export async function loadAllAssets(options?: {
   assetTypes?: string[];
   limit?: number;
+  onProgress?: (loaded: number, total: number) => void;
 }): Promise<AtlanAsset[]> {
-  const cacheKey = getCacheKey('all', {});
-  const cached = getCachedAssets(cacheKey);
-  if (cached) {
-    logger.debug('Returning cached all assets', { count: cached.length });
-    return cached;
+  const result = await loadAllAssetsWithMetadata(options);
+  return result.assets;
+}
+
+// Extended cache entry that preserves metadata
+interface CachedBulkResult {
+  assets: AtlanAsset[];
+  metadata: {
+    totalCount: number;
+    isSampled: boolean;
+    sampleRate?: number;
+  };
+  timestamp: number;
+}
+
+const bulkResultCache = new Map<string, CachedBulkResult>();
+
+function getCachedBulkResult(key: string): BulkLoadResult | null {
+  const cached = bulkResultCache.get(key);
+  const now = Date.now();
+
+  if (cached && now - cached.timestamp < CACHE_TTL) {
+    return {
+      assets: cached.assets,
+      totalCount: cached.metadata.totalCount,
+      loadedCount: cached.assets.length,
+      isSampled: cached.metadata.isSampled,
+      sampleRate: cached.metadata.sampleRate,
+    };
   }
 
-  logger.debug('Loading all assets from all connections', options);
-  const allAssets: AtlanAsset[] = [];
+  if (cached) {
+    bulkResultCache.delete(key);
+  }
+
+  return null;
+}
+
+function setCachedBulkResult(key: string, result: BulkLoadResult): void {
+  if (result.assets.length === 0) {
+    return;
+  }
+
+  // Enforce cache size limit
+  if (bulkResultCache.size >= MAX_CACHE_SIZE) {
+    const iterator = bulkResultCache.keys();
+    const oldestKey = iterator.next().value;
+    if (oldestKey) bulkResultCache.delete(oldestKey);
+  }
+
+  bulkResultCache.set(key, {
+    assets: result.assets,
+    metadata: {
+      totalCount: result.totalCount,
+      isSampled: result.isSampled,
+      sampleRate: result.sampleRate,
+    },
+    timestamp: Date.now(),
+  });
+}
+
+/**
+ * Load all assets with full metadata (totalCount, isSampled, etc.)
+ */
+export async function loadAllAssetsWithMetadata(options?: {
+  assetTypes?: string[];
+  limit?: number;
+  onProgress?: (loaded: number, total: number) => void;
+  signal?: AbortSignal;
+}): Promise<BulkLoadResult> {
+  const cacheKey = getCacheKey('all', {});
+
+  // Check bulk result cache first (preserves metadata)
+  const cachedResult = getCachedBulkResult(cacheKey);
+  if (cachedResult) {
+    logger.debug('Returning cached all assets with metadata', {
+      count: cachedResult.loadedCount,
+      totalCount: cachedResult.totalCount,
+      isSampled: cachedResult.isSampled,
+    });
+    return cachedResult;
+  }
+
+  logger.info('Loading all assets using bulk loader');
 
   try {
-    const connectors = await getConnectors();
-    if (!connectors || connectors.length === 0) {
-      logger.warn('No connectors found for All Assets mode');
-      return [];
-    }
-    logger.debug('Found connectors', { count: connectors.length });
+    // Use bulk loader which auto-selects strategy based on count
+    const result = await loadAssetsBulk({
+      assetTypes: options?.assetTypes || ['Table', 'View', 'MaterializedView'],
+      maxAssets: options?.limit || 10000,
+      batchSize: 1000,
+      signal: options?.signal,
+      onProgress: (loaded, total) => {
+        options?.onProgress?.(loaded, total);
+        logger.debug('All assets load progress', { loaded, total });
+      },
+    });
 
-    // Load assets from each connector
-    for (const connector of connectors) {
-      try {
-        const databases = await getDatabases(connector.name);
-        logger.debug(`Loading assets from ${connector.name}`, { databases: databases.length });
+    logger.info('Loaded all assets', {
+      loadedCount: result.loadedCount,
+      totalCount: result.totalCount,
+      isSampled: result.isSampled,
+      sampleRate: result.sampleRate ? `${(result.sampleRate * 100).toFixed(1)}%` : 'N/A'
+    });
 
-        for (const database of databases) {
-          try {
-            const schemas = await getSchemas(database.qualifiedName);
-            logger.debug(`Loading assets from ${database.name}`, { schemas: schemas.length });
-
-            for (const schema of schemas) {
-              try {
-                const assets = await fetchAssetsForModel({
-                  connector: connector.name,
-                  schemaQualifiedName: schema.qualifiedName,
-                  assetTypes: options?.assetTypes || ['Table', 'View', 'MaterializedView'],
-                  size: options?.limit || 200,
-                });
-
-                allAssets.push(...assets);
-                logger.debug(`Loaded ${assets.length} assets from ${schema.name}`);
-              } catch (err) {
-                logger.error(`Failed to load assets from schema ${schema.name}`, err);
-              }
-            }
-          } catch (err) {
-            logger.error(`Failed to load schemas from database ${database.name}`, err);
-          }
-        }
-      } catch (err) {
-        logger.error(`Failed to load databases from connector ${connector.name}`, err);
-      }
-    }
-
-    logger.debug('Loaded all assets', { total: allAssets.length });
-    setCachedAssets(cacheKey, allAssets);
-    return allAssets;
+    // Cache both assets and metadata
+    setCachedBulkResult(cacheKey, result);
+    setCachedAssets(cacheKey, result.assets);
+    return result;
   } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      logger.info('All assets load was cancelled');
+      throw err;
+    }
     logger.error('Failed to load all assets', err);
     throw err;
   }
@@ -164,29 +230,79 @@ export async function loadAllAssets(options?: {
 
 /**
  * Load assets for a specific connection
+ * Uses bulk loader for large connections (like Snowflake with 140k+ assets)
  */
 export async function loadAssetsForConnection(
   connectionName: string,
-  options?: { assetTypes?: string[]; limit?: number }
+  options?: {
+    assetTypes?: string[];
+    limit?: number;
+    onProgress?: (loaded: number, total: number) => void;
+  }
 ): Promise<AtlanAsset[]> {
+  const result = await loadAssetsForConnectionWithMetadata(connectionName, options);
+  return result.assets;
+}
+
+/**
+ * Load assets for a connection with full metadata (totalCount, isSampled, etc.)
+ */
+export async function loadAssetsForConnectionWithMetadata(
+  connectionName: string,
+  options?: {
+    assetTypes?: string[];
+    limit?: number;
+    onProgress?: (loaded: number, total: number) => void;
+    signal?: AbortSignal;
+  }
+): Promise<BulkLoadResult> {
   const cacheKey = getCacheKey('connection', { connectionName });
-  const cached = getCachedAssets(cacheKey);
-  if (cached) {
-    return cached;
+
+  // Check bulk result cache first (preserves metadata)
+  const cachedResult = getCachedBulkResult(cacheKey);
+  if (cachedResult) {
+    logger.debug('Returning cached connection assets with metadata', {
+      connectionName,
+      count: cachedResult.loadedCount,
+      totalCount: cachedResult.totalCount,
+      isSampled: cachedResult.isSampled,
+    });
+    return cachedResult;
   }
 
+  logger.info('loadAssetsForConnection: Starting', { connectionName });
+
   try {
-    // Single query to get all assets for this connector
-    const assets = await fetchAssetsForModel({
-      connector: connectionName,
+    // Use bulk loader which handles pagination and sampling automatically
+    const result = await loadAssetsBulk({
+      connectionName,
       assetTypes: options?.assetTypes || ['Table', 'View', 'MaterializedView'],
-      size: options?.limit || 1000,
+      maxAssets: options?.limit || 10000,
+      batchSize: 1000,
+      signal: options?.signal,
+      onProgress: (loaded, total) => {
+        options?.onProgress?.(loaded, total);
+        logger.debug('Connection load progress', { connectionName, loaded, total });
+      },
     });
 
-    logger.info('loadAssetsForConnection: Completed', { connectionName, totalAssets: assets.length });
-    setCachedAssets(cacheKey, assets);
-    return assets;
+    logger.info('loadAssetsForConnection: Completed', {
+      connectionName,
+      loadedCount: result.loadedCount,
+      totalCount: result.totalCount,
+      isSampled: result.isSampled,
+      sampleRate: result.sampleRate ? `${(result.sampleRate * 100).toFixed(1)}%` : 'N/A'
+    });
+
+    // Cache both assets and metadata
+    setCachedBulkResult(cacheKey, result);
+    setCachedAssets(cacheKey, result.assets);
+    return result;
   } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      logger.info(`loadAssetsForConnection: Cancelled for ${connectionName}`);
+      throw err;
+    }
     logger.error(`loadAssetsForConnection: Failed for ${connectionName}`, err);
     throw err;
   }
@@ -269,7 +385,7 @@ export async function loadAssetsForSchema(
       connector: connectionName,
       schemaQualifiedName: schema.qualifiedName,
       assetTypes: options?.assetTypes || ['Table', 'View', 'MaterializedView'],
-      size: options?.limit || 200,
+      size: options?.limit || 1000, // Increased from 200 to handle larger schemas
     });
 
     logger.debug('Loaded schema assets', { connectionName, databaseName, schemaName, count: assets.length });

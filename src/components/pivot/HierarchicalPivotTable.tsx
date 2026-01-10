@@ -6,6 +6,8 @@ import { calculateMeasure } from '../../utils/pivotMeasures';
 import { getDimensionIcon, getDimensionLabel } from '../../utils/pivotDimensions';
 import { formatMeasure, getMeasureLabel } from '../../utils/pivotMeasures';
 import { getScoreClass } from '../../utils/scoreThresholds';
+import { isHotAsset, isWarmAsset } from '../../utils/popularityScore';
+import { PopularityBadge } from '../shared/PopularityBadge';
 import './HierarchicalPivotTable.css';
 
 interface HierarchicalPivotTableProps {
@@ -214,6 +216,11 @@ export function HierarchicalPivotTable({ data, assets, className = '', onRowClic
           const rowAssets = assets.filter((a) => row.assetGuids.includes(a.guid));
           const isClickable = onRowClick && rowAssets.length > 0;
 
+          // Check for hot/warm assets in this group
+          const hotCount = rowAssets.filter(isHotAsset).length;
+          const warmCount = rowAssets.filter(isWarmAsset).length;
+          const hasPopularAssets = hotCount > 0 || warmCount > 0;
+
           return (
             <tr
               key={row.rowKey}
@@ -248,6 +255,13 @@ export function HierarchicalPivotTable({ data, assets, className = '', onRowClic
                     </span>
                   )}
                   <span className="dim-value">{currentValue}</span>
+                  {hasPopularAssets && (
+                    <PopularityBadge
+                      level={hotCount > 0 ? 'hot' : 'warm'}
+                      count={hotCount || warmCount}
+                      size="sm"
+                    />
+                  )}
                 </div>
               </td>
 

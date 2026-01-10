@@ -24,7 +24,16 @@ import {
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useAssetInspectorStore } from '../../stores/assetInspectorStore';
 import { getConnectors, getDatabases, getSchemas, getTables, type ConnectorInfo, type HierarchyItem } from '../../services/atlan/api';
-import { loadAssetsForContext, generateContextLabel } from '../../utils/assetContextLoader';
+import {
+  loadAssetsForContext,
+  generateContextLabel,
+  loadAllAssetsWithMetadata,
+  loadAssetsForConnectionWithMetadata,
+} from '../../utils/assetContextLoader';
+import { LoadingProgress } from '../shared/LoadingProgress';
+import { PopularityIndicator, getPopularityLevel } from '../shared/PopularityBadge';
+import { logger } from '../../utils/logger';
+import type { AtlanAsset } from '../../services/atlan/types';
 import './HierarchicalContextBar.css';
 
 interface HierarchyLevel {
@@ -41,6 +50,22 @@ interface DropdownItem {
   qualifiedName?: string;
   count?: number;
   icon?: React.ReactNode;
+  popularityLevel?: 'hot' | 'warm' | 'normal';
+  guid?: string;
+}
+
+// Helper to extract popularity level from a full entity
+function getEntityPopularityLevel(entity: any): 'hot' | 'warm' | 'normal' {
+  if (!entity) return 'normal';
+  const attrs = entity.attributes || entity;
+  // Create minimal asset object for popularity calculation
+  const assetLike: Partial<AtlanAsset> = {
+    popularityScore: attrs.popularityScore,
+    sourceReadCount: attrs.sourceReadCount,
+    sourceReadUserCount: attrs.sourceReadUserCount,
+    starredCount: attrs.starredCount,
+  };
+  return getPopularityLevel(assetLike as AtlanAsset);
 }
 
 // Helper to transform fullEntity to AtlanAsset format for inspector
@@ -81,7 +106,15 @@ function transformEntityForInspector(entity: any): any {
 }
 
 export function HierarchicalContextBar() {
-  const { context, contextAssets, setContext, setLoading } = useAssetContextStore();
+  const {
+    context,
+    contextAssets,
+    setContext,
+    setContextWithMetadata,
+    setLoading,
+    loadingProgress,
+    setLoadingProgress,
+  } = useAssetContextStore();
   const { openInspector } = useAssetInspectorStore();
 
   // Dropdown state
@@ -123,7 +156,7 @@ export function HierarchicalContextBar() {
         setConnectionEntities(entitiesMap);
         setConnections(conns);
       })
-      .catch(console.error);
+      .catch(logger.error);
   }, []);
 
   // Sync with context store
@@ -169,10 +202,11 @@ export function HierarchicalContextBar() {
             displayName: db.name,
             qualifiedName: db.qualifiedName,
             count: db.childCount,
-            icon: <Folder size={16} />
+            icon: <Folder size={16} />,
+            popularityLevel: getEntityPopularityLevel(db.fullEntity)
           })));
         })
-        .catch(console.error)
+        .catch(logger.error)
         .finally(() => setIsLoadingLevel(null));
     } else {
       setDatabases([]);
@@ -207,10 +241,11 @@ export function HierarchicalContextBar() {
               displayName: sch.name,
               qualifiedName: sch.qualifiedName,
               count: sch.childCount,
-              icon: <Table2 size={16} />
+              icon: <Table2 size={16} />,
+              popularityLevel: getEntityPopularityLevel(sch.fullEntity)
             })));
           })
-          .catch(console.error)
+          .catch(logger.error)
           .finally(() => setIsLoadingLevel(null));
       }
     } else {
@@ -247,10 +282,11 @@ export function HierarchicalContextBar() {
               displayName: tbl.name,
               qualifiedName: tbl.qualifiedName,
               count: tbl.childCount, // column count
-              icon: <Table2 size={16} />
+              icon: <Table2 size={16} />,
+              popularityLevel: getEntityPopularityLevel(tbl.fullEntity)
             })));
           })
-          .catch(console.error)
+          .catch(logger.error)
           .finally(() => setIsLoadingLevel(null));
       }
     } else {
@@ -268,13 +304,30 @@ export function HierarchicalContextBar() {
     setActiveDropdown(null);
 
     setLoading(true);
+    setLoadingProgress(null);
     try {
-      const assets = await loadAssetsForContext('connection', { connectionName: connName });
+      // Use WithMetadata variant for connection loading - supports large datasets with progress
+      const result = await loadAssetsForConnectionWithMetadata(connName, {
+        onProgress: (loaded, total) => {
+          setLoadingProgress({ loaded, total });
+        },
+      });
       const label = generateContextLabel('connection', { connectionName: connName });
-      setContext('connection', { connectionName: connName }, label, assets);
+      setContextWithMetadata(
+        'connection',
+        { connectionName: connName },
+        label,
+        result.assets,
+        {
+          totalCount: result.totalCount,
+          isSampled: result.isSampled,
+          sampleRate: result.sampleRate,
+        }
+      );
     } catch (err) {
-      console.error('Failed to load connection context:', err);
+      logger.error('Failed to load connection context:', err);
     }
+    setLoadingProgress(null);
     setLoading(false);
   };
 
@@ -297,7 +350,7 @@ export function HierarchicalContextBar() {
       });
       setContext('database', { connectionName: selectedConnection, databaseName: dbName }, label, assets);
     } catch (err) {
-      console.error('Failed to load database context:', err);
+      logger.error('Failed to load database context:', err);
     }
     setLoading(false);
   };
@@ -327,7 +380,7 @@ export function HierarchicalContextBar() {
         schemaName
       }, label, assets);
     } catch (err) {
-      console.error('Failed to load schema context:', err);
+      logger.error('Failed to load schema context:', err);
     }
     setLoading(false);
   };
@@ -363,17 +416,48 @@ export function HierarchicalContextBar() {
         assetGuid: tableItem?.guid
       }, label, assets);
     } catch (err) {
-      console.error('Failed to load table context:', err);
+      logger.error('Failed to load table context:', err);
     }
     setLoading(false);
   };
 
-  const handleClearContext = () => {
+  const handleClearContext = async () => {
+    // Clear local selection state
     setSelectedConnection(null);
     setSelectedDatabase(null);
     setSelectedSchema(null);
     setSelectedTable(null);
     setActiveDropdown(null);
+
+    // Load all assets as the default context
+    setLoading(true);
+    setLoadingProgress(null);
+    try {
+      // Use WithMetadata variant for all assets - supports large datasets with progress
+      const result = await loadAllAssetsWithMetadata({
+        onProgress: (loaded, total) => {
+          setLoadingProgress({ loaded, total });
+        },
+      });
+      const label = generateContextLabel('all', {});
+      setContextWithMetadata(
+        'all',
+        {},
+        label,
+        result.assets,
+        {
+          totalCount: result.totalCount,
+          isSampled: result.isSampled,
+          sampleRate: result.sampleRate,
+        }
+      );
+    } catch (err) {
+      logger.error('Failed to load all assets:', err);
+      // Clear context on error - shows empty state
+      useAssetContextStore.getState().clearContext();
+    }
+    setLoadingProgress(null);
+    setLoading(false);
   };
 
   const getConnectionIcon = (name: string) => {
@@ -386,9 +470,28 @@ export function HierarchicalContextBar() {
   // Calculate total asset count
   const assetCount = contextAssets.length;
 
+  // Check if we're in "All Assets" mode
+  const isAllAssetsMode = context?.type === 'all';
+
   return (
     <div className="hierarchical-context-bar" ref={barRef}>
       <div className="context-breadcrumbs">
+        {/* All Assets indicator - shown when context is 'all' */}
+        {isAllAssetsMode && (
+          <>
+            <div className="breadcrumb-segment">
+              <span className="breadcrumb-trigger selected all-assets-badge">
+                <Database size={16} />
+                <span className="breadcrumb-label">All Assets</span>
+                {assetCount > 0 && (
+                  <span className="breadcrumb-count-pill">{assetCount.toLocaleString()}</span>
+                )}
+              </span>
+            </div>
+            <span className="breadcrumb-separator">/</span>
+          </>
+        )}
+
         {/* Connection Level */}
         <div className="breadcrumb-segment">
           <button
@@ -403,7 +506,9 @@ export function HierarchicalContextBar() {
             ) : (
               <>
                 <Database size={16} className="text-muted" />
-                <span className="breadcrumb-label breadcrumb-placeholder">Connection</span>
+                <span className="breadcrumb-label breadcrumb-placeholder">
+                  {isAllAssetsMode ? 'Filter by Connection' : 'Connection'}
+                </span>
               </>
             )}
             <ChevronDown size={12} className="breadcrumb-chevron" />
@@ -416,6 +521,23 @@ export function HierarchicalContextBar() {
                 <span className="dropdown-count">{connections.length} available</span>
               </div>
               <div className="dropdown-items">
+                {/* All Assets option */}
+                <div className="dropdown-item-wrapper">
+                  <button
+                    className={`dropdown-item dropdown-item-all ${isAllAssetsMode && !selectedConnection ? 'selected' : ''}`}
+                    onClick={() => {
+                      handleClearContext();
+                    }}
+                  >
+                    <Database size={16} />
+                    <span className="item-name">All Assets</span>
+                    <span className="item-count">Browse all</span>
+                    {isAllAssetsMode && !selectedConnection && (
+                      <Check size={14} className="item-check" />
+                    )}
+                  </button>
+                </div>
+                <div className="dropdown-divider" />
                 {connections.map(conn => (
                   <div key={conn.id} className="dropdown-item-wrapper">
                     <button
@@ -496,7 +618,12 @@ export function HierarchicalContextBar() {
                       onClick={() => handleSelectDatabase(db.name)}
                     >
                       <Folder size={16} />
-                      <span className="item-name">{db.displayName}</span>
+                      <span className="item-name">
+                        {db.displayName}
+                        {db.popularityLevel && db.popularityLevel !== 'normal' && (
+                          <PopularityIndicator level={db.popularityLevel} size="sm" />
+                        )}
+                      </span>
                       {db.count !== undefined && (
                         <span className="item-count">{db.count.toLocaleString()}</span>
                       )}
@@ -574,7 +701,12 @@ export function HierarchicalContextBar() {
                       onClick={() => handleSelectSchema(sch.name)}
                     >
                       <Table2 size={16} />
-                      <span className="item-name">{sch.displayName}</span>
+                      <span className="item-name">
+                        {sch.displayName}
+                        {sch.popularityLevel && sch.popularityLevel !== 'normal' && (
+                          <PopularityIndicator level={sch.popularityLevel} size="sm" />
+                        )}
+                      </span>
                       {sch.count !== undefined && (
                         <span className="item-count">{sch.count.toLocaleString()}</span>
                       )}
@@ -655,7 +787,12 @@ export function HierarchicalContextBar() {
                         onClick={() => handleSelectTable(tbl.name)}
                       >
                         <Table2 size={16} />
-                        <span className="item-name">{tbl.displayName}</span>
+                        <span className="item-name">
+                          {tbl.displayName}
+                          {tbl.popularityLevel && tbl.popularityLevel !== 'normal' && (
+                            <PopularityIndicator level={tbl.popularityLevel} size="sm" />
+                          )}
+                        </span>
                         {tbl.count !== undefined && tbl.count > 0 && (
                           <span className="item-count">{tbl.count} cols</span>
                         )}
@@ -687,15 +824,26 @@ export function HierarchicalContextBar() {
           </div>
         )}
 
-        {/* Clear Context Button - Only show if something is selected */}
+        {/* Clear Context Button - Show if a specific selection is made */}
         {selectedConnection && (
           <button
             className="context-clear-btn-icon"
             onClick={handleClearContext}
-            title="Clear context"
+            title="Reset to All Assets"
           >
             <X size={14} />
           </button>
+        )}
+
+        {/* Progress indicator during bulk asset loading */}
+        {loadingProgress && (
+          <LoadingProgress
+            loaded={loadingProgress.loaded}
+            total={loadingProgress.total}
+            label="Loading assets"
+            variant="compact"
+            size="sm"
+          />
         )}
       </div>
     </div>

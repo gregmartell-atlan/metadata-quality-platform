@@ -73,12 +73,30 @@ export function extractDatabase(asset: AtlanAsset): string | null {
     const parts = asset.databaseQualifiedName.split('/');
     return parts[parts.length - 1] || null;
   }
-  // Try parsing from qualifiedName (format: connection/database/schema/table)
+  // Try parsing from qualifiedName
+  // Atlan format: default/{connector}/{connection_guid_or_name}/{database}/{schema}/{table}
+  // Or for some connectors: default/{connector}/{timestamp}/{connection_name}/{database}/{schema}/{table}
   const qn = asset.qualifiedName || asset.attributes?.qualifiedName;
   if (qn) {
     const parts = qn.split('/');
-    if (parts.length >= 2) {
-      return parts[1] || null;
+    // For tables/views, database is typically 3rd-to-last (before schema and table)
+    // Format variations:
+    // - default/snowflake/12345/DBNAME/SCHEMA/TABLE (6 parts)
+    // - default/snowflake/12345/conn-name/DBNAME/SCHEMA/TABLE (7 parts)
+    if (parts.length >= 6) {
+      // For Table/View assets, assume: .../database/schema/tablename
+      const typeName = asset.typeName?.toLowerCase() || '';
+      if (typeName.includes('table') || typeName.includes('view') || typeName.includes('column')) {
+        // Database is 3rd from last for tables (before schema and table)
+        return parts[parts.length - 3] || null;
+      } else if (typeName.includes('schema')) {
+        // For schema assets, database is 2nd from last
+        return parts[parts.length - 2] || null;
+      }
+    }
+    // Fallback: try parts[3] for older format
+    if (parts.length >= 4) {
+      return parts[3] || null;
     }
   }
   return null;
@@ -98,12 +116,25 @@ export function extractSchema(asset: AtlanAsset): string | null {
     const parts = asset.schemaQualifiedName.split('/');
     return parts[parts.length - 1] || null;
   }
-  // Try parsing from qualifiedName (format: connection/database/schema/table)
+  // Try parsing from qualifiedName
+  // Atlan format: default/{connector}/{connection_guid_or_name}/{database}/{schema}/{table}
   const qn = asset.qualifiedName || asset.attributes?.qualifiedName;
   if (qn) {
     const parts = qn.split('/');
-    if (parts.length >= 3) {
-      return parts[2] || null;
+    // For tables/views, schema is 2nd-to-last (before table name)
+    // Format variations:
+    // - default/snowflake/12345/DBNAME/SCHEMA/TABLE (6 parts)
+    // - default/snowflake/12345/conn-name/DBNAME/SCHEMA/TABLE (7 parts)
+    if (parts.length >= 6) {
+      const typeName = asset.typeName?.toLowerCase() || '';
+      if (typeName.includes('table') || typeName.includes('view') || typeName.includes('column')) {
+        // Schema is 2nd from last for tables (before table name)
+        return parts[parts.length - 2] || null;
+      }
+    }
+    // Fallback: try parts[4] for older format
+    if (parts.length >= 5) {
+      return parts[4] || null;
     }
   }
   return null;

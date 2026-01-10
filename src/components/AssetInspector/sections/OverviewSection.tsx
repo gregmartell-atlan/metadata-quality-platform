@@ -9,6 +9,7 @@ import { useState } from 'react';
 import type { AtlanAsset } from '../../../services/atlan/types';
 import { useScoresStore } from '../../../stores/scoresStore';
 import { ScoreBadge } from '../../shared/ScoreBadge';
+import { PopularityBadge, shouldShowPopularity } from '../../shared/PopularityBadge';
 import { getPopularityDisplay, formatQueryCount } from '../../../utils/popularityScore';
 
 interface OverviewSectionProps {
@@ -59,6 +60,9 @@ export function OverviewSection({ asset }: OverviewSectionProps) {
             <Table2 size={20} />
             <span>{asset.typeName}</span>
           </div>
+          {shouldShowPopularity(asset) && (
+            <PopularityBadge asset={asset} size="md" showLabel />
+          )}
           {asset.certificateStatus && (
             <span className={`inspector-badge ${asset.certificateStatus.toLowerCase()}`}>
               {asset.certificateStatus}
