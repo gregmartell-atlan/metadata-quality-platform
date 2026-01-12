@@ -19,6 +19,7 @@ function hasValue<T>(val: T | null | undefined): val is T {
 
 // Completeness: coverage of key fields
 export function scoreCompleteness(asset: AtlanAssetSummary): number {
+  // TODO: Add DQ rule coverage and profiling coverage once aggregated data is wired in.
   const checks = [
     hasValue(asset.userDescription || asset.description),
     hasValue(asset.ownerUsers) || hasValue(asset.ownerGroups),
@@ -91,6 +92,7 @@ export function scoreConsistency(asset: AtlanAssetSummary): number {
 
 // Usability: engagement/consumption proxies
 export function scoreUsability(asset: AtlanAssetSummary): number {
+  // TODO: Incorporate aggregated usage rollups (searchlog) once available.
   let score = 0;
   let total = 0;
   // Engagement
@@ -660,4 +662,3 @@ export function aggregateQualityScores(assets: AssetMetadata[]): {
     overall: Math.round(totals.overall / count),
   };
 }
-

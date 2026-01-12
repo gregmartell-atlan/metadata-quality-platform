@@ -318,6 +318,50 @@ export interface AtlanSearchResponse {
 }
 
 /**
+ * Search log aggregation request (aggregated usage only)
+ */
+export interface AtlanSearchLogRequest {
+  dsl: Record<string, unknown>;
+}
+
+/**
+ * Search log aggregation response (shape depends on aggregation)
+ */
+export interface AtlanSearchLogResponse {
+  aggregations?: Record<string, unknown>;
+  entities?: Array<Record<string, unknown>>;
+  approximateCount?: number;
+}
+
+/**
+ * Audit search request
+ */
+export interface AtlanAuditSearchRequest {
+  dsl: Record<string, unknown>;
+}
+
+/**
+ * Audit search event (minimal normalized fields)
+ */
+export interface AtlanAuditEvent {
+  guid?: string;
+  typeName?: string;
+  timestamp?: number;
+  action?: string;
+  user?: string;
+  detail?: Record<string, unknown>;
+  entity?: Record<string, unknown>;
+}
+
+/**
+ * Audit search response
+ */
+export interface AtlanAuditSearchResponse {
+  entities?: AtlanAuditEvent[];
+  approximateCount?: number;
+}
+
+/**
  * Raw Atlan Lineage API Response (actual format from /api/meta/lineage/list)
  */
 export interface AtlanLineageRawResponse {

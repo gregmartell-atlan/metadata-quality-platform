@@ -4,7 +4,16 @@
 // Replicated from atlan-metadata-designer
 // ============================================
 
-import type { AtlanAsset, AtlanSearchResponse, AtlanLineageResponse, AtlanLineageRawResponse } from './types';
+import type {
+  AtlanAsset,
+  AtlanSearchResponse,
+  AtlanLineageResponse,
+  AtlanLineageRawResponse,
+  AtlanSearchLogRequest,
+  AtlanSearchLogResponse,
+  AtlanAuditSearchRequest,
+  AtlanAuditSearchResponse,
+} from './types';
 import { apiFetch } from '../../utils/apiClient';
 import { logger } from '../../utils/logger';
 import { deduplicateRequest } from '../../utils/requestDeduplication';
@@ -1004,6 +1013,60 @@ export async function searchAssets(
     hasMore: (response.approximateCount || 0) > offset + limit,
     lastSort,
   };
+}
+
+// ============================================
+// SEARCH LOGS (AGGREGATED USAGE)
+// ============================================
+
+/**
+ * Fetch aggregated search log data (usage rollups).
+ * TODO: Wire to reporting infra for periodic rollups and caching.
+ */
+export async function getSearchLogAggregations(
+  request: AtlanSearchLogRequest
+): Promise<AtlanSearchLogResponse | null> {
+  const response = await atlanFetch<AtlanSearchLogResponse>(
+    '/api/meta/search/searchlog',
+    {
+      method: 'POST',
+      body: JSON.stringify(request),
+    }
+  );
+
+  if (response.error) {
+    logger.warn('Search log aggregation failed', { error: response.error });
+    return null;
+  }
+
+  return response.data ?? null;
+}
+
+// ============================================
+// AUDIT SEARCH (CHANGE EVENTS)
+// ============================================
+
+/**
+ * Fetch audit events for change/operations analyses.
+ * TODO: Normalize audit payloads and persist to reporting infra.
+ */
+export async function getAuditSearchEvents(
+  request: AtlanAuditSearchRequest
+): Promise<AtlanAuditSearchResponse | null> {
+  const response = await atlanFetch<AtlanAuditSearchResponse>(
+    '/api/meta/entity/auditSearch',
+    {
+      method: 'POST',
+      body: JSON.stringify(request),
+    }
+  );
+
+  if (response.error) {
+    logger.warn('Audit search failed', { error: response.error });
+    return null;
+  }
+
+  return response.data ?? null;
 }
 
 /**

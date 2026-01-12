@@ -196,6 +196,51 @@ export function extractCertificationStatus(asset: AtlanAsset): string {
   return 'None';
 }
 
+function extractHasTerms(asset: AtlanAsset): string {
+  const hasTerms = Array.isArray(asset.meanings) && asset.meanings.length > 0;
+  return hasTerms ? 'Yes' : 'No';
+}
+
+function extractHasTags(asset: AtlanAsset): string {
+  const hasTags = (Array.isArray(asset.classificationNames) && asset.classificationNames.length > 0) ||
+    (Array.isArray(asset.atlanTags) && asset.atlanTags.length > 0) ||
+    (Array.isArray(asset.assetTags) && asset.assetTags.length > 0);
+  return hasTags ? 'Yes' : 'No';
+}
+
+function extractHasReadme(asset: AtlanAsset): string {
+  return asset.readme ? 'Yes' : 'No';
+}
+
+function extractAnnouncementType(asset: AtlanAsset): string {
+  return asset.announcementType || 'None';
+}
+
+function extractPopularityBucket(asset: AtlanAsset): string {
+  if (asset.popularityScore === undefined && asset.sourceReadCount === undefined) {
+    return 'No Data';
+  }
+  const score = asset.popularityScore ?? 0;
+  if (score >= 0.8) return 'Hot';
+  if (score >= 0.5) return 'Warm';
+  return 'Normal';
+}
+
+function extractUpdateAgeBucket(asset: AtlanAsset): string {
+  const ts = asset.updateTime;
+  if (!ts) return 'Unknown';
+  const days = Math.floor((Date.now() - ts) / (1000 * 60 * 60 * 24));
+  if (days <= 30) return '0-30d';
+  if (days <= 90) return '31-90d';
+  if (days <= 180) return '91-180d';
+  return '180d+';
+}
+
+function extractLineageStatus(asset: AtlanAsset): string {
+  // TODO: Replace with upstream/downstream status once lineage map is available.
+  return asset.__hasLineage ? 'Has Lineage' : 'No Lineage';
+}
+
 /**
  * Extract dimension value from asset
  */
@@ -220,6 +265,20 @@ export function extractDimensionValue(
       return extractDomain(asset);
     case 'certificationStatus':
       return extractCertificationStatus(asset);
+    case 'hasTerms':
+      return extractHasTerms(asset);
+    case 'hasTags':
+      return extractHasTags(asset);
+    case 'hasReadme':
+      return extractHasReadme(asset);
+    case 'announcementType':
+      return extractAnnouncementType(asset);
+    case 'popularityBucket':
+      return extractPopularityBucket(asset);
+    case 'updateAgeBucket':
+      return extractUpdateAgeBucket(asset);
+    case 'lineageStatus':
+      return extractLineageStatus(asset);
     default:
       return null;
   }
@@ -238,6 +297,13 @@ export function getDimensionLabel(dimension: string): string {
     ownerGroup: 'Owner Group',
     domain: 'Domain',
     certificationStatus: 'Certification Status',
+    hasTerms: 'Has Terms',
+    hasTags: 'Has Tags',
+    hasReadme: 'Has README',
+    announcementType: 'Announcement Type',
+    popularityBucket: 'Popularity Bucket',
+    updateAgeBucket: 'Update Age',
+    lineageStatus: 'Lineage Status',
   };
   return labels[dimension] || dimension;
 }
@@ -255,7 +321,13 @@ export function getDimensionIcon(dimension: string): string {
     ownerGroup: '👥',
     domain: '🏢',
     certificationStatus: '✓',
+    hasTerms: '📘',
+    hasTags: '🏷️',
+    hasReadme: '📄',
+    announcementType: '📣',
+    popularityBucket: '🔥',
+    updateAgeBucket: '⏱️',
+    lineageStatus: '🔗',
   };
   return icons[dimension] || '📊';
 }
-

@@ -73,7 +73,7 @@ function setCachedLineage(guid: string, data: LineageInfo): void {
 /**
  * Fetch lineage for a single asset (with deduplication for concurrent requests)
  */
-export async function fetchLineageForAsset(guid: string): Promise<LineageInfo> {
+export async function fetchLineageForAsset(guid: string, depth: number = 1): Promise<LineageInfo> {
   // Check cache first
   const cached = getCachedLineage(guid);
   if (cached) {
@@ -91,8 +91,8 @@ export async function fetchLineageForAsset(guid: string): Promise<LineageInfo> {
     try {
       // Fetch both upstream and downstream lineage
       const [upstreamResponse, downstreamResponse] = await Promise.allSettled([
-        getLineage(guid, 'upstream', 1), // Depth 1 to check existence
-        getLineage(guid, 'downstream', 1),
+        getLineage(guid, 'upstream', depth),
+        getLineage(guid, 'downstream', depth),
       ]);
 
       // Check if lineage exists by looking at relations or guidEntityMap
@@ -152,7 +152,8 @@ export async function fetchLineageForAsset(guid: string): Promise<LineageInfo> {
  */
 export async function fetchLineageForAssets(
   assets: AtlanAsset[],
-  concurrency: number = 5
+  concurrency: number = 5,
+  depth: number = 1
 ): Promise<Map<string, LineageInfo>> {
   const results = new Map<string, LineageInfo>();
   const guids = assets.map((a) => a.guid);
@@ -161,7 +162,7 @@ export async function fetchLineageForAssets(
   for (let i = 0; i < guids.length; i += concurrency) {
     const batch = guids.slice(i, i + concurrency);
     const batchResults = await Promise.all(
-      batch.map((guid) => fetchLineageForAsset(guid))
+      batch.map((guid) => fetchLineageForAsset(guid, depth))
     );
     
     batchResults.forEach((info) => {
@@ -178,4 +179,3 @@ export async function fetchLineageForAssets(
 export function clearLineageCache(): void {
   cache.clear();
 }
-

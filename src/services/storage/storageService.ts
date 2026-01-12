@@ -49,6 +49,7 @@ class StorageService {
     this.sessionId = generateSessionId();
 
     logger.info('[StorageService] Initialized with backend:', this.config.backend);
+    // TODO: Add API backend export hook for reporting infra snapshots/rollups.
   }
 
   /**

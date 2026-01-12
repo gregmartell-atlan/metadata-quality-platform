@@ -196,6 +196,45 @@ export function calculateMeasure(
       return Math.round((withLineage / assets.length) * 100);
     }
 
+    case 'totalViews': {
+      // TODO: Replace with aggregated searchlog rollups once available.
+      const total = assets.reduce((sum, asset) => sum + (asset.sourceReadCount || 0), 0);
+      return total;
+    }
+
+    case 'distinctViewers': {
+      // TODO: Replace with aggregated searchlog rollups once available.
+      const total = assets.reduce((sum, asset) => sum + (asset.sourceReadUserCount || 0), 0);
+      return total;
+    }
+
+    case 'profilingCoverage': {
+      const profiled = assets.filter((asset) => (asset as any).lastProfiledAt || (asset as any).isProfiled).length;
+      return Math.round((profiled / assets.length) * 100);
+    }
+
+    case 'dqRuleCoverage': {
+      const withDq = assets.filter((asset) => {
+        const summary = (asset as any).dataQualitySummary;
+        const sodaCount = (asset as any).assetSodaCheckCount;
+        const mcCount = (asset as any).assetMcMonitorCount;
+        return (summary && summary.total > 0) || (sodaCount && sodaCount > 0) || (mcCount && mcCount > 0);
+      }).length;
+      return Math.round((withDq / assets.length) * 100);
+    }
+
+    case 'churnEvents': {
+      // TODO: Implement using auditSearch aggregates (change events per asset).
+      logger.debug('calculateMeasure: churnEvents requires auditSearch rollups');
+      return 0;
+    }
+
+    case 'timeToSteward': {
+      // TODO: Implement using auditSearch (created -> first owner assignment).
+      logger.debug('calculateMeasure: timeToSteward requires auditSearch rollups');
+      return 0;
+    }
+
     case 'hasUpstream': {
       // Assets with upstream lineage (has inputs)
       if (lineageMap) {
@@ -305,6 +344,12 @@ export function getMeasureLabel(measure: string): string {
     ownerCoverage: '% with Owner',
     certificationCoverage: '% Certified',
     lineageCoverage: '% with Lineage',
+    totalViews: 'Total Views',
+    distinctViewers: 'Distinct Viewers',
+    profilingCoverage: '% Profiled',
+    dqRuleCoverage: '% with DQ Rules',
+    churnEvents: 'Churn Events',
+    timeToSteward: 'Avg Time to Steward (days)',
     hasUpstream: 'Has Upstream',
     hasDownstream: 'Has Downstream',
     fullLineage: 'Full Lineage',
@@ -318,7 +363,7 @@ export function getMeasureLabel(measure: string): string {
  * Format measure value
  */
 export function formatMeasure(measure: string, value: number): string {
-  if (measure === 'assetCount' || measure === 'orphaned') {
+  if (measure === 'assetCount' || measure === 'orphaned' || measure === 'totalViews' || measure === 'distinctViewers' || measure === 'churnEvents' || measure === 'timeToSteward') {
     return value.toString();
   }
   if (measure === 'overall' || measure === 'avgCompleteness' || measure === 'completeness' || measure === 'accuracy' || measure === 'timeliness' || measure === 'consistency' || measure === 'usability') {
@@ -327,4 +372,3 @@ export function formatMeasure(measure: string, value: number): string {
   // All others are percentages
   return `${value}%`;
 }
-
