@@ -5,6 +5,7 @@
  */
 
 import type { AtlanAsset } from '../services/atlan/types';
+import type { MeasureDisplayMode } from '../types/pivot';
 import { scoreAssetQuality } from '../services/qualityMetrics';
 import type { LineageInfo } from '../services/atlan/lineageEnricher';
 import { logger } from './logger';
@@ -359,6 +360,29 @@ export function getMeasureLabel(measure: string): string {
   return labels[measure] || measure;
 }
 
+const PERCENT_MEASURES = new Set<string>([
+  'completeness',
+  'accuracy',
+  'timeliness',
+  'consistency',
+  'usability',
+  'overall',
+  'avgCompleteness',
+  'descriptionCoverage',
+  'ownerCoverage',
+  'certificationCoverage',
+  'lineageCoverage',
+  'hasUpstream',
+  'hasDownstream',
+  'fullLineage',
+  'profilingCoverage',
+  'dqRuleCoverage',
+]);
+
+export function isPercentMeasure(measure: string): boolean {
+  return PERCENT_MEASURES.has(measure);
+}
+
 /**
  * Format measure value
  */
@@ -371,4 +395,18 @@ export function formatMeasure(measure: string, value: number): string {
   }
   // All others are percentages
   return `${value}%`;
+}
+
+export function formatMeasureWithMode(
+  measure: string,
+  value: number,
+  mode?: MeasureDisplayMode
+): string {
+  if (mode === 'numeric') {
+    return value.toString();
+  }
+  if (mode === 'percentage') {
+    return isPercentMeasure(measure) ? `${value}%` : value.toString();
+  }
+  return formatMeasure(measure, value);
 }

@@ -15,7 +15,7 @@ import {
 import {
   calculateMeasure,
   getMeasureLabel,
-  formatMeasure,
+  formatMeasureWithMode,
 } from './pivotMeasures';
 import { getScoreClass } from './scoreThresholds';
 import type { LineageInfo } from '../services/atlan/lineageEnricher';
@@ -373,8 +373,8 @@ export function pivotDataToTableRows(
     // Measure cells
     data.measureOrder.forEach((measure) => {
       const value = row.measures[measure];
-      const formatted = formatMeasure(measure, value);
       const displayMode = data.measureDisplayModes?.get(measure) || 'auto';
+      const formatted = formatMeasureWithMode(measure, value, displayMode);
 
       if (shouldShowAsBar(measure, value, displayMode)) {
         // Show as visual bar
@@ -389,9 +389,6 @@ export function pivotDataToTableRows(
             <span className="bar-value">{formatted}</span>
           </div>
         );
-      } else if (displayMode === 'percentage' && measure !== 'assetCount') {
-        // Show as percentage
-        cells.push(`${value}%`);
       } else {
         // Show as numeric
         cells.push(formatted);
@@ -419,6 +416,7 @@ export function pivotDataToTableRows(
     
     // For percentage measures, use weighted average
     data.measureOrder.forEach((measure) => {
+      const displayMode = data.measureDisplayModes?.get(measure) || 'auto';
       if (measure === 'assetCount') {
         totalCells.push(<strong key={`total-${measure}`}>{totalAssets}</strong>);
       } else {
@@ -427,7 +425,11 @@ export function pivotDataToTableRows(
           return sum + (row.measures[measure] * row.assetCount);
         }, 0);
         const avg = Math.round(total / totalAssets);
-        totalCells.push(<strong key={`total-${measure}`}>{formatMeasure(measure, avg)}</strong>);
+        totalCells.push(
+          <strong key={`total-${measure}`}>
+            {formatMeasureWithMode(measure, avg, displayMode)}
+          </strong>
+        );
       }
     });
 
@@ -436,4 +438,3 @@ export function pivotDataToTableRows(
 
   return rows;
 }
-

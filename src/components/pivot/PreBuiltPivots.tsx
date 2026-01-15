@@ -21,12 +21,12 @@ import { PivotTable } from './PivotTable';
 import { HierarchicalPivotTable } from './HierarchicalPivotTable';
 // PivotConfiguratorFlyout import removed
 import { getDimensionLabel, getDimensionIcon, extractConnection, extractDatabase, extractSchema } from '../../utils/pivotDimensions';
-import { getMeasureLabel, formatMeasure, calculateMeasure } from '../../utils/pivotMeasures';
+import { getMeasureLabel, calculateMeasure, formatMeasureWithMode } from '../../utils/pivotMeasures';
 import { extractDimensionValue } from '../../utils/pivotDimensions';
 import type { AtlanAsset } from '../../services/atlan/types';
 import { scoreAssetQuality } from '../../services/qualityMetrics';
 import type { AtlanAssetSummary } from '../../services/atlan/api';
-import type { RowDimension, Measure, MeasureDisplayMode } from '../../types/pivot';
+import type { RowDimension, Measure } from '../../types/pivot';
 import { logger } from '../../utils/logger';
 import { getScoreClass, getHeatClass } from '../../utils/scoreThresholds';
 import './PreBuiltPivots.css';
@@ -179,6 +179,7 @@ export function PreBuiltPivots() {
       undefined,
       scoresMap
     );
+    pivot.measureDisplayModes = measureDisplayModes;
 
     const duration = performance.now() - startTime;
     logger.info('PreBuiltPivots: Completeness pivot built', {
@@ -187,7 +188,7 @@ export function PreBuiltPivots() {
     });
 
     return pivot;
-  }, [sourceAssets, scoresMap]);
+  }, [sourceAssets, scoresMap, measureDisplayModes]);
 
   const completenessRows = useMemo(() => {
     if (!completenessPivot) return [];
@@ -233,28 +234,42 @@ export function PreBuiltPivots() {
 
     domainPivot.rows.forEach((row) => {
       const domainName = row.dimensionValues.domain || 'No Domain';
+      const completenessMode = measureDisplayModes.get('completeness') || 'auto';
+      const accuracyMode = measureDisplayModes.get('accuracy') || 'auto';
+      const timelinessMode = measureDisplayModes.get('timeliness') || 'auto';
+      const consistencyMode = measureDisplayModes.get('consistency') || 'auto';
+      const usabilityMode = measureDisplayModes.get('usability') || 'auto';
+      const overallMode = measureDisplayModes.get('overall') || 'auto';
+
+      const completenessValue = formatMeasureWithMode('completeness', row.measures.completeness || 0, completenessMode);
+      const accuracyValue = formatMeasureWithMode('accuracy', row.measures.accuracy || 0, accuracyMode);
+      const timelinessValue = formatMeasureWithMode('timeliness', row.measures.timeliness || 0, timelinessMode);
+      const consistencyValue = formatMeasureWithMode('consistency', row.measures.consistency || 0, consistencyMode);
+      const usabilityValue = formatMeasureWithMode('usability', row.measures.usability || 0, usabilityMode);
+      const overallValue = formatMeasureWithMode('overall', row.measures.overall || 0, overallMode);
+
       const cells: (string | React.ReactNode)[] = [
         <span key="domain" className="dim-cell">
           <Building2 size={16} className="dim-icon domain" />
           {domainName}
         </span>,
         <span key="comp" className={`heat-cell ${getHeatClass(row.measures.completeness || 0)}`}>
-          {row.measures.completeness || 0}
+          {completenessValue}
         </span>,
         <span key="acc" className={`heat-cell ${getHeatClass(row.measures.accuracy || 0)}`}>
-          {row.measures.accuracy || 0}
+          {accuracyValue}
         </span>,
         <span key="time" className={`heat-cell ${getHeatClass(row.measures.timeliness || 0)}`}>
-          {row.measures.timeliness || 0}
+          {timelinessValue}
         </span>,
         <span key="cons" className={`heat-cell ${getHeatClass(row.measures.consistency || 0)}`}>
-          {row.measures.consistency || 0}
+          {consistencyValue}
         </span>,
         <span key="use" className={`heat-cell ${getHeatClass(row.measures.usability || 0)}`}>
-          {row.measures.usability || 0}
+          {usabilityValue}
         </span>,
         <span key="overall" className={`score-cell ${getScoreClass(row.measures.overall || 0)}`}>
-          {row.measures.overall || 0}
+          {overallValue}
         </span>,
         <span key="trend" className="trend flat">
           <ArrowRight size={12} style={{ display: 'inline', verticalAlign: 'middle' }} /> 0%
@@ -264,7 +279,7 @@ export function PreBuiltPivots() {
     });
 
     return rows;
-  }, [domainPivot]);
+  }, [domainPivot, measureDisplayModes]);
 
   // PIVOT 3: Owner Accountability - Certification Coverage
   const ownerPivot = useMemo(() => {
@@ -307,6 +322,9 @@ export function PreBuiltPivots() {
       const total = groupAssets.length;
       const certRate = total > 0 ? Math.round((certified / total) * 100) : 0;
 
+      const certMode = measureDisplayModes.get('certificationCoverage') || 'auto';
+      const certRateValue = formatMeasureWithMode('certificationCoverage', certRate, certMode);
+
       const cells: (string | React.ReactNode)[] = [
         <span key="owner" className="dim-cell">
           <Users size={16} className="dim-icon owner" />
@@ -318,7 +336,7 @@ export function PreBuiltPivots() {
         <span key="none" className="center numeric">{none}</span>,
         <span key="total" className="numeric"><strong>{total}</strong></span>,
         <span key="rate" className={`score-cell ${getScoreClass(certRate)}`}>
-          {certRate}%
+          {certRateValue}
         </span>,
       ];
       rows.push(cells);
@@ -331,6 +349,8 @@ export function PreBuiltPivots() {
     const totalNone = sourceAssets.filter((a) => !a.certificateStatus || a.certificateStatus === null).length;
     const totalAssets = sourceAssets.length;
     const overallCertRate = totalAssets > 0 ? Math.round((totalCertified / totalAssets) * 100) : 0;
+    const totalCertMode = measureDisplayModes.get('certificationCoverage') || 'auto';
+    const totalCertValue = formatMeasureWithMode('certificationCoverage', overallCertRate, totalCertMode);
 
     rows.push([
       <strong key="total-label">Total</strong>,
@@ -340,12 +360,12 @@ export function PreBuiltPivots() {
       <span key="total-none" className="center numeric"><strong>{totalNone}</strong></span>,
       <span key="total-assets" className="numeric"><strong>{totalAssets}</strong></span>,
       <span key="total-rate" className={`score-cell ${getScoreClass(overallCertRate)}`}>
-        <strong>{overallCertRate}%</strong>
+        <strong>{totalCertValue}</strong>
       </span>,
     ]);
 
     return rows;
-  }, [ownerPivot, sourceAssets]);
+  }, [ownerPivot, sourceAssets, measureDisplayModes]);
 
   // PIVOT 4: Lineage Coverage
   const lineagePivot = useMemo(() => {
@@ -398,6 +418,14 @@ export function PreBuiltPivots() {
       const total = groupAssets.length;
       const coverage = total > 0 ? Math.round(((total - orphaned) / total) * 100) : 0;
 
+      const hasUpstreamMode = measureDisplayModes.get('hasUpstream') || 'auto';
+      const hasDownstreamMode = measureDisplayModes.get('hasDownstream') || 'auto';
+      const fullLineageMode = measureDisplayModes.get('fullLineage') || 'auto';
+
+      const hasUpstreamValue = formatMeasureWithMode('hasUpstream', hasUpstream, hasUpstreamMode);
+      const hasDownstreamValue = formatMeasureWithMode('hasDownstream', hasDownstream, hasDownstreamMode);
+      const fullLineageValue = formatMeasureWithMode('fullLineage', fullLineage, fullLineageMode);
+
       const cells: (string | React.ReactNode)[] = [
         <span key="conn" className="dim-cell">
           <span className="dim-icon connection">{getConnectionIcon(connection)}</span>
@@ -412,24 +440,36 @@ export function PreBuiltPivots() {
           {schema}
         </span>,
         <span key="total" className="numeric">{total}</span>,
-        <div key="upstream" className="bar-cell">
-          <div className="bar-container">
-            <div className={`bar-fill ${getScoreClass(hasUpstream)}`} style={{ width: `${hasUpstream}%` }}></div>
+        hasUpstreamMode === 'numeric' || hasUpstreamMode === 'percentage' ? (
+          <span key="upstream" className="numeric">{hasUpstreamValue}</span>
+        ) : (
+          <div key="upstream" className="bar-cell">
+            <div className="bar-container">
+              <div className={`bar-fill ${getScoreClass(hasUpstream)}`} style={{ width: `${hasUpstream}%` }}></div>
+            </div>
+            <span className="bar-value">{hasUpstreamValue}</span>
           </div>
-          <span className="bar-value">{hasUpstream}%</span>
-        </div>,
-        <div key="downstream" className="bar-cell">
-          <div className="bar-container">
-            <div className={`bar-fill ${getScoreClass(hasDownstream)}`} style={{ width: `${hasDownstream}%` }}></div>
+        ),
+        hasDownstreamMode === 'numeric' || hasDownstreamMode === 'percentage' ? (
+          <span key="downstream" className="numeric">{hasDownstreamValue}</span>
+        ) : (
+          <div key="downstream" className="bar-cell">
+            <div className="bar-container">
+              <div className={`bar-fill ${getScoreClass(hasDownstream)}`} style={{ width: `${hasDownstream}%` }}></div>
+            </div>
+            <span className="bar-value">{hasDownstreamValue}</span>
           </div>
-          <span className="bar-value">{hasDownstream}%</span>
-        </div>,
-        <div key="full" className="bar-cell">
-          <div className="bar-container">
-            <div className={`bar-fill ${getScoreClass(fullLineage)}`} style={{ width: `${fullLineage}%` }}></div>
+        ),
+        fullLineageMode === 'numeric' || fullLineageMode === 'percentage' ? (
+          <span key="full" className="numeric">{fullLineageValue}</span>
+        ) : (
+          <div key="full" className="bar-cell">
+            <div className="bar-container">
+              <div className={`bar-fill ${getScoreClass(fullLineage)}`} style={{ width: `${fullLineage}%` }}></div>
+            </div>
+            <span className="bar-value">{fullLineageValue}</span>
           </div>
-          <span className="bar-value">{fullLineage}%</span>
-        </div>,
+        ),
         <span key="orphaned" className={`numeric ${orphaned > 0 ? 'text-danger' : ''}`}>
           {orphaned}
         </span>,
@@ -448,14 +488,22 @@ export function PreBuiltPivots() {
     const avgDownstream = calculateMeasure('hasDownstream', sourceAssets);
     const avgFull = calculateMeasure('fullLineage', sourceAssets);
 
+    const totalUpstreamMode = measureDisplayModes.get('hasUpstream') || 'auto';
+    const totalDownstreamMode = measureDisplayModes.get('hasDownstream') || 'auto';
+    const totalFullMode = measureDisplayModes.get('fullLineage') || 'auto';
+
+    const totalUpstreamValue = formatMeasureWithMode('hasUpstream', avgUpstream, totalUpstreamMode);
+    const totalDownstreamValue = formatMeasureWithMode('hasDownstream', avgDownstream, totalDownstreamMode);
+    const totalFullValue = formatMeasureWithMode('fullLineage', avgFull, totalFullMode);
+
     rows.push([
       <strong key="total-label">Total</strong>,
       <span key="total-db"></span>,
       <span key="total-schema"></span>,
       <span key="total-assets" className="numeric"><strong>{totalAssets}</strong></span>,
-      <strong key="total-upstream">{avgUpstream}%</strong>,
-      <strong key="total-downstream">{avgDownstream}%</strong>,
-      <strong key="total-full">{avgFull}%</strong>,
+      <strong key="total-upstream">{totalUpstreamValue}</strong>,
+      <strong key="total-downstream">{totalDownstreamValue}</strong>,
+      <strong key="total-full">{totalFullValue}</strong>,
       <span key="total-orphaned" className={`numeric ${totalOrphaned > 0 ? 'text-danger' : ''}`}>
         <strong>{totalOrphaned}</strong>
       </span>,
@@ -465,7 +513,7 @@ export function PreBuiltPivots() {
     ]);
 
     return rows;
-  }, [lineagePivot, sourceAssets]);
+  }, [lineagePivot, sourceAssets, measureDisplayModes]);
 
   // Early return after all hooks are called
   // Check both sourceAssets and context to provide better messaging
@@ -765,4 +813,3 @@ export function PreBuiltPivots() {
     </div>
   );
 }
-

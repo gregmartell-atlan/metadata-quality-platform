@@ -2,9 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { ChevronDown, ChevronRight, Snowflake, Database, Table, BarChart3, Workflow } from 'lucide-react';
 import type { PivotTableData, HierarchicalPivotRow } from '../../utils/dynamicPivotBuilder';
 import type { AtlanAsset } from '../../services/atlan/types';
-import { calculateMeasure } from '../../utils/pivotMeasures';
+import { calculateMeasure, formatMeasureWithMode, getMeasureLabel } from '../../utils/pivotMeasures';
 import { getDimensionIcon, getDimensionLabel } from '../../utils/pivotDimensions';
-import { formatMeasure, getMeasureLabel } from '../../utils/pivotMeasures';
 import { getScoreClass } from '../../utils/scoreThresholds';
 import { isHotAsset, isWarmAsset } from '../../utils/popularityScore';
 import { PopularityBadge } from '../shared/PopularityBadge';
@@ -268,8 +267,8 @@ export function HierarchicalPivotTable({ data, assets, className = '', onRowClic
               {/* Measure cells */}
               {data.measureOrder.map((measure) => {
                 const value = row.measures[measure];
-                const formatted = formatMeasure(measure, value);
                 const displayMode = data.measureDisplayModes?.get(measure) || 'auto';
+                const formatted = formatMeasureWithMode(measure, value, displayMode);
                 
                 // Determine if should show as bar
                 const shouldShowBar = displayMode === 'visual' || 
@@ -293,12 +292,6 @@ export function HierarchicalPivotTable({ data, assets, className = '', onRowClic
                       </div>
                     </td>
                   );
-                } else if (displayMode === 'percentage' && measure !== 'assetCount') {
-                  return (
-                    <td key={`measure-${row.rowKey}-${measure}`} className="numeric">
-                      {value}%
-                    </td>
-                  );
                 } else {
                   return (
                     <td key={`measure-${row.rowKey}-${measure}`} className="numeric">
@@ -318,6 +311,7 @@ export function HierarchicalPivotTable({ data, assets, className = '', onRowClic
               <strong>Total</strong>
             </td>
             {data.measureOrder.map((measure) => {
+              const displayMode = data.measureDisplayModes?.get(measure) || 'auto';
               const totalAssets = data.rows.reduce((sum, row) => sum + row.assetCount, 0);
               if (measure === 'assetCount') {
                 return (
@@ -332,7 +326,7 @@ export function HierarchicalPivotTable({ data, assets, className = '', onRowClic
                 const avg = totalAssets > 0 ? Math.round(total / totalAssets) : 0;
                 return (
                   <td key={`total-${measure}`} className="numeric">
-                    <strong>{formatMeasure(measure, avg)}</strong>
+                    <strong>{formatMeasureWithMode(measure, avg, displayMode)}</strong>
                   </td>
                 );
               }
