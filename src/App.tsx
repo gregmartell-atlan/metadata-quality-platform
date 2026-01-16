@@ -5,6 +5,7 @@ import { UnifiedHeader } from './components/layout/UnifiedHeader';
 import { Sidebar } from './components/layout/Sidebar';
 import { RightInspectorSidebar } from './components/layout/RightInspectorSidebar';
 import { AssetInspectorModal } from './components/AssetInspector/AssetInspectorModal';
+import { DebugPanel } from './components/debug/DebugPanel';
 import { useUIPreferences } from './stores/uiPreferencesStore';
 import { useAssetPreviewStore } from './stores/assetPreviewStore';
 import { useBackendModeStore } from './stores/backendModeStore';
@@ -16,8 +17,17 @@ const ExecutiveDashboard = lazy(() => import('./components/dashboard/ExecutiveDa
 const PivotBuilder = lazy(() => import('./pages/PivotBuilder').then(m => ({ default: m.PivotBuilder })));
 const LineageViewPage = lazy(() => import('./pages/LineageViewPage').then(m => ({ default: m.LineageViewPage })));
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
+const AssessmentPage = lazy(() => import('./pages/AssessmentPage').then(m => ({ default: m.AssessmentPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const HomePage = lazy(() => import('./pages/HomePage').then(m => ({ default: m.HomePage })));
+
+// V2 Assessment Run components
+const StartScreen = lazy(() => import('./components/v2run').then(m => ({ default: m.StartScreen })));
+const RunDashboard = lazy(() => import('./components/v2run').then(m => ({ default: m.RunDashboard })));
+const AssessmentView = lazy(() => import('./components/v2run').then(m => ({ default: m.AssessmentView })));
+const PlanView = lazy(() => import('./components/v2run').then(m => ({ default: m.PlanView })));
+const ExportView = lazy(() => import('./components/v2run').then(m => ({ default: m.ExportView })));
+const RunRoutesFallback = lazy(() => import('./components/v2run').then(m => ({ default: m.RunRoutesFallback })));
 
 // Loading fallback for lazy components
 function PageLoader() {
@@ -107,6 +117,15 @@ function App() {
                   <Route path="/pivot" element={<PivotBuilder />} />
                   <Route path="/lineage" element={<LineageViewPage />} />
                   <Route path="/analytics" element={<AnalyticsPage />} />
+                  <Route path="/assessment" element={<AssessmentPage />} />
+                  {/* V2 Assessment Run Routes */}
+                  <Route path="/assessment/new" element={<StartScreen />} />
+                  <Route path="/assessment/run/:id" element={<RunDashboard />}>
+                    <Route index element={<RunRoutesFallback />} />
+                    <Route path="assessment" element={<AssessmentView />} />
+                    <Route path="plan" element={<PlanView />} />
+                    <Route path="export" element={<ExportView />} />
+                  </Route>
                   <Route path="/trends" element={<div className="page-placeholder">Quality Trends</div>} />
                   <Route path="/settings" element={<SettingsPage />} />
                 </Routes>
@@ -122,6 +141,9 @@ function App() {
 
           {/* Global Search (Cmd/Ctrl + K) */}
           <GlobalSearch isOpen={isSearchOpen} onClose={closeSearch} />
+
+          {/* Debug Panel (Ctrl+Shift+D) - Only in development */}
+          {import.meta.env.DEV && <DebugPanel />}
         </div>
       </BrowserRouter>
     </ErrorBoundary>

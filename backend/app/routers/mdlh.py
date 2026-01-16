@@ -9,6 +9,7 @@ Provides endpoints for:
 - Pivot data aggregation
 """
 
+import json
 import logging
 from enum import Enum
 from typing import Any
@@ -21,6 +22,26 @@ from ..services.session import session_manager, SnowflakeSession
 from ..config import get_settings
 
 logger = logging.getLogger(__name__)
+
+
+def parse_json_array(value: Any) -> list | None:
+    """Parse a JSON array string into a Python list.
+
+    Snowflake returns ARRAY columns as JSON strings, so we need to parse them.
+    """
+    if value is None:
+        return None
+    if isinstance(value, list):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            if isinstance(parsed, list):
+                return parsed
+            return None
+        except (json.JSONDecodeError, TypeError):
+            return None
+    return None
 
 router = APIRouter(prefix="/mdlh", tags=["mdlh"])
 
@@ -50,6 +71,7 @@ class PivotDimension(str, Enum):
     SCHEMA = "schema"
     ASSET_TYPE = "asset_type"
     CERTIFICATE_STATUS = "certificate_status"
+    OWNER = "owner"  # Requires LATERAL FLATTEN for array handling
 
 
 class LineageDirection(str, Enum):
@@ -110,22 +132,23 @@ SELECT
     -- =========================================================================
     -- ACCURACY SCORE (5 checks, aligned with client-side scoreAccuracy)
     -- Checks: valid naming (regex), has owner, has certificate, has tags, not AI
+    -- Note: CERTIFICATE_UPDATED_AT doesn't exist in MDLH schema
     -- =========================================================================
     (CASE WHEN REGEXP_LIKE(A.ASSET_NAME, '^[\\w\\-\\.]+$') THEN 1 ELSE 0 END +
      CASE WHEN A.OWNER_USERS IS NOT NULL AND ARRAY_SIZE(A.OWNER_USERS) > 0 THEN 1 ELSE 0 END +
-     CASE WHEN A.CERTIFICATE_STATUS IS NOT NULL AND A.CERTIFICATE_UPDATED_AT IS NOT NULL THEN 1 ELSE 0 END +
+     CASE WHEN A.CERTIFICATE_STATUS IS NOT NULL AND A.CERTIFICATE_STATUS != '' THEN 1 ELSE 0 END +
      CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1 ELSE 0 END +
      1  -- Not AI generated (default - not tracked in MDLH)
     ) / 5.0 * 100 AS accuracy_score,
-    
+
     -- =========================================================================
     -- TIMELINESS SCORE (binary: 100 if ANY timestamp within 90 days, else 0)
     -- Aligned with client-side scoreTimeliness which checks multiple clocks
+    -- Note: CERTIFICATE_UPDATED_AT doesn't exist in MDLH schema
     -- =========================================================================
     CASE WHEN (
         DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90 OR
-        DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.SOURCE_UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90 OR
-        DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.CERTIFICATE_UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90
+        DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.SOURCE_UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90
     ) THEN 100 ELSE 0 END AS timeliness_score,
     
     -- =========================================================================
@@ -139,14 +162,13 @@ SELECT
     ) / 4.0 * 100 AS consistency_score,
     
     -- =========================================================================
-    -- USABILITY SCORE (4 checks, aligned with client-side scoreUsability)
-    -- Checks: popularity/viewScore, consumption (read count), usage (query), discoverable
+    -- USABILITY SCORE (3 checks - TABLE_TOTAL_QUERY_COUNT not in official schema)
+    -- Checks: popularity/viewScore, consumption (read count), discoverable
     -- =========================================================================
     (CASE WHEN COALESCE(A.POPULARITY_SCORE, 0) > 0 THEN 1 ELSE 0 END +
      CASE WHEN COALESCE(R.TABLE_TOTAL_READ_COUNT, 0) > 0 THEN 1 ELSE 0 END +
-     CASE WHEN COALESCE(R.TABLE_TOTAL_QUERY_COUNT, 0) > 0 THEN 1 ELSE 0 END +
      1  -- Discoverable (default - all MDLH assets are discoverable)
-    ) / 4.0 * 100 AS usability_score
+    ) / 3.0 * 100 AS usability_score
 
 FROM ATLAN_GOLD.PUBLIC.ASSETS A
 LEFT JOIN ATLAN_GOLD.PUBLIC.RELATIONAL_ASSET_DETAILS R ON A.GUID = R.GUID
@@ -186,21 +208,22 @@ SELECT
     ) AS avg_completeness,
     
     -- Accuracy (5 checks: valid naming, has owner, has certificate, has tags, not AI)
+    -- Note: CERTIFICATE_UPDATED_AT doesn't exist in MDLH schema
     AVG(
         (CASE WHEN REGEXP_LIKE(A.ASSET_NAME, '^[\\w\\-\\.]+$') THEN 1 ELSE 0 END +
          CASE WHEN A.OWNER_USERS IS NOT NULL AND ARRAY_SIZE(A.OWNER_USERS) > 0 THEN 1 ELSE 0 END +
-         CASE WHEN A.CERTIFICATE_STATUS IS NOT NULL AND A.CERTIFICATE_UPDATED_AT IS NOT NULL THEN 1 ELSE 0 END +
+         CASE WHEN A.CERTIFICATE_STATUS IS NOT NULL AND A.CERTIFICATE_STATUS != '' THEN 1 ELSE 0 END +
          CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1 ELSE 0 END +
          1  -- Not AI generated (default)
         ) / 5.0 * 100
     ) AS avg_accuracy,
-    
+
     -- Timeliness (binary: any timestamp within 90 days)
+    -- Note: CERTIFICATE_UPDATED_AT doesn't exist in MDLH schema
     AVG(
         CASE WHEN (
             DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90 OR
-            DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.SOURCE_UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90 OR
-            DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.CERTIFICATE_UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90
+            DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.SOURCE_UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90
         ) THEN 100.0 ELSE 0.0 END
     ) AS avg_timeliness,
     
@@ -213,13 +236,12 @@ SELECT
         ) / 4.0 * 100
     ) AS avg_consistency,
     
-    -- Usability (4 checks: popularity, read count, query count, discoverable)
+    -- Usability (3 checks - TABLE_TOTAL_QUERY_COUNT not in official schema)
     AVG(
         (CASE WHEN COALESCE(A.POPULARITY_SCORE, 0) > 0 THEN 1 ELSE 0 END +
          CASE WHEN COALESCE(R.TABLE_TOTAL_READ_COUNT, 0) > 0 THEN 1 ELSE 0 END +
-         CASE WHEN COALESCE(R.TABLE_TOTAL_QUERY_COUNT, 0) > 0 THEN 1 ELSE 0 END +
          1  -- Discoverable (default)
-        ) / 4.0 * 100
+        ) / 3.0 * 100
     ) AS avg_usability
 
 FROM ATLAN_GOLD.PUBLIC.ASSETS A
@@ -303,11 +325,243 @@ SELECT DISTINCT
     CONNECTOR_NAME,
     COUNT(*) as asset_count
 FROM ATLAN_GOLD.PUBLIC.ASSETS
-WHERE STATUS = 'ACTIVE' 
+WHERE STATUS = 'ACTIVE'
     AND ASSET_TYPE IN ('Database', 'Table', 'View', 'Schema')
     AND ASSET_QUALIFIED_NAME IS NOT NULL
 GROUP BY SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 1), CONNECTOR_NAME
 ORDER BY asset_count DESC
+"""
+
+
+# ============================================
+# LINEAGE METRICS SQL - Provides upstream/downstream breakdown
+# ============================================
+
+SQL_LINEAGE_METRICS = """
+WITH lineage_breakdown AS (
+    SELECT
+        L.START_GUID AS guid,
+        MAX(CASE WHEN L.DIRECTION = 'UPSTREAM' THEN 1 ELSE 0 END) AS has_upstream,
+        MAX(CASE WHEN L.DIRECTION = 'DOWNSTREAM' THEN 1 ELSE 0 END) AS has_downstream,
+        COUNT(DISTINCT CASE WHEN L.DIRECTION = 'UPSTREAM' THEN L.RELATED_GUID END) AS upstream_count,
+        COUNT(DISTINCT CASE WHEN L.DIRECTION = 'DOWNSTREAM' THEN L.RELATED_GUID END) AS downstream_count
+    FROM ATLAN_GOLD.PUBLIC.LINEAGE L
+    GROUP BY L.START_GUID
+)
+SELECT
+    A.GUID,
+    A.ASSET_NAME,
+    A.ASSET_TYPE,
+    A.CONNECTOR_NAME,
+    COALESCE(LB.has_upstream, 0) AS has_upstream,
+    COALESCE(LB.has_downstream, 0) AS has_downstream,
+    CASE WHEN COALESCE(LB.has_upstream, 0) = 1 OR COALESCE(LB.has_downstream, 0) = 1
+         THEN 1 ELSE 0 END AS has_lineage,
+    CASE WHEN COALESCE(LB.has_upstream, 0) = 1 AND COALESCE(LB.has_downstream, 0) = 1
+         THEN 1 ELSE 0 END AS full_lineage,
+    CASE WHEN COALESCE(LB.has_upstream, 0) = 0 AND COALESCE(LB.has_downstream, 0) = 0
+         THEN 1 ELSE 0 END AS orphaned,
+    COALESCE(LB.upstream_count, 0) AS upstream_count,
+    COALESCE(LB.downstream_count, 0) AS downstream_count
+FROM ATLAN_GOLD.PUBLIC.ASSETS A
+LEFT JOIN lineage_breakdown LB ON A.GUID = LB.guid
+WHERE A.STATUS = 'ACTIVE'
+{type_filter}
+{connector_filter}
+"""
+
+
+SQL_LINEAGE_ROLLUP = """
+WITH lineage_breakdown AS (
+    SELECT
+        L.START_GUID AS guid,
+        MAX(CASE WHEN L.DIRECTION = 'UPSTREAM' THEN 1 ELSE 0 END) AS has_upstream,
+        MAX(CASE WHEN L.DIRECTION = 'DOWNSTREAM' THEN 1 ELSE 0 END) AS has_downstream
+    FROM ATLAN_GOLD.PUBLIC.LINEAGE L
+    GROUP BY L.START_GUID
+)
+SELECT
+    {dimension} AS dimension_value,
+    COUNT(*) AS total_assets,
+    AVG(COALESCE(LB.has_upstream, 0)) * 100 AS pct_has_upstream,
+    AVG(COALESCE(LB.has_downstream, 0)) * 100 AS pct_has_downstream,
+    AVG(CASE WHEN COALESCE(LB.has_upstream, 0) = 1 OR COALESCE(LB.has_downstream, 0) = 1
+             THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_lineage,
+    AVG(CASE WHEN COALESCE(LB.has_upstream, 0) = 1 AND COALESCE(LB.has_downstream, 0) = 1
+             THEN 1.0 ELSE 0.0 END) * 100 AS pct_full_lineage,
+    AVG(CASE WHEN COALESCE(LB.has_upstream, 0) = 0 AND COALESCE(LB.has_downstream, 0) = 0
+             THEN 1.0 ELSE 0.0 END) * 100 AS pct_orphaned
+FROM ATLAN_GOLD.PUBLIC.ASSETS A
+LEFT JOIN lineage_breakdown LB ON A.GUID = LB.guid
+WHERE A.STATUS = 'ACTIVE'
+{asset_type_filter}
+GROUP BY {dimension}
+ORDER BY total_assets DESC
+"""
+
+
+# ============================================
+# OWNER PIVOT SQL - Uses LATERAL FLATTEN for array handling
+# ============================================
+
+SQL_QUALITY_ROLLUP_BY_OWNER = """
+SELECT
+    COALESCE(owner.VALUE::STRING, 'Unowned') AS dimension_value,
+    COUNT(DISTINCT A.GUID) AS total_assets,
+
+    -- Coverage metrics
+    AVG(CASE WHEN A.DESCRIPTION IS NOT NULL AND TRIM(A.DESCRIPTION) != '' THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_description,
+    AVG(CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_tags,
+    AVG(CASE WHEN UPPER(COALESCE(A.CERTIFICATE_STATUS, '')) = 'VERIFIED' THEN 1.0 ELSE 0.0 END) * 100 AS pct_certified,
+    AVG(CASE WHEN A.HAS_LINEAGE = TRUE THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_lineage,
+    AVG(CASE WHEN A.README_GUID IS NOT NULL THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_readme,
+    AVG(CASE WHEN A.TERM_GUIDS IS NOT NULL AND ARRAY_SIZE(A.TERM_GUIDS) > 0 THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_terms,
+
+    -- Completeness (8 checks)
+    AVG(
+        (CASE WHEN A.DESCRIPTION IS NOT NULL AND TRIM(A.DESCRIPTION) != '' THEN 1 ELSE 0 END +
+         CASE WHEN A.OWNER_USERS IS NOT NULL AND ARRAY_SIZE(A.OWNER_USERS) > 0 THEN 1 ELSE 0 END +
+         CASE WHEN A.CERTIFICATE_STATUS IS NOT NULL AND A.CERTIFICATE_STATUS != '' THEN 1 ELSE 0 END +
+         CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1 ELSE 0 END +
+         CASE WHEN A.TERM_GUIDS IS NOT NULL AND ARRAY_SIZE(A.TERM_GUIDS) > 0 THEN 1 ELSE 0 END +
+         CASE WHEN A.README_GUID IS NOT NULL THEN 1 ELSE 0 END +
+         0 +
+         CASE WHEN A.HAS_LINEAGE = TRUE THEN 1 ELSE 0 END
+        ) / 8.0 * 100
+    ) AS avg_completeness,
+
+    -- Accuracy (5 checks) - CERTIFICATE_UPDATED_AT doesn't exist in MDLH schema
+    AVG(
+        (CASE WHEN REGEXP_LIKE(A.ASSET_NAME, '^[\\w\\-\\.]+$') THEN 1 ELSE 0 END +
+         CASE WHEN A.OWNER_USERS IS NOT NULL AND ARRAY_SIZE(A.OWNER_USERS) > 0 THEN 1 ELSE 0 END +
+         CASE WHEN A.CERTIFICATE_STATUS IS NOT NULL AND A.CERTIFICATE_STATUS != '' THEN 1 ELSE 0 END +
+         CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1 ELSE 0 END +
+         1
+        ) / 5.0 * 100
+    ) AS avg_accuracy,
+
+    -- Timeliness
+    AVG(
+        CASE WHEN (
+            DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90 OR
+            DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.SOURCE_UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90
+        ) THEN 100.0 ELSE 0.0 END
+    ) AS avg_timeliness,
+
+    -- Consistency (4 checks)
+    AVG(
+        (CASE WHEN A.TERM_GUIDS IS NOT NULL AND ARRAY_SIZE(A.TERM_GUIDS) > 0 THEN 1 ELSE 0 END +
+         CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1 ELSE 0 END +
+         CASE WHEN ARRAY_SIZE(SPLIT(A.ASSET_QUALIFIED_NAME, '/')) >= 2 THEN 1 ELSE 0 END +
+         CASE WHEN A.CONNECTOR_QUALIFIED_NAME IS NOT NULL THEN 1 ELSE 0 END
+        ) / 4.0 * 100
+    ) AS avg_consistency,
+
+    -- Usability (3 checks)
+    AVG(
+        (CASE WHEN COALESCE(A.POPULARITY_SCORE, 0) > 0 THEN 1 ELSE 0 END +
+         CASE WHEN COALESCE(R.TABLE_TOTAL_READ_COUNT, 0) > 0 THEN 1 ELSE 0 END +
+         1
+        ) / 3.0 * 100
+    ) AS avg_usability
+
+FROM ATLAN_GOLD.PUBLIC.ASSETS A
+LEFT JOIN ATLAN_GOLD.PUBLIC.RELATIONAL_ASSET_DETAILS R ON A.GUID = R.GUID,
+LATERAL FLATTEN(input => COALESCE(A.OWNER_USERS, ARRAY_CONSTRUCT(NULL)), outer => true) AS owner
+WHERE A.STATUS = 'ACTIVE'
+{asset_type_filter}
+GROUP BY COALESCE(owner.VALUE::STRING, 'Unowned')
+ORDER BY total_assets DESC
+"""
+
+
+# ============================================
+# TIME SERIES / TRENDS SQL
+# ============================================
+
+SQL_QUALITY_SNAPSHOT = """
+SELECT
+    CURRENT_DATE() AS snapshot_date,
+    CURRENT_TIMESTAMP() AS snapshot_timestamp,
+    {dimension} AS dimension_value,
+    COUNT(*) AS total_assets,
+
+    -- Asset type breakdown as JSON
+    OBJECT_AGG(DISTINCT A.ASSET_TYPE, type_counts.cnt) AS assets_by_type,
+
+    -- Quality scores
+    AVG(
+        (CASE WHEN A.DESCRIPTION IS NOT NULL AND TRIM(A.DESCRIPTION) != '' THEN 1 ELSE 0 END +
+         CASE WHEN A.OWNER_USERS IS NOT NULL AND ARRAY_SIZE(A.OWNER_USERS) > 0 THEN 1 ELSE 0 END +
+         CASE WHEN A.CERTIFICATE_STATUS IS NOT NULL THEN 1 ELSE 0 END +
+         CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1 ELSE 0 END +
+         CASE WHEN A.TERM_GUIDS IS NOT NULL AND ARRAY_SIZE(A.TERM_GUIDS) > 0 THEN 1 ELSE 0 END +
+         CASE WHEN A.README_GUID IS NOT NULL THEN 1 ELSE 0 END +
+         0 + CASE WHEN A.HAS_LINEAGE = TRUE THEN 1 ELSE 0 END
+        ) / 8.0 * 100
+    ) AS avg_completeness,
+
+    AVG(
+        (CASE WHEN REGEXP_LIKE(A.ASSET_NAME, '^[\\w\\-\\.]+$') THEN 1 ELSE 0 END +
+         CASE WHEN A.OWNER_USERS IS NOT NULL AND ARRAY_SIZE(A.OWNER_USERS) > 0 THEN 1 ELSE 0 END +
+         CASE WHEN A.CERTIFICATE_STATUS IS NOT NULL THEN 1 ELSE 0 END +
+         CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1 ELSE 0 END +
+         1
+        ) / 5.0 * 100
+    ) AS avg_accuracy,
+
+    AVG(
+        CASE WHEN DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.SOURCE_UPDATED_AT, A.UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90
+        THEN 100.0 ELSE 0.0 END
+    ) AS avg_timeliness,
+
+    AVG(
+        (CASE WHEN A.TERM_GUIDS IS NOT NULL AND ARRAY_SIZE(A.TERM_GUIDS) > 0 THEN 1 ELSE 0 END +
+         CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1 ELSE 0 END +
+         CASE WHEN ARRAY_SIZE(SPLIT(A.ASSET_QUALIFIED_NAME, '/')) >= 2 THEN 1 ELSE 0 END +
+         CASE WHEN A.CONNECTOR_QUALIFIED_NAME IS NOT NULL THEN 1 ELSE 0 END
+        ) / 4.0 * 100
+    ) AS avg_consistency,
+
+    AVG(
+        (CASE WHEN COALESCE(A.POPULARITY_SCORE, 0) > 0 THEN 1 ELSE 0 END +
+         CASE WHEN COALESCE(R.TABLE_TOTAL_READ_COUNT, 0) > 0 THEN 1 ELSE 0 END +
+         1
+        ) / 3.0 * 100
+    ) AS avg_usability,
+
+    -- Coverage metrics
+    AVG(CASE WHEN A.DESCRIPTION IS NOT NULL AND TRIM(A.DESCRIPTION) != '' THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_description,
+    AVG(CASE WHEN A.OWNER_USERS IS NOT NULL AND ARRAY_SIZE(A.OWNER_USERS) > 0 THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_owner,
+    AVG(CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_tags,
+    AVG(CASE WHEN UPPER(COALESCE(A.CERTIFICATE_STATUS, '')) = 'VERIFIED' THEN 1.0 ELSE 0.0 END) * 100 AS pct_certified,
+    AVG(CASE WHEN A.HAS_LINEAGE = TRUE THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_lineage
+
+FROM ATLAN_GOLD.PUBLIC.ASSETS A
+LEFT JOIN ATLAN_GOLD.PUBLIC.RELATIONAL_ASSET_DETAILS R ON A.GUID = R.GUID
+LEFT JOIN (
+    SELECT {dimension} as dim_val, ASSET_TYPE, COUNT(*) as cnt
+    FROM ATLAN_GOLD.PUBLIC.ASSETS
+    WHERE STATUS = 'ACTIVE'
+    GROUP BY {dimension}, ASSET_TYPE
+) type_counts ON type_counts.dim_val = {dimension} AND type_counts.ASSET_TYPE = A.ASSET_TYPE
+WHERE A.STATUS = 'ACTIVE'
+{asset_type_filter}
+GROUP BY {dimension}
+"""
+
+
+SQL_LIST_OWNERS = """
+SELECT DISTINCT
+    owner.VALUE::STRING AS owner_id,
+    COUNT(DISTINCT A.GUID) AS asset_count
+FROM ATLAN_GOLD.PUBLIC.ASSETS A,
+LATERAL FLATTEN(input => A.OWNER_USERS, outer => false) AS owner
+WHERE A.STATUS = 'ACTIVE'
+  AND owner.VALUE IS NOT NULL
+GROUP BY owner.VALUE::STRING
+ORDER BY asset_count DESC
+LIMIT 500
 """
 
 
@@ -351,6 +605,8 @@ class QualityRollupResult(BaseModel):
     pct_with_tags: float
     pct_certified: float
     pct_with_lineage: float
+    pct_with_readme: float = 0.0  # README documentation present
+    pct_with_terms: float = 0.0  # Glossary terms linked
     avg_completeness: float
     avg_accuracy: float
     avg_timeliness: float
@@ -377,50 +633,204 @@ class LineageResult(BaseModel):
 
 
 # ============================================
+# Response Wrapper Models (for endpoint validation)
+# ============================================
+
+
+class AssetSummary(BaseModel):
+    """Summary of an asset from search results."""
+
+    guid: str
+    asset_name: str
+    asset_type: str
+    asset_qualified_name: str | None = None
+    description: str | None = None
+    connector_name: str | None = None
+    certificate_status: str | None = None
+    has_lineage: bool | None = None
+    popularity_score: float | None = None
+    owner_users: list[str] | None = None
+    tags: list[str] | None = None
+    term_guids: list[str] | None = None
+    updated_at: int | str | None = None
+    source_updated_at: int | str | None = None
+
+    class Config:
+        extra = "allow"  # Allow additional fields from Snowflake
+
+
+class AssetSearchResponse(BaseModel):
+    """Response for asset search endpoint."""
+
+    assets: list[AssetSummary]
+    total_count: int
+    limit: int
+    offset: int
+
+
+class QualityScoreResponse(BaseModel):
+    """Response for quality scores endpoint."""
+
+    scores: list[QualityScoreResult]
+    limit: int
+    offset: int
+
+
+class QualityRollupResponse(BaseModel):
+    """Response for quality rollup endpoint."""
+
+    rollups: list[QualityRollupResult]
+    dimension: str
+
+
+class ConnectorInfo(BaseModel):
+    """Information about a connector."""
+
+    connector_name: str
+    asset_count: int
+
+
+class ConnectorsResponse(BaseModel):
+    """Response for connectors listing endpoint."""
+
+    connectors: list[ConnectorInfo]
+
+
+class OwnerInfo(BaseModel):
+    """Information about an owner."""
+
+    owner_id: str
+    asset_count: int
+
+
+class OwnersResponse(BaseModel):
+    """Response for owners listing endpoint."""
+
+    owners: list[OwnerInfo]
+
+
+# ============================================
 # Dependency
 # ============================================
 
 
+class SessionExpiredError(Exception):
+    """Raised when a Snowflake session has expired or connection is lost."""
+    pass
+
+
 class MdlhSessionContext:
     """Context for MDLH queries - wraps a session with query helpers."""
-    
+
+    # Errors that indicate a retry might succeed
+    RETRYABLE_ERROR_PATTERNS = [
+        "connection",
+        "network",
+        "timeout",
+        "socket",
+        "communication",
+        "not connected",
+        "connection reset",
+    ]
+
+    MAX_RETRIES = 1  # One retry attempt after initial failure
+
     def __init__(self, session: SnowflakeSession, session_id: str):
         self.session = session
         self.session_id = session_id
-    
+
+    def _is_retryable_error(self, error: Exception) -> bool:
+        """Check if an error is likely to succeed on retry."""
+        error_msg = str(error).lower()
+        return any(pattern in error_msg for pattern in self.RETRYABLE_ERROR_PATTERNS)
+
+    def _verify_connection(self) -> bool:
+        """Verify the connection is still alive with a simple query."""
+        try:
+            cursor = self.session.conn.cursor()
+            cursor.execute("SELECT 1")
+            cursor.close()
+            return True
+        except Exception:
+            return False
+
     def execute_query(
         self,
         query: str,
         params: dict | None = None,
         session_id: str | None = None,  # ignored, uses self.session
     ) -> list[dict]:
-        """Execute query and return results as list of dicts."""
+        """Execute query and return results as list of dicts.
+
+        Includes retry logic for transient connection failures:
+        - On first failure, checks if error is retryable
+        - Verifies connection is still alive
+        - Retries once if connection is good
+        - Raises SessionExpiredError if connection is dead
+        """
         from datetime import datetime
-        
-        cursor = self.session.conn.cursor()
-        try:
-            if params:
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
-            
-            columns = [desc[0] for desc in cursor.description] if cursor.description else []
-            rows = cursor.fetchall()
-            
-            results = []
-            for row in rows:
-                row_dict = {}
-                for i, col in enumerate(columns):
-                    value = row[i]
-                    if isinstance(value, datetime):
-                        value = value.isoformat()
-                    row_dict[col] = value
-                results.append(row_dict)
-            
-            return results
-        finally:
-            cursor.close()
-    
+        import logging
+
+        logger = logging.getLogger(__name__)
+        last_error: Exception | None = None
+
+        for attempt in range(self.MAX_RETRIES + 1):
+            cursor = self.session.conn.cursor()
+            try:
+                if params:
+                    cursor.execute(query, params)
+                else:
+                    cursor.execute(query)
+
+                columns = [desc[0] for desc in cursor.description] if cursor.description else []
+                rows = cursor.fetchall()
+
+                results = []
+                for row in rows:
+                    row_dict = {}
+                    for i, col in enumerate(columns):
+                        value = row[i]
+                        if isinstance(value, datetime):
+                            value = value.isoformat()
+                        row_dict[col] = value
+                    results.append(row_dict)
+
+                return results
+
+            except Exception as e:
+                last_error = e
+                cursor.close()
+
+                # Check if this is a retryable error
+                if attempt < self.MAX_RETRIES and self._is_retryable_error(e):
+                    logger.warning(
+                        f"[MDLH] Query failed with retryable error (attempt {attempt + 1}): {e}"
+                    )
+
+                    # Verify connection is still alive before retry
+                    if self._verify_connection():
+                        logger.info("[MDLH] Connection verified, retrying query...")
+                        continue
+                    else:
+                        logger.error("[MDLH] Connection lost, session needs reconnection")
+                        raise SessionExpiredError(
+                            "Snowflake connection lost - please reconnect"
+                        ) from e
+
+                # Non-retryable error or final attempt - raise immediately
+                raise
+
+            finally:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass  # Ignore close errors
+
+        # Should not reach here, but handle it gracefully
+        if last_error:
+            raise last_error
+        raise RuntimeError("Query failed without error details")
+
     def execute_query_single(
         self,
         query: str,
@@ -490,7 +900,12 @@ def require_mdlh_connection(
 # ============================================
 
 
-@router.get("/assets")
+def escape_sql_string(value: str) -> str:
+    """Escape a string for safe use in SQL queries."""
+    return value.replace("'", "''")
+
+
+@router.get("/assets", response_model=AssetSearchResponse)
 async def search_assets(
     query: str | None = None,
     asset_type: AssetType = AssetType.ALL,
@@ -498,26 +913,28 @@ async def search_assets(
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     service: MdlhSessionContext = Depends(require_mdlh_connection),
-) -> dict[str, Any]:
+) -> AssetSearchResponse:
     """
     Search assets in the MDLH Gold Layer.
 
     Supports filtering by type, connector, and text search.
     Results are ordered by popularity and recency.
     """
-    # Build filters
+    # Build filters with SQL injection protection
     type_filter = ""
     if asset_type != AssetType.ALL:
-        type_filter = f"AND A.ASSET_TYPE = '{asset_type.value}'"
+        # AssetType is an enum, so value is safe, but escape anyway for consistency
+        type_filter = f"AND A.ASSET_TYPE = '{escape_sql_string(asset_type.value)}'"
 
     connector_filter = ""
     if connector:
-        connector_filter = f"AND A.CONNECTOR_NAME = '{connector}'"
+        connector_filter = f"AND A.CONNECTOR_NAME = '{escape_sql_string(connector)}'"
 
     search_filter = ""
     if query:
-        # Simple LIKE search - could be enhanced with full-text search
-        search_filter = f"AND (A.ASSET_NAME ILIKE '%{query}%' OR A.DESCRIPTION ILIKE '%{query}%')"
+        # Escape search query to prevent SQL injection
+        escaped_query = escape_sql_string(query)
+        search_filter = f"AND (A.ASSET_NAME ILIKE '%{escaped_query}%' OR A.DESCRIPTION ILIKE '%{escaped_query}%')"
 
     # Execute search query
     sql = SQL_SEARCH_ASSETS.format(
@@ -538,36 +955,58 @@ async def search_assets(
     count_result = service.execute_query_single(count_sql)
     total_count = count_result.get("TOTAL_COUNT", 0) if count_result else 0
 
-    return {
-        "assets": results,
-        "total_count": total_count,
-        "limit": limit,
-        "offset": offset,
-    }
+    # Transform results to Pydantic models (case-insensitive field mapping)
+    # Note: Snowflake ARRAY columns are returned as JSON strings, so we parse them
+    assets = []
+    for row in results:
+        asset = AssetSummary(
+            guid=row.get("GUID", ""),
+            asset_name=row.get("ASSET_NAME", ""),
+            asset_type=row.get("ASSET_TYPE", ""),
+            asset_qualified_name=row.get("ASSET_QUALIFIED_NAME"),
+            description=row.get("DESCRIPTION"),
+            connector_name=row.get("CONNECTOR_NAME"),
+            certificate_status=row.get("CERTIFICATE_STATUS"),
+            has_lineage=row.get("HAS_LINEAGE"),
+            popularity_score=row.get("POPULARITY_SCORE"),
+            owner_users=parse_json_array(row.get("OWNER_USERS")),
+            tags=parse_json_array(row.get("TAGS")),
+            term_guids=parse_json_array(row.get("TERM_GUIDS")),
+            updated_at=row.get("UPDATED_AT"),
+            source_updated_at=row.get("SOURCE_UPDATED_AT"),
+        )
+        assets.append(asset)
+
+    return AssetSearchResponse(
+        assets=assets,
+        total_count=total_count,
+        limit=limit,
+        offset=offset,
+    )
 
 
-@router.get("/quality-scores")
+@router.get("/quality-scores", response_model=QualityScoreResponse)
 async def get_quality_scores(
     asset_type: AssetType = AssetType.ALL,
     connector: str | None = None,
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     service: MdlhSessionContext = Depends(require_mdlh_connection),
-) -> dict[str, Any]:
+) -> QualityScoreResponse:
     """
     Get quality scores for assets.
 
     Returns completeness, accuracy, timeliness, consistency, and usability
     scores for each asset, computed using MDLH data.
     """
-    # Build filters
+    # Build filters with SQL injection protection
     type_filter = ""
     if asset_type != AssetType.ALL:
-        type_filter = f"AND A.ASSET_TYPE = '{asset_type.value}'"
+        type_filter = f"AND A.ASSET_TYPE = '{escape_sql_string(asset_type.value)}'"
 
     connector_filter = ""
     if connector:
-        connector_filter = f"AND A.CONNECTOR_NAME = '{connector}'"
+        connector_filter = f"AND A.CONNECTOR_NAME = '{escape_sql_string(connector)}'"
 
     sql = f"""
     {SQL_QUALITY_SCORES}
@@ -580,22 +1019,42 @@ async def get_quality_scores(
 
     results = service.execute_query(sql)
 
-    # Calculate overall score for each result
+    # Transform to Pydantic models with overall score calculation
+    scores = []
     for row in results:
-        overall = (
-            row.get("COMPLETENESS_SCORE", 0) * 0.25 +
-            row.get("ACCURACY_SCORE", 0) * 0.20 +
-            row.get("TIMELINESS_SCORE", 0) * 0.20 +
-            row.get("CONSISTENCY_SCORE", 0) * 0.15 +
-            row.get("USABILITY_SCORE", 0) * 0.20
-        )
-        row["OVERALL_SCORE"] = round(overall, 2)
+        completeness = row.get("COMPLETENESS_SCORE", 0) or 0
+        accuracy = row.get("ACCURACY_SCORE", 0) or 0
+        timeliness = row.get("TIMELINESS_SCORE", 0) or 0
+        consistency = row.get("CONSISTENCY_SCORE", 0) or 0
+        usability = row.get("USABILITY_SCORE", 0) or 0
 
-    return {
-        "scores": results,
-        "limit": limit,
-        "offset": offset,
-    }
+        overall = (
+            completeness * 0.25 +
+            accuracy * 0.20 +
+            timeliness * 0.20 +
+            consistency * 0.15 +
+            usability * 0.20
+        )
+
+        score = QualityScoreResult(
+            guid=row.get("GUID", ""),
+            asset_name=row.get("ASSET_NAME", ""),
+            asset_type=row.get("ASSET_TYPE", ""),
+            connector_name=row.get("CONNECTOR_NAME"),
+            completeness_score=completeness,
+            accuracy_score=accuracy,
+            timeliness_score=timeliness,
+            consistency_score=consistency,
+            usability_score=usability,
+            overall_score=round(overall, 2),
+        )
+        scores.append(score)
+
+    return QualityScoreResponse(
+        scores=scores,
+        limit=limit,
+        offset=offset,
+    )
 
 
 class BatchScoreRequest(BaseModel):
@@ -752,15 +1211,22 @@ async def get_lineage(
     )
 
 
-@router.get("/connectors")
+@router.get("/connectors", response_model=ConnectorsResponse)
 async def get_connectors(
     service: MdlhSessionContext = Depends(require_mdlh_connection),
-) -> dict[str, Any]:
+) -> ConnectorsResponse:
     """
     Get list of available connectors with asset counts.
     """
     results = service.execute_query(SQL_CONNECTORS)
-    return {"connectors": results}
+    connectors = [
+        ConnectorInfo(
+            connector_name=row.get("CONNECTOR_NAME", ""),
+            asset_count=row.get("ASSET_COUNT", 0),
+        )
+        for row in results
+    ]
+    return ConnectorsResponse(connectors=connectors)
 
 
 @router.get("/databases")
@@ -773,9 +1239,11 @@ async def get_databases(
     """
     sql = SQL_DATABASES
     if connector:
+        # SQL injection protection
+        escaped_connector = escape_sql_string(connector)
         sql = sql.replace(
             "ORDER BY asset_count DESC",
-            f"HAVING CONNECTOR_NAME = '{connector}' ORDER BY asset_count DESC"
+            f"HAVING CONNECTOR_NAME = '{escaped_connector}' ORDER BY asset_count DESC"
         )
 
     results = service.execute_query(sql)
@@ -949,7 +1417,6 @@ class AssetDetail(BaseModel):
     has_lineage: bool = False
     popularity_score: float | None = None
     owner_users: list[str] | None = None
-    owner_groups: list[str] | None = None
     tags: list[str] | None = None
     term_guids: list[str] | None = None
     readme_guid: str | None = None
@@ -959,12 +1426,12 @@ class AssetDetail(BaseModel):
     created_by: str | None = None
     updated_by: str | None = None
     status: str | None = None
-    # Relational details
+    # Relational details (from RELATIONAL_ASSET_DETAILS view)
     column_count: int | None = None
     row_count: int | None = None
     size_bytes: int | None = None
     read_count: int | None = None
-    query_count: int | None = None
+    # Derived from ASSET_QUALIFIED_NAME
     database_name: str | None = None
     schema_name: str | None = None
 
@@ -1013,6 +1480,24 @@ HAVING schema_name IS NOT NULL AND schema_name != ''
 ORDER BY asset_count DESC
 """
 
+# Query to get all schemas across all databases (for assessment scope selection)
+SQL_ALL_SCHEMAS = """
+SELECT DISTINCT
+    SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 1) as database_name,
+    SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 2) as schema_name,
+    CONCAT(SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 1), '/', SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 2)) as qualified_name,
+    MIN(GUID) as sample_guid,
+    COUNT(*) as asset_count
+FROM ATLAN_GOLD.PUBLIC.ASSETS
+WHERE STATUS = 'ACTIVE'
+  AND ASSET_QUALIFIED_NAME IS NOT NULL
+  AND ASSET_TYPE IN ('Schema', 'Table', 'View', 'MaterializedView')
+GROUP BY database_name, schema_name
+HAVING schema_name IS NOT NULL AND schema_name != ''
+ORDER BY database_name, asset_count DESC
+LIMIT 500
+"""
+
 
 SQL_HIERARCHY_TABLES = """
 SELECT 
@@ -1039,7 +1524,7 @@ LIMIT %(limit)s
 
 
 SQL_ASSET_DETAIL = """
-SELECT 
+SELECT
     A.GUID,
     A.ASSET_NAME,
     A.ASSET_TYPE,
@@ -1051,7 +1536,6 @@ SELECT
     A.HAS_LINEAGE,
     A.POPULARITY_SCORE,
     A.OWNER_USERS,
-    A.OWNER_GROUPS,
     A.TAGS,
     A.TERM_GUIDS,
     A.README_GUID,
@@ -1065,9 +1549,9 @@ SELECT
     R.TABLE_ROW_COUNT,
     R.TABLE_SIZE_BYTES,
     R.TABLE_TOTAL_READ_COUNT,
-    R.TABLE_TOTAL_QUERY_COUNT,
-    R.DATABASE_NAME,
-    R.SCHEMA_NAME
+    -- Derive database/schema from qualified name (not in RELATIONAL_ASSET_DETAILS)
+    SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 1) AS DATABASE_NAME,
+    SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 2) AS SCHEMA_NAME
 FROM ATLAN_GOLD.PUBLIC.ASSETS A
 LEFT JOIN ATLAN_GOLD.PUBLIC.RELATIONAL_ASSET_DETAILS R ON A.GUID = R.GUID
 WHERE A.GUID = %(guid)s
@@ -1186,6 +1670,42 @@ async def get_hierarchy_schemas(
     }
 
 
+# Schema model for the /schemas endpoint
+class SchemaInfo(BaseModel):
+    """Schema information for assessment scope selection."""
+    name: str
+    database_name: str
+    qualified_name: str
+    asset_count: int = 0
+
+
+@router.get("/schemas")
+async def get_all_schemas(
+    service: MdlhSessionContext = Depends(require_mdlh_connection),
+) -> dict[str, Any]:
+    """
+    Get all schemas across all databases for assessment scope selection.
+    Returns schema name, database name, qualified name, and asset counts.
+    """
+    results = service.execute_query(SQL_ALL_SCHEMAS)
+
+    schemas = [
+        SchemaInfo(
+            name=row.get("SCHEMA_NAME", "Unknown"),
+            database_name=row.get("DATABASE_NAME", "Unknown"),
+            qualified_name=row.get("QUALIFIED_NAME", ""),
+            asset_count=row.get("ASSET_COUNT", 0),
+        )
+        for row in results
+        if row.get("SCHEMA_NAME")
+    ]
+
+    return {
+        "schemas": [s.model_dump() for s in schemas],
+        "total": len(schemas),
+    }
+
+
 @router.get("/hierarchy/tables")
 async def get_hierarchy_tables(
     connector: str,
@@ -1217,8 +1737,8 @@ async def get_hierarchy_tables(
             certificate_status=row.get("CERTIFICATE_STATUS"),
             has_lineage=row.get("HAS_LINEAGE", False) or False,
             popularity_score=row.get("POPULARITY_SCORE"),
-            owner_users=row.get("OWNER_USERS"),
-            tags=row.get("TAGS"),
+            owner_users=parse_json_array(row.get("OWNER_USERS")),
+            tags=parse_json_array(row.get("TAGS")),
             updated_at=row.get("UPDATED_AT"),
         )
         for row in results
@@ -1262,7 +1782,6 @@ async def get_asset_detail(
         has_lineage=result.get("HAS_LINEAGE", False) or False,
         popularity_score=result.get("POPULARITY_SCORE"),
         owner_users=result.get("OWNER_USERS"),
-        owner_groups=result.get("OWNER_GROUPS"),
         tags=result.get("TAGS"),
         term_guids=result.get("TERM_GUIDS"),
         readme_guid=result.get("README_GUID"),
@@ -1276,7 +1795,6 @@ async def get_asset_detail(
         row_count=result.get("TABLE_ROW_COUNT"),
         size_bytes=result.get("TABLE_SIZE_BYTES"),
         read_count=result.get("TABLE_TOTAL_READ_COUNT"),
-        query_count=result.get("TABLE_TOTAL_QUERY_COUNT"),
         database_name=result.get("DATABASE_NAME"),
         schema_name=result.get("SCHEMA_NAME"),
     )
@@ -1341,5 +1859,505 @@ async def get_hierarchy_assets(
             "connector": connector,
             "database": database,
             "schema": schema,
+        },
+    }
+
+
+# ============================================
+# LINEAGE METRICS ENDPOINTS
+# ============================================
+
+
+class LineageMetricsResult(BaseModel):
+    """Lineage metrics for an asset."""
+
+    guid: str
+    asset_name: str
+    asset_type: str
+    connector_name: str | None
+    has_upstream: bool
+    has_downstream: bool
+    has_lineage: bool
+    full_lineage: bool
+    orphaned: bool
+    upstream_count: int
+    downstream_count: int
+
+
+class LineageRollupResult(BaseModel):
+    """Aggregated lineage metrics for a dimension."""
+
+    dimension_value: str
+    total_assets: int
+    pct_has_upstream: float
+    pct_has_downstream: float
+    pct_with_lineage: float
+    pct_full_lineage: float
+    pct_orphaned: float
+
+
+@router.get("/lineage-metrics")
+async def get_lineage_metrics(
+    asset_type: AssetType = AssetType.ALL,
+    connector: str | None = None,
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    service: MdlhSessionContext = Depends(require_mdlh_connection),
+) -> dict[str, Any]:
+    """
+    Get lineage metrics (upstream/downstream breakdown) for assets.
+
+    Returns has_upstream, has_downstream, full_lineage, orphaned flags
+    computed from the LINEAGE view.
+    """
+    type_filter = ""
+    if asset_type != AssetType.ALL:
+        type_filter = f"AND A.ASSET_TYPE = '{asset_type.value}'"
+
+    connector_filter = ""
+    if connector:
+        connector_filter = f"AND A.CONNECTOR_NAME = '{connector}'"
+
+    sql = f"""
+    {SQL_LINEAGE_METRICS}
+    ORDER BY A.POPULARITY_SCORE DESC NULLS LAST
+    LIMIT {limit}
+    OFFSET {offset}
+    """.format(type_filter=type_filter, connector_filter=connector_filter)
+
+    # Fix the format - need to use .format() properly
+    sql = SQL_LINEAGE_METRICS.format(
+        type_filter=type_filter,
+        connector_filter=connector_filter,
+    ) + f"""
+    ORDER BY A.POPULARITY_SCORE DESC NULLS LAST
+    LIMIT {limit}
+    OFFSET {offset}
+    """
+
+    results = service.execute_query(sql)
+
+    metrics = [
+        LineageMetricsResult(
+            guid=row.get("GUID", ""),
+            asset_name=row.get("ASSET_NAME", ""),
+            asset_type=row.get("ASSET_TYPE", ""),
+            connector_name=row.get("CONNECTOR_NAME"),
+            has_upstream=bool(row.get("HAS_UPSTREAM", 0)),
+            has_downstream=bool(row.get("HAS_DOWNSTREAM", 0)),
+            has_lineage=bool(row.get("HAS_LINEAGE", 0)),
+            full_lineage=bool(row.get("FULL_LINEAGE", 0)),
+            orphaned=bool(row.get("ORPHANED", 0)),
+            upstream_count=row.get("UPSTREAM_COUNT", 0),
+            downstream_count=row.get("DOWNSTREAM_COUNT", 0),
+        )
+        for row in results
+    ]
+
+    return {
+        "metrics": [m.model_dump() for m in metrics],
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+@router.get("/lineage-rollup")
+async def get_lineage_rollup(
+    dimension: PivotDimension = PivotDimension.CONNECTOR,
+    asset_type: AssetType = AssetType.ALL,
+    service: MdlhSessionContext = Depends(require_mdlh_connection),
+) -> dict[str, Any]:
+    """
+    Get aggregated lineage metrics by dimension.
+
+    Returns pct_has_upstream, pct_has_downstream, pct_full_lineage, pct_orphaned
+    grouped by the specified dimension.
+    """
+    dimension_map = {
+        PivotDimension.CONNECTOR: "A.CONNECTOR_NAME",
+        PivotDimension.DATABASE: "SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 1)",
+        PivotDimension.SCHEMA: "SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 2)",
+        PivotDimension.ASSET_TYPE: "A.ASSET_TYPE",
+        PivotDimension.CERTIFICATE_STATUS: "COALESCE(A.CERTIFICATE_STATUS, 'NONE')",
+    }
+
+    dimension_col = dimension_map.get(dimension, "A.CONNECTOR_NAME")
+
+    asset_type_filter = ""
+    if asset_type != AssetType.ALL:
+        asset_type_filter = f"AND A.ASSET_TYPE = '{asset_type.value}'"
+
+    sql = SQL_LINEAGE_ROLLUP.format(
+        dimension=dimension_col,
+        asset_type_filter=asset_type_filter,
+    )
+
+    results = service.execute_query(sql)
+
+    rollups = [
+        LineageRollupResult(
+            dimension_value=row.get("DIMENSION_VALUE", "Unknown"),
+            total_assets=row.get("TOTAL_ASSETS", 0),
+            pct_has_upstream=round(row.get("PCT_HAS_UPSTREAM", 0), 2),
+            pct_has_downstream=round(row.get("PCT_HAS_DOWNSTREAM", 0), 2),
+            pct_with_lineage=round(row.get("PCT_WITH_LINEAGE", 0), 2),
+            pct_full_lineage=round(row.get("PCT_FULL_LINEAGE", 0), 2),
+            pct_orphaned=round(row.get("PCT_ORPHANED", 0), 2),
+        )
+        for row in results
+    ]
+
+    return {
+        "dimension": dimension.value,
+        "rollups": [r.model_dump() for r in rollups],
+    }
+
+
+# ============================================
+# OWNER ENDPOINTS
+# ============================================
+
+
+@router.get("/owners")
+async def get_owners(
+    limit: int = Query(500, ge=1, le=1000),
+    service: MdlhSessionContext = Depends(require_mdlh_connection),
+) -> dict[str, Any]:
+    """
+    Get list of all owners with asset counts.
+
+    Uses LATERAL FLATTEN to expand the OWNER_USERS array.
+    """
+    sql = SQL_LIST_OWNERS.replace("LIMIT 500", f"LIMIT {limit}")
+    results = service.execute_query(sql)
+
+    return {
+        "owners": [
+            {"owner_id": row.get("OWNER_ID"), "asset_count": row.get("ASSET_COUNT", 0)}
+            for row in results
+        ],
+        "count": len(results),
+    }
+
+
+@router.get("/quality-rollup/by-owner")
+async def get_quality_rollup_by_owner(
+    asset_type: AssetType = AssetType.ALL,
+    limit: int = Query(100, ge=1, le=500),
+    service: MdlhSessionContext = Depends(require_mdlh_connection),
+) -> dict[str, Any]:
+    """
+    Get quality scores aggregated by owner.
+
+    Uses LATERAL FLATTEN to handle the OWNER_USERS array field.
+    Assets with multiple owners appear in each owner's aggregation.
+    """
+    asset_type_filter = ""
+    if asset_type != AssetType.ALL:
+        asset_type_filter = f"AND A.ASSET_TYPE = '{asset_type.value}'"
+
+    sql = SQL_QUALITY_ROLLUP_BY_OWNER.format(
+        asset_type_filter=asset_type_filter,
+    ) + f"\nLIMIT {limit}"
+
+    results = service.execute_query(sql)
+
+    # Calculate overall score for each rollup
+    for row in results:
+        overall = (
+            row.get("AVG_COMPLETENESS", 0) * 0.25 +
+            row.get("AVG_ACCURACY", 0) * 0.20 +
+            row.get("AVG_TIMELINESS", 0) * 0.20 +
+            row.get("AVG_CONSISTENCY", 0) * 0.15 +
+            row.get("AVG_USABILITY", 0) * 0.20
+        )
+        row["AVG_OVERALL"] = round(overall, 2)
+
+    return {
+        "dimension": "owner",
+        "rollups": results,
+    }
+
+
+# ============================================
+# TIME SERIES / TRENDS ENDPOINTS
+# ============================================
+
+
+class SnapshotResult(BaseModel):
+    """Quality snapshot for a point in time."""
+
+    snapshot_date: str
+    dimension_value: str
+    total_assets: int
+    avg_completeness: float
+    avg_accuracy: float
+    avg_timeliness: float
+    avg_consistency: float
+    avg_usability: float
+    avg_overall: float
+    pct_with_description: float
+    pct_with_owner: float
+    pct_with_tags: float
+    pct_certified: float
+    pct_with_lineage: float
+    pct_with_readme: float = 0.0  # README documentation present
+    pct_with_terms: float = 0.0  # Glossary terms linked
+
+
+@router.get("/snapshot")
+async def get_current_snapshot(
+    dimension: PivotDimension = PivotDimension.CONNECTOR,
+    asset_type: AssetType = AssetType.ALL,
+    service: MdlhSessionContext = Depends(require_mdlh_connection),
+) -> dict[str, Any]:
+    """
+    Get a current-state quality snapshot.
+
+    This captures the current quality metrics for all assets,
+    suitable for storing as a historical data point.
+    """
+    dimension_map = {
+        PivotDimension.CONNECTOR: "A.CONNECTOR_NAME",
+        PivotDimension.DATABASE: "SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 1)",
+        PivotDimension.SCHEMA: "SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 2)",
+        PivotDimension.ASSET_TYPE: "A.ASSET_TYPE",
+        PivotDimension.CERTIFICATE_STATUS: "COALESCE(A.CERTIFICATE_STATUS, 'NONE')",
+    }
+
+    dimension_col = dimension_map.get(dimension, "A.CONNECTOR_NAME")
+
+    asset_type_filter = ""
+    if asset_type != AssetType.ALL:
+        asset_type_filter = f"AND A.ASSET_TYPE = '{asset_type.value}'"
+
+    # Simplified snapshot query (the full one has OBJECT_AGG issues)
+    sql = f"""
+    SELECT
+        CURRENT_DATE() AS snapshot_date,
+        {dimension_col} AS dimension_value,
+        COUNT(*) AS total_assets,
+
+        AVG(
+            (CASE WHEN A.DESCRIPTION IS NOT NULL AND TRIM(A.DESCRIPTION) != '' THEN 1 ELSE 0 END +
+             CASE WHEN A.OWNER_USERS IS NOT NULL AND ARRAY_SIZE(A.OWNER_USERS) > 0 THEN 1 ELSE 0 END +
+             CASE WHEN A.CERTIFICATE_STATUS IS NOT NULL THEN 1 ELSE 0 END +
+             CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1 ELSE 0 END +
+             CASE WHEN A.TERM_GUIDS IS NOT NULL AND ARRAY_SIZE(A.TERM_GUIDS) > 0 THEN 1 ELSE 0 END +
+             CASE WHEN A.README_GUID IS NOT NULL THEN 1 ELSE 0 END +
+             0 + CASE WHEN A.HAS_LINEAGE = TRUE THEN 1 ELSE 0 END
+            ) / 8.0 * 100
+        ) AS avg_completeness,
+
+        AVG(
+            (CASE WHEN REGEXP_LIKE(A.ASSET_NAME, '^[\\w\\-\\.]+$') THEN 1 ELSE 0 END +
+             CASE WHEN A.OWNER_USERS IS NOT NULL AND ARRAY_SIZE(A.OWNER_USERS) > 0 THEN 1 ELSE 0 END +
+             CASE WHEN A.CERTIFICATE_STATUS IS NOT NULL THEN 1 ELSE 0 END +
+             CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1 ELSE 0 END +
+             1
+            ) / 5.0 * 100
+        ) AS avg_accuracy,
+
+        AVG(
+            CASE WHEN DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.SOURCE_UPDATED_AT, A.UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90
+            THEN 100.0 ELSE 0.0 END
+        ) AS avg_timeliness,
+
+        AVG(
+            (CASE WHEN A.TERM_GUIDS IS NOT NULL AND ARRAY_SIZE(A.TERM_GUIDS) > 0 THEN 1 ELSE 0 END +
+             CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1 ELSE 0 END +
+             CASE WHEN ARRAY_SIZE(SPLIT(A.ASSET_QUALIFIED_NAME, '/')) >= 2 THEN 1 ELSE 0 END +
+             CASE WHEN A.CONNECTOR_QUALIFIED_NAME IS NOT NULL THEN 1 ELSE 0 END
+            ) / 4.0 * 100
+        ) AS avg_consistency,
+
+        AVG(
+            (CASE WHEN COALESCE(A.POPULARITY_SCORE, 0) > 0 THEN 1 ELSE 0 END +
+             CASE WHEN COALESCE(R.TABLE_TOTAL_READ_COUNT, 0) > 0 THEN 1 ELSE 0 END +
+             1
+            ) / 3.0 * 100
+        ) AS avg_usability,
+
+        AVG(CASE WHEN A.DESCRIPTION IS NOT NULL AND TRIM(A.DESCRIPTION) != '' THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_description,
+        AVG(CASE WHEN A.OWNER_USERS IS NOT NULL AND ARRAY_SIZE(A.OWNER_USERS) > 0 THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_owner,
+        AVG(CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_tags,
+        AVG(CASE WHEN UPPER(COALESCE(A.CERTIFICATE_STATUS, '')) = 'VERIFIED' THEN 1.0 ELSE 0.0 END) * 100 AS pct_certified,
+        AVG(CASE WHEN A.HAS_LINEAGE = TRUE THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_lineage
+
+    FROM ATLAN_GOLD.PUBLIC.ASSETS A
+    LEFT JOIN ATLAN_GOLD.PUBLIC.RELATIONAL_ASSET_DETAILS R ON A.GUID = R.GUID
+    WHERE A.STATUS = 'ACTIVE'
+    {asset_type_filter}
+    GROUP BY {dimension_col}
+    ORDER BY total_assets DESC
+    """
+
+    results = service.execute_query(sql)
+
+    # Calculate overall score
+    snapshots = []
+    for row in results:
+        overall = (
+            row.get("AVG_COMPLETENESS", 0) * 0.25 +
+            row.get("AVG_ACCURACY", 0) * 0.20 +
+            row.get("AVG_TIMELINESS", 0) * 0.20 +
+            row.get("AVG_CONSISTENCY", 0) * 0.15 +
+            row.get("AVG_USABILITY", 0) * 0.20
+        )
+        snapshots.append(
+            SnapshotResult(
+                snapshot_date=str(row.get("SNAPSHOT_DATE", "")),
+                dimension_value=row.get("DIMENSION_VALUE", "Unknown"),
+                total_assets=row.get("TOTAL_ASSETS", 0),
+                avg_completeness=round(row.get("AVG_COMPLETENESS", 0), 2),
+                avg_accuracy=round(row.get("AVG_ACCURACY", 0), 2),
+                avg_timeliness=round(row.get("AVG_TIMELINESS", 0), 2),
+                avg_consistency=round(row.get("AVG_CONSISTENCY", 0), 2),
+                avg_usability=round(row.get("AVG_USABILITY", 0), 2),
+                avg_overall=round(overall, 2),
+                pct_with_description=round(row.get("PCT_WITH_DESCRIPTION", 0), 2),
+                pct_with_owner=round(row.get("PCT_WITH_OWNER", 0), 2),
+                pct_with_tags=round(row.get("PCT_WITH_TAGS", 0), 2),
+                pct_certified=round(row.get("PCT_CERTIFIED", 0), 2),
+                pct_with_lineage=round(row.get("PCT_WITH_LINEAGE", 0), 2),
+            )
+        )
+
+    return {
+        "dimension": dimension.value,
+        "snapshot_date": str(results[0].get("SNAPSHOT_DATE", "")) if results else None,
+        "snapshots": [s.model_dump() for s in snapshots],
+    }
+
+
+@router.get("/trends/coverage")
+async def get_coverage_trends(
+    days: int = Query(30, ge=1, le=365),
+    service: MdlhSessionContext = Depends(require_mdlh_connection),
+) -> dict[str, Any]:
+    """
+    Get coverage trends over time based on asset modification timestamps.
+
+    NOTE: This is an approximation - it shows when assets were last modified,
+    not historical snapshots. For true time series, implement snapshot storage.
+    """
+    sql = f"""
+    SELECT
+        DATE_TRUNC('day', TO_TIMESTAMP(COALESCE(A.UPDATED_AT, A.SOURCE_UPDATED_AT, 0)/1000)) AS trend_date,
+        COUNT(*) AS assets_modified,
+        AVG(CASE WHEN A.DESCRIPTION IS NOT NULL AND TRIM(A.DESCRIPTION) != '' THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_description,
+        AVG(CASE WHEN A.OWNER_USERS IS NOT NULL AND ARRAY_SIZE(A.OWNER_USERS) > 0 THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_owner,
+        AVG(CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_tags,
+        AVG(CASE WHEN UPPER(COALESCE(A.CERTIFICATE_STATUS, '')) = 'VERIFIED' THEN 1.0 ELSE 0.0 END) * 100 AS pct_certified,
+        AVG(CASE WHEN A.HAS_LINEAGE = TRUE THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_lineage
+    FROM ATLAN_GOLD.PUBLIC.ASSETS A
+    WHERE A.STATUS = 'ACTIVE'
+      AND TO_TIMESTAMP(COALESCE(A.UPDATED_AT, A.SOURCE_UPDATED_AT, 0)/1000) >= DATEADD('day', -{days}, CURRENT_TIMESTAMP())
+      AND TO_TIMESTAMP(COALESCE(A.UPDATED_AT, A.SOURCE_UPDATED_AT, 0)/1000) <= CURRENT_TIMESTAMP()
+    GROUP BY DATE_TRUNC('day', TO_TIMESTAMP(COALESCE(A.UPDATED_AT, A.SOURCE_UPDATED_AT, 0)/1000))
+    ORDER BY trend_date ASC
+    """
+
+    results = service.execute_query(sql)
+
+    return {
+        "days": days,
+        "data_points": len(results),
+        "trends": [
+            {
+                "date": str(row.get("TREND_DATE", ""))[:10] if row.get("TREND_DATE") else None,
+                "assets_modified": row.get("ASSETS_MODIFIED", 0),
+                "pct_with_description": round(row.get("PCT_WITH_DESCRIPTION", 0), 2),
+                "pct_with_owner": round(row.get("PCT_WITH_OWNER", 0), 2),
+                "pct_with_tags": round(row.get("PCT_WITH_TAGS", 0), 2),
+                "pct_certified": round(row.get("PCT_CERTIFIED", 0), 2),
+                "pct_with_lineage": round(row.get("PCT_WITH_LINEAGE", 0), 2),
+            }
+            for row in results
+        ],
+        "note": "This shows coverage of assets modified during each period, not historical snapshots.",
+    }
+
+
+# ============================================
+# ENHANCED SEARCH ENDPOINT
+# ============================================
+
+
+@router.get("/search")
+async def enhanced_search(
+    query: str,
+    asset_type: AssetType = AssetType.ALL,
+    connector: str | None = None,
+    include_tags: bool = True,
+    limit: int = Query(50, ge=1, le=500),
+    service: MdlhSessionContext = Depends(require_mdlh_connection),
+) -> dict[str, Any]:
+    """
+    Enhanced search with relevance scoring.
+
+    Searches asset names, descriptions, and optionally tags.
+    Results are ranked by relevance score.
+    """
+    # Escape single quotes in query
+    safe_query = query.replace("'", "''")
+
+    type_filter = ""
+    if asset_type != AssetType.ALL:
+        type_filter = f"AND A.ASSET_TYPE = '{asset_type.value}'"
+
+    connector_filter = ""
+    if connector:
+        connector_filter = f"AND A.CONNECTOR_NAME = '{connector}'"
+
+    tag_search = ""
+    if include_tags:
+        tag_search = f"OR EXISTS (SELECT 1 FROM TABLE(FLATTEN(A.TAGS)) t WHERE t.VALUE::STRING ILIKE '%{safe_query}%')"
+
+    sql = f"""
+    SELECT
+        A.GUID,
+        A.ASSET_NAME,
+        A.ASSET_TYPE,
+        A.ASSET_QUALIFIED_NAME,
+        A.DESCRIPTION,
+        A.CONNECTOR_NAME,
+        A.CERTIFICATE_STATUS,
+        A.HAS_LINEAGE,
+        A.POPULARITY_SCORE,
+        A.OWNER_USERS,
+        A.TAGS,
+        A.UPDATED_AT,
+        -- Relevance scoring
+        CASE
+            WHEN LOWER(A.ASSET_NAME) = LOWER('{safe_query}') THEN 100
+            WHEN LOWER(A.ASSET_NAME) LIKE LOWER('{safe_query}') || '%' THEN 80
+            WHEN LOWER(A.ASSET_NAME) LIKE '%' || LOWER('{safe_query}') || '%' THEN 60
+            WHEN LOWER(A.DESCRIPTION) LIKE '%' || LOWER('{safe_query}') || '%' THEN 40
+            ELSE 20
+        END AS relevance_score
+    FROM ATLAN_GOLD.PUBLIC.ASSETS A
+    WHERE A.STATUS = 'ACTIVE'
+      {type_filter}
+      {connector_filter}
+      AND (
+        A.ASSET_NAME ILIKE '%{safe_query}%'
+        OR A.DESCRIPTION ILIKE '%{safe_query}%'
+        {tag_search}
+      )
+    ORDER BY relevance_score DESC, A.POPULARITY_SCORE DESC NULLS LAST
+    LIMIT {limit}
+    """
+
+    results = service.execute_query(sql)
+
+    return {
+        "query": query,
+        "results": results,
+        "count": len(results),
+        "filters": {
+            "asset_type": asset_type.value if asset_type != AssetType.ALL else None,
+            "connector": connector,
+            "include_tags": include_tags,
         },
     }

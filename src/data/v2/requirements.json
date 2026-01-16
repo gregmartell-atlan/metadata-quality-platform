@@ -1,0 +1,34 @@
+{
+  "ai_rag": [
+    { "id": "req_semantics", "name": "Rich Semantics", "rationale": "LLMs need context to understand data.", "signalTypesRequired": ["SEMANTICS"] },
+    { "id": "req_lineage", "name": "Traceability", "rationale": "Need to trace source of truth.", "signalTypesRequired": ["LINEAGE"] },
+    { "id": "req_ownership_rag", "name": "Clear Ownership", "rationale": "Know who to ask for clarification.", "signalTypesRequired": ["OWNERSHIP"] }
+  ],
+  "ai_agent": [
+    { "id": "req_semantics_agent", "name": "Rich Semantics", "rationale": "Agents need descriptions to select tools.", "signalTypesRequired": ["SEMANTICS"] },
+    { "id": "req_quality_agent", "name": "High Quality", "rationale": "Agents act on data; it must be reliable.", "signalTypesRequired": ["FRESHNESS", "OWNERSHIP"] },
+    { "id": "req_sensitivity_agent", "name": "Access Control", "rationale": "Agents should respect data sensitivity.", "signalTypesRequired": ["SENSITIVITY", "ACCESS"] }
+  ],
+  "ai_forecast": [
+    { "id": "req_quality_forecast", "name": "Data Quality", "rationale": "Forecasts require clean, consistent data.", "signalTypesRequired": ["QUALITY", "FRESHNESS"] },
+    { "id": "req_lineage_forecast", "name": "Source Lineage", "rationale": "Need to understand data provenance.", "signalTypesRequired": ["LINEAGE"] }
+  ],
+  "data_ownership": [
+    { "id": "req_owner", "name": "Clear Ownership", "rationale": "Every asset needs an accountable owner.", "signalTypesRequired": ["OWNERSHIP"] }
+  ],
+  "data_lineage": [
+    { "id": "req_lineage_depth", "name": "End-to-End Lineage", "rationale": "Impact analysis requires full lineage.", "signalTypesRequired": ["LINEAGE"] }
+  ],
+  "data_semantics": [
+    { "id": "req_descriptions", "name": "Descriptions", "rationale": "Assets need meaningful descriptions.", "signalTypesRequired": ["SEMANTICS"] },
+    { "id": "req_glossary", "name": "Glossary Terms", "rationale": "Link to business definitions.", "signalTypesRequired": ["SEMANTICS"] }
+  ],
+  "data_quality": [
+    { "id": "req_freshness", "name": "Freshness Monitoring", "rationale": "Know when data was last updated.", "signalTypesRequired": ["FRESHNESS"] },
+    { "id": "req_quality_scores", "name": "Quality Metrics", "rationale": "Track data quality over time.", "signalTypesRequired": ["QUALITY"] }
+  ],
+  "data_security": [
+    { "id": "req_sensitivity", "name": "Sensitivity Classification", "rationale": "Identify sensitive data.", "signalTypesRequired": ["SENSITIVITY"] },
+    { "id": "req_access", "name": "Access Controls", "rationale": "Control who can access what.", "signalTypesRequired": ["ACCESS"] }
+  ]
+}

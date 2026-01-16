@@ -1,0 +1,10 @@
+[
+  { "id": "ai_rag", "name": "AI RAG", "group": "AI" },
+  { "id": "ai_agent", "name": "Agent Workflows", "group": "AI" },
+  { "id": "ai_forecast", "name": "Forecasting", "group": "AI" },
+  { "id": "data_lineage", "name": "Lineage", "group": "DATA" },
+  { "id": "data_ownership", "name": "Ownership", "group": "DATA" },
+  { "id": "data_semantics", "name": "Semantics", "group": "DATA" },
+  { "id": "data_quality", "name": "Quality & Freshness", "group": "DATA" },
+  { "id": "data_security", "name": "Sensitivity & Access", "group": "DATA" }
+]
