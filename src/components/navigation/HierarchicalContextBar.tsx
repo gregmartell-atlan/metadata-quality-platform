@@ -23,7 +23,9 @@ import {
 } from 'lucide-react';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useAssetInspectorStore } from '../../stores/assetInspectorStore';
-import { getConnectors, getDatabases, getSchemas, getTables, type ConnectorInfo, type HierarchyItem } from '../../services/atlan/api';
+import { useBackendModeStore } from '../../stores/backendModeStore';
+import { type ConnectorInfo, type HierarchyItem } from '../../services/atlan/api';
+import * as unifiedLoader from '../../utils/unifiedAssetLoader';
 import {
   loadAssetsForContext,
   generateContextLabel,
@@ -116,6 +118,10 @@ export function HierarchicalContextBar() {
     setLoadingProgress,
   } = useAssetContextStore();
   const { openInspector } = useAssetInspectorStore();
+  
+  // Get backend status - needed for connection-based reloading
+  const { dataBackend, snowflakeStatus, isInFallbackMode, connectionVersion } = useBackendModeStore();
+  const isSnowflakeConnected = snowflakeStatus.connected;
 
   // Dropdown state
   const [activeDropdown, setActiveDropdown] = useState<'connection' | 'database' | 'schema' | 'table' | null>(null);
@@ -142,10 +148,14 @@ export function HierarchicalContextBar() {
   // Refs for click-outside handling
   const barRef = useRef<HTMLDivElement>(null);
 
-  // Load connections on mount
+  // Load connections on mount AND when connection version changes
+  // connectionVersion increments whenever Snowflake connects/disconnects
+  // This ensures the hierarchy reloads from MDLH when user connects to Snowflake
   useEffect(() => {
-    getConnectors()
-      .then(conns => {
+    logger.info('[HierarchicalContextBar] Loading connectors, connectionVersion:', connectionVersion, 'connected:', isSnowflakeConnected);
+    unifiedLoader.loadConnectors()
+      .then(result => {
+        const conns = result.data;
         // Store full entities for inspector
         const entitiesMap = new Map();
         conns.forEach(conn => {
@@ -155,9 +165,14 @@ export function HierarchicalContextBar() {
         });
         setConnectionEntities(entitiesMap);
         setConnections(conns);
+        
+        if (result.fallbackUsed) {
+          logger.warn('HierarchicalContextBar: Used API fallback for connectors:', result.fallbackReason);
+        }
+        logger.info('[HierarchicalContextBar] Loaded connectors:', conns.length, 'source:', result.source);
       })
       .catch(logger.error);
-  }, []);
+  }, [connectionVersion]);
 
   // Sync with context store
   useEffect(() => {
@@ -181,12 +196,13 @@ export function HierarchicalContextBar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Load databases when connection selected
+  // Load databases when connection selected using unified loader
   useEffect(() => {
     if (selectedConnection) {
       setIsLoadingLevel('database');
-      getDatabases(selectedConnection)
-        .then(dbs => {
+      unifiedLoader.loadDatabases(selectedConnection)
+        .then(result => {
+          const dbs = result.data;
           // Store full entities for inspector
           const entitiesMap = new Map();
           dbs.forEach(db => {
@@ -205,6 +221,10 @@ export function HierarchicalContextBar() {
             icon: <Folder size={16} />,
             popularityLevel: getEntityPopularityLevel(db.fullEntity)
           })));
+          
+          if (result.fallbackUsed) {
+            logger.warn('HierarchicalContextBar: Used API fallback for databases:', result.fallbackReason);
+          }
         })
         .catch(logger.error)
         .finally(() => setIsLoadingLevel(null));
@@ -218,14 +238,15 @@ export function HierarchicalContextBar() {
     }
   }, [selectedConnection]);
 
-  // Load schemas when database selected
+  // Load schemas when database selected using unified loader
   useEffect(() => {
     if (selectedDatabase && selectedConnection) {
       setIsLoadingLevel('schema');
       const dbQualifiedName = databases.find(db => db.name === selectedDatabase)?.qualifiedName;
       if (dbQualifiedName) {
-        getSchemas(dbQualifiedName)
-          .then(schs => {
+        unifiedLoader.loadSchemas(selectedConnection, dbQualifiedName, selectedDatabase)
+          .then(result => {
+            const schs = result.data;
             // Store full entities for inspector
             const entitiesMap = new Map();
             schs.forEach(sch => {
@@ -244,6 +265,10 @@ export function HierarchicalContextBar() {
               icon: <Table2 size={16} />,
               popularityLevel: getEntityPopularityLevel(sch.fullEntity)
             })));
+            
+            if (result.fallbackUsed) {
+              logger.warn('HierarchicalContextBar: Used API fallback for schemas:', result.fallbackReason);
+            }
           })
           .catch(logger.error)
           .finally(() => setIsLoadingLevel(null));
@@ -258,14 +283,15 @@ export function HierarchicalContextBar() {
     }
   }, [selectedDatabase, selectedConnection, databases]);
 
-  // Load tables when schema selected
+  // Load tables when schema selected using unified loader
   useEffect(() => {
     if (selectedSchema && selectedDatabase && selectedConnection) {
       setIsLoadingLevel('table');
       const schemaQualifiedName = schemas.find(s => s.name === selectedSchema)?.qualifiedName;
       if (schemaQualifiedName) {
-        getTables(schemaQualifiedName)
-          .then(tbls => {
+        unifiedLoader.loadTables(selectedConnection, selectedDatabase, schemaQualifiedName, selectedSchema)
+          .then(result => {
+            const tbls = result.data;
             // Store full entities for inspector
             const entitiesMap = new Map();
             tbls.forEach(tbl => {
@@ -285,6 +311,10 @@ export function HierarchicalContextBar() {
               icon: <Table2 size={16} />,
               popularityLevel: getEntityPopularityLevel(tbl.fullEntity)
             })));
+            
+            if (result.fallbackUsed) {
+              logger.warn('HierarchicalContextBar: Used API fallback for tables:', result.fallbackReason);
+            }
           })
           .catch(logger.error)
           .finally(() => setIsLoadingLevel(null));
@@ -472,6 +502,9 @@ export function HierarchicalContextBar() {
 
   // Check if we're in "All Assets" mode
   const isAllAssetsMode = context?.type === 'all';
+
+  // Get backend status for indicator
+  const isUsingMdlh = dataBackend === 'mdlh' && snowflakeStatus.connected && !isInFallbackMode;
 
   return (
     <div className="hierarchical-context-bar" ref={barRef}>
@@ -845,6 +878,26 @@ export function HierarchicalContextBar() {
             size="sm"
           />
         )}
+
+        {/* Backend status indicator */}
+        <div className="backend-status-indicator" title={isUsingMdlh ? 'Using MDLH (Snowflake)' : isInFallbackMode ? 'API Fallback Mode' : 'Using Atlan API'}>
+          {isUsingMdlh ? (
+            <span className="backend-badge backend-mdlh">
+              <Snowflake size={12} />
+              <span>MDLH</span>
+            </span>
+          ) : isInFallbackMode ? (
+            <span className="backend-badge backend-fallback">
+              <Link2 size={12} />
+              <span>API (fallback)</span>
+            </span>
+          ) : (
+            <span className="backend-badge backend-api">
+              <Link2 size={12} />
+              <span>API</span>
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );

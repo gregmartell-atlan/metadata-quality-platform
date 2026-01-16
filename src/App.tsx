@@ -7,6 +7,8 @@ import { RightInspectorSidebar } from './components/layout/RightInspectorSidebar
 import { AssetInspectorModal } from './components/AssetInspector/AssetInspectorModal';
 import { useUIPreferences } from './stores/uiPreferencesStore';
 import { useAssetPreviewStore } from './stores/assetPreviewStore';
+import { useBackendModeStore } from './stores/backendModeStore';
+import { logger } from './utils/logger';
 import './App.css';
 
 // Lazy load page components for code splitting
@@ -34,6 +36,42 @@ function App() {
   const { selectedAsset, isOpen: isPreviewOpen, isLoading: isPreviewLoading, closePreview } = useAssetPreviewStore();
   const { isOpen: isSearchOpen, closeSearch } = useGlobalSearch();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  
+  // Get backend mode store actions
+  const refreshStatus = useBackendModeStore((state) => state.refreshStatus);
+  const fetchMdlhConfig = useBackendModeStore((state) => state.fetchMdlhConfig);
+  const dataBackend = useBackendModeStore((state) => state.dataBackend);
+  const snowflakeConnected = useBackendModeStore((state) => state.snowflakeStatus.connected);
+  const connectionVersion = useBackendModeStore((state) => state.connectionVersion);
+
+  // Initialize backend connection status on app startup
+  useEffect(() => {
+    const initBackend = async () => {
+      logger.info('[App] Initializing backend mode...', { dataBackend });
+      
+      // Fetch MDLH config from server
+      await fetchMdlhConfig();
+      
+      // Check current Snowflake connection status
+      await refreshStatus();
+      
+      logger.info('[App] Backend initialization complete', { 
+        dataBackend, 
+        snowflakeConnected 
+      });
+    };
+    
+    initBackend();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
+  
+  // Log connection version changes for debugging
+  useEffect(() => {
+    if (connectionVersion > 0) {
+      logger.info('[App] Connection version changed to ' + connectionVersion + 
+        ' - All subscribed components should refresh data');
+    }
+  }, [connectionVersion]);
 
   // Apply theme and density to document
   useEffect(() => {

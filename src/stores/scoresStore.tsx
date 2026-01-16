@@ -14,8 +14,10 @@ import { resolveTagNames } from '../services/atlan/tagResolver';
 import { setNameCaches } from '../utils/pivotDimensions';
 import { calculateAssetQuality } from '../services/qualityMetrics';
 import { useScoringSettingsStore } from './scoringSettingsStore';
+import { useBackendModeStore } from './backendModeStore';
 import { scoreAssets, initializeScoringService, setScoringModeGetter } from '../services/scoringService';
 import { getAtlanConfig } from '../services/atlan/api';
+import * as mdlhClient from '../services/mdlhClient';
 import type { AtlanAsset as ScoringAtlanAsset } from '../scoring/contracts';
 import { logger } from '../utils/logger';
 import { getOwnerNames, getMeaningTexts, isValidScoringType } from '../utils/typeGuards';
@@ -68,6 +70,81 @@ export function ScoresStoreProvider({ children }: { children: ReactNode }) {
   }, [scoringMode]);
 
   const setAssetsWithScores = useCallback(async (assets: AtlanAsset[]) => {
+    // Check if MDLH is connected - use server-side computed scores
+    const { dataBackend, snowflakeStatus } = useBackendModeStore.getState();
+    const useMdlhScores = dataBackend === 'mdlh' && snowflakeStatus.connected;
+    
+    if (useMdlhScores && assets.length > 0) {
+      logger.info('[ScoresStore] Using MDLH server-side quality scores for', assets.length, 'assets');
+      
+      try {
+        // Fetch scores from MDLH
+        const guids = assets.map(a => a.guid);
+        const { scores: mdlhScoresMap } = await mdlhClient.getQualityScoresByGuids(guids);
+        
+        logger.debug('[ScoresStore] MDLH returned scores for', mdlhScoresMap.size, 'of', guids.length, 'assets');
+        
+        // Build AssetWithScores using MDLH scores, falling back to defaults
+        const withScores: AssetWithScores[] = assets.map((asset) => {
+          const mdlhScore = mdlhScoresMap.get(asset.guid);
+          
+          // Create minimal metadata for grouping (doesn't need full transform for MDLH path)
+          const metadata: AssetMetadata = {
+            name: asset.name,
+            qualifiedName: asset.qualifiedName,
+            typeName: asset.typeName,
+            description: asset.description || asset.userDescription || null,
+            owner: Array.isArray(asset.ownerUsers) && asset.ownerUsers.length > 0 
+              ? (typeof asset.ownerUsers[0] === 'string' ? asset.ownerUsers[0] : asset.ownerUsers[0]?.id || null)
+              : null,
+            ownerGroup: Array.isArray(asset.ownerGroups) && asset.ownerGroups.length > 0
+              ? (typeof asset.ownerGroups[0] === 'string' ? asset.ownerGroups[0] : asset.ownerGroups[0]?.id || null)
+              : null,
+            domain: asset.domainGUIDs?.[0] || null,
+            schema: asset.schemaQualifiedName || asset.qualifiedName.split('/')[1] || null,
+            connectionName: asset.connectionName || null,
+            tag: asset.classificationNames?.[0] || null,
+            certification: asset.certificateStatus || null,
+            classification: asset.classificationNames?.[0] || null,
+            assetType: asset.typeName,
+            lastUpdated: asset.updateTime || asset.sourceUpdatedAt || null,
+            hasLineage: asset.__hasLineage || false,
+            hasReadme: !!asset.readme,
+            hasTerms: (asset.meanings?.length || 0) > 0,
+            popularityScore: asset.popularityScore || null,
+          };
+          
+          // Use MDLH scores or provide defaults
+          const scores: QualityScores & { overall: number } = mdlhScore 
+            ? {
+                completeness: Math.round(mdlhScore.completeness),
+                accuracy: Math.round(mdlhScore.accuracy),
+                timeliness: Math.round(mdlhScore.timeliness),
+                consistency: Math.round(mdlhScore.consistency),
+                usability: Math.round(mdlhScore.usability),
+                overall: Math.round(mdlhScore.overall),
+              }
+            : {
+                completeness: 0,
+                accuracy: 0,
+                timeliness: 0,
+                consistency: 0,
+                usability: 0,
+                overall: 0,
+              };
+          
+          return { asset, metadata, scores };
+        });
+        
+        logger.info('[ScoresStore] MDLH scoring complete:', withScores.length, 'assets scored');
+        setAssetsWithScoresState(withScores);
+        return;
+      } catch (error) {
+        logger.error('[ScoresStore] MDLH scoring failed, falling back to client-side:', error);
+        // Fall through to client-side scoring
+      }
+    }
+    
     // Pre-fetch domain and tag names for human-readable display
     let domainNameMap: Map<string, string> | undefined;
     let tagNameMap: Map<string, string> | undefined;

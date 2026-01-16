@@ -9,9 +9,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from './shared';
 import {
-  getConnectors,
-  getDatabases,
-  getSchemas,
   fetchAssetsForModel,
   searchAssets,
   getAsset,
@@ -19,6 +16,14 @@ import {
   testConnection,
   type ConnectorInfo,
 } from '../services/atlan/api';
+// Use unified asset loader for backend-aware data fetching (MDLH or API)
+import {
+  loadConnectors as unifiedLoadConnectors,
+  loadDatabases as unifiedLoadDatabases,
+  loadSchemas as unifiedLoadSchemas,
+  loadTables as unifiedLoadTables,
+} from '../utils/unifiedAssetLoader';
+import { useBackendModeStore } from '../stores/backendModeStore';
 import { useAssetStore } from '../stores/assetStore';
 import { useAssetContextStore } from '../stores/assetContextStore';
 import type { AtlanAsset } from '../services/atlan/types';
@@ -85,6 +90,9 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
   const hasLoadedConnectors = React.useRef(false);
   const connectionStatusRef = React.useRef(connectionStatus);
 
+  // Get backend mode for reactive updates when Snowflake connects/disconnects
+  const { snowflakeStatus, dataBackend, connectionVersion } = useBackendModeStore();
+
   // Collect all table assets from tree for PopularAssetsSection
   const allTableAssets = useMemo(() => {
     const tables: AtlanAsset[] = [];
@@ -129,8 +137,13 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
       const result = await testConnection();
       if (result.connected) {
         setConnectionStatus('connected');
-        const connectorList = await getConnectors();
-        logger.debug('Loaded connectors', { count: connectorList.length });
+        // Use unified loader to get connectors (auto-routes to MDLH if connected)
+        const loaderResult = await unifiedLoadConnectors();
+        const connectorList = loaderResult.data;
+        logger.debug('Loaded connectors via unified loader', { 
+          count: connectorList.length, 
+          source: loaderResult.source 
+        });
         setConnectors(connectorList);
         hasLoadedConnectors.current = true;
         if (connectorList.length > 0) {
@@ -152,12 +165,18 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
   }, []);
 
   // Load connections under an "All Assets" root node
+  // Uses unified loader to automatically route to MDLH or Atlan API
   const loadConnections = useCallback(async () => {
     setError(null);
     try {
-      logger.debug('Loading connections');
-      const connectorList = await getConnectors();
-      logger.debug('Loaded connectors', { count: connectorList.length });
+      logger.debug('Loading connections via unified loader');
+      const result = await unifiedLoadConnectors();
+      const connectorList = result.data;
+      logger.debug('Loaded connectors', { 
+        count: connectorList.length, 
+        source: result.source,
+        fallbackUsed: result.fallbackUsed 
+      });
 
       // Calculate total asset count across all connectors
       const totalCount = connectorList.reduce((sum, c) => sum + c.assetCount, 0);
@@ -202,18 +221,21 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
     }
   }, [showPopularOnly]);
 
-  const loadDatabases = useCallback(async (connector: string, parentNodeId: string) => {
+  const loadDatabasesForConnector = useCallback(async (connector: string, parentNodeId: string) => {
     setLoadingNodes((prev) => new Set(prev).add(parentNodeId));
     setError(null);
 
     try {
-      logger.debug('Loading databases for connector', { connector, popularOnly: showPopularOnly });
-      // Pass popularOnly option to API for server-side filtering (scales to millions of assets)
-      const databases = await getDatabases(connector, {
-        popularOnly: showPopularOnly,
-        sortByPopularity: sortBy === 'popularity',
+      logger.debug('Loading databases for connector via unified loader', { connector, popularOnly: showPopularOnly });
+      // Use unified loader for backend-aware database fetching
+      const result = await unifiedLoadDatabases(connector);
+      const databases = result.data;
+      logger.debug('Loaded databases', { 
+        connector, 
+        count: databases.length,
+        source: result.source,
+        fallbackUsed: result.fallbackUsed
       });
-      logger.debug('Loaded databases', { connector, count: databases.length });
       const dbNodes: TreeNode[] = databases.map((db) => ({
         id: `db-${db.qualifiedName}`,
         name: db.name,
@@ -316,18 +338,48 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionStatus, connectors.length]);
 
-  const loadSchemas = useCallback(async (dbNode: TreeNode) => {
+  // Reload tree when Snowflake connection status changes (backend switch)
+  // This ensures the asset browser uses MDLH data when connected to Snowflake
+  useEffect(() => {
+    if (connectionStatus === 'connected') {
+      logger.info('[AssetBrowser] Backend connection changed, reloading tree', {
+        dataBackend,
+        snowflakeConnected: snowflakeStatus.connected,
+        connectionVersion,
+      });
+      // Clear tree and reload from the appropriate backend
+      setTreeData([]);
+      setExpandedNodes(new Set());
+      hasLoadedConnectors.current = false;
+      loadConnections();
+    }
+    // Only react to connectionVersion changes (not every snowflakeStatus change)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connectionVersion]);
+
+  const loadSchemasForDatabase = useCallback(async (dbNode: TreeNode) => {
     if (dbNode.isLoaded || !dbNode.qualifiedName) return;
 
     setLoadingNodes((prev) => new Set(prev).add(dbNode.id));
     setError(null);
 
     try {
-      // Pass popularOnly option to API for server-side filtering (scales to millions of assets)
-      const schemas = await getSchemas(dbNode.qualifiedName, {
-        popularOnly: showPopularOnly,
-        sortByPopularity: sortBy === 'popularity',
+      // Use unified loader for backend-aware schema fetching
+      // Extract database name from qualified name (format: connector/database or just database)
+      const dbName = dbNode.name;
+      const connectorName = dbNode.connectorName || '';
+      
+      logger.debug('Loading schemas via unified loader', { connectorName, dbName, qualifiedName: dbNode.qualifiedName });
+      const result = await unifiedLoadSchemas(connectorName, dbNode.qualifiedName, dbName);
+      const schemas = result.data;
+      
+      logger.debug('Loaded schemas', { 
+        database: dbName, 
+        count: schemas.length,
+        source: result.source,
+        fallbackUsed: result.fallbackUsed
       });
+      
       const schemaNodes: TreeNode[] = schemas.map((schema) => ({
         id: `schema-${schema.qualifiedName}`,
         name: schema.name,
@@ -387,7 +439,7 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
     }
   }, [showPopularOnly, sortBy]);
 
-  const loadTables = useCallback(async (dbNode: TreeNode, schemaNode: TreeNode) => {
+  const loadTablesForSchema = useCallback(async (dbNode: TreeNode, schemaNode: TreeNode) => {
     if (schemaNode.isLoaded) return;
 
     setLoadingNodes((prev) => new Set(prev).add(schemaNode.id));
@@ -398,30 +450,59 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
     const TABLE_LOAD_LIMIT = 1000;
 
     try {
-      const assets = await fetchAssetsForModel({
-        connector: schemaNode.connectorName || '',
-        schemaQualifiedName: schemaNode.qualifiedName,
-        assetTypes: ['Table', 'View', 'MaterializedView'],
-        size: TABLE_LOAD_LIMIT,
+      // Use unified loader for backend-aware table fetching
+      const connectorName = schemaNode.connectorName || '';
+      const dbName = dbNode.name;
+      const schemaName = schemaNode.name;
+      
+      logger.debug('Loading tables via unified loader', { connectorName, dbName, schemaName, qualifiedName: schemaNode.qualifiedName });
+      const result = await unifiedLoadTables(connectorName, dbName, schemaNode.qualifiedName, schemaName);
+      const tablesFromLoader = result.data;
+      
+      logger.debug('Loaded tables', { 
+        schema: schemaName, 
+        count: tablesFromLoader.length,
+        source: result.source,
+        fallbackUsed: result.fallbackUsed
       });
-
-      const tableNodes: TreeNode[] = assets
-        .filter((a) => ['Table', 'View', 'MaterializedView'].includes(a.typeName))
-        .map((asset) => ({
-          id: `table-${asset.qualifiedName}`,
-          name: asset.name,
-          qualifiedName: asset.qualifiedName,
-          type: 'table',
-          connectorName: schemaNode.connectorName,
-          children: [],
-          isLoaded: true,
-          asset,
-        }));
+      
+      // Transform hierarchy items to tree nodes with full entity if available
+      const tableNodes: TreeNode[] = tablesFromLoader.map((table) => ({
+        id: `table-${table.qualifiedName}`,
+        name: table.name,
+        qualifiedName: table.qualifiedName,
+        type: 'table' as const,
+        connectorName: schemaNode.connectorName,
+        children: [],
+        isLoaded: true,
+        // Convert HierarchyItem to AtlanAsset format if fullEntity is available
+        asset: table.fullEntity ? {
+          guid: table.guid,
+          typeName: table.typeName,
+          name: table.name,
+          qualifiedName: table.qualifiedName,
+          connectionName: table.fullEntity?.attributes?.connectionName || connectorName,
+          description: table.fullEntity?.attributes?.description,
+          ownerUsers: table.fullEntity?.attributes?.ownerUsers,
+          certificateStatus: table.fullEntity?.attributes?.certificateStatus,
+          classificationNames: table.fullEntity?.attributes?.classificationNames,
+          popularityScore: table.popularityScore,
+          updateTime: table.fullEntity?.attributes?.updateTime,
+          __hasLineage: table.fullEntity?.attributes?.__hasLineage,
+        } as AtlanAsset : {
+          guid: table.guid,
+          typeName: table.typeName,
+          name: table.name,
+          qualifiedName: table.qualifiedName,
+          connectionName: connectorName,
+          popularityScore: table.popularityScore,
+        } as AtlanAsset,
+      }));
 
       // Track if there are more tables than we loaded
       const hasMoreTables = schemaNode.childCount
         ? tableNodes.length < schemaNode.childCount
-        : assets.length >= TABLE_LOAD_LIMIT;
+        : tablesFromLoader.length >= TABLE_LOAD_LIMIT;
 
       if (hasMoreTables) {
         logger.info('Schema has more tables than loaded', {
@@ -505,18 +586,18 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
             next.add(node.id);
             // Load children when expanding
             if (node.type === 'connector' && !node.isLoaded) {
-              loadDatabases(node.connectorName || node.name, node.id);
+              loadDatabasesForConnector(node.connectorName || node.name, node.id);
             } else if (node.type === 'database' && !node.isLoaded) {
-              loadSchemas(node);
+              loadSchemasForDatabase(node);
             } else if (node.type === 'schema' && !node.isLoaded && parent) {
-              loadTables(parent, node);
+              loadTablesForSchema(parent, node);
             }
           }
           return next;
         });
       }
     },
-    [expandedNodes, toggleAsset, loadDatabases, loadSchemas, loadTables]
+    [expandedNodes, toggleAsset, loadDatabasesForConnector, loadSchemasForDatabase, loadTablesForSchema]
   );
 
   // Handler for "Analyze Selected" button
@@ -805,7 +886,6 @@ export function AssetBrowser({ searchFilter = '', onAssetsLoaded }: AssetBrowser
                     // Technical
                     schemaCount: e.attributes?.schemaCount,
                     tableCount: e.attributes?.tableCount,
-                    viewCount: e.attributes?.viewCount,
                     createTime: e.attributes?.createTime,
                     updateTime: e.attributes?.updateTime,
                     createdBy: e.attributes?.createdBy,

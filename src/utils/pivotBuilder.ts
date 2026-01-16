@@ -522,3 +522,99 @@ export function flattenHierarchyForTable(
   return result;
 }
 
+// ============================================
+// MDLH Integration
+// ============================================
+
+import { useBackendModeStore } from '../stores/backendModeStore';
+import * as mdlhClient from '../services/mdlhClient';
+
+/**
+ * Fetch pivot data using the appropriate backend.
+ * 
+ * In API mode: Uses client-side hierarchy building from assets
+ * In MDLH mode: Uses server-side aggregation for better performance
+ */
+export async function fetchPivotData(options?: {
+  rowDimension?: string;
+  columnDimension?: string;
+  metric?: string;
+  assetType?: string;
+}): Promise<{
+  columns: string[];
+  data: Record<string, Record<string, number>>;
+  dimension: string;
+}> {
+  const { dataBackend, snowflakeStatus } = useBackendModeStore.getState();
+
+  // Use MDLH if selected and connected
+  if (dataBackend === 'mdlh' && snowflakeStatus.connected) {
+    const result = await mdlhClient.getPivotData({
+      rowDimension: options?.rowDimension || 'connector',
+      columnDimension: options?.columnDimension || 'asset_type',
+      metric: options?.metric || 'count',
+      assetType: options?.assetType,
+    });
+
+    return {
+      columns: result.columns,
+      data: result.data,
+      dimension: result.row_dimension,
+    };
+  }
+
+  // Fallback to empty for API mode (client-side building is done separately)
+  return {
+    columns: [],
+    data: {},
+    dimension: options?.rowDimension || 'connector',
+  };
+}
+
+/**
+ * Fetch rollup data for a specific dimension using MDLH.
+ * Returns aggregated quality metrics grouped by the dimension.
+ */
+export async function fetchDimensionRollup(options: {
+  dimension: 'connector' | 'database' | 'schema' | 'asset_type' | 'certificate_status';
+  assetType?: string;
+}): Promise<Array<{
+  value: string;
+  assetCount: number;
+  completeness: number;
+  accuracy: number;
+  timeliness: number;
+  consistency: number;
+  usability: number;
+  overall: number;
+}>> {
+  const { dataBackend, snowflakeStatus } = useBackendModeStore.getState();
+
+  // Use MDLH if selected and connected
+  if (dataBackend === 'mdlh' && snowflakeStatus.connected) {
+    const result = await mdlhClient.getQualityRollup({
+      dimension: options.dimension,
+      assetType: options.assetType,
+    });
+
+    return result.rollups.map((r) => ({
+      value: r.DIMENSION_VALUE || 'Unknown',
+      assetCount: r.TOTAL_ASSETS,
+      completeness: r.AVG_COMPLETENESS,
+      accuracy: r.AVG_ACCURACY,
+      timeliness: r.AVG_TIMELINESS,
+      consistency: r.AVG_CONSISTENCY,
+      usability: r.AVG_USABILITY,
+      overall: r.AVG_OVERALL ?? 
+        (r.AVG_COMPLETENESS * 0.25 + 
+         r.AVG_ACCURACY * 0.2 + 
+         r.AVG_TIMELINESS * 0.2 + 
+         r.AVG_CONSISTENCY * 0.15 + 
+         r.AVG_USABILITY * 0.2),
+    }));
+  }
+
+  // Fallback to empty for API mode
+  return [];
+}
+

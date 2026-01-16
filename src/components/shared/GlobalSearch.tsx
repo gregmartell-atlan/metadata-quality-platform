@@ -8,13 +8,16 @@
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Search, X, Clock, Database, ArrowRight, Server, Layers, Home, LayoutDashboard, Table2, GitBranch, Radar, Settings } from 'lucide-react';
+import { Search, X, Clock, Database, ArrowRight, Server, Layers, Home, LayoutDashboard, Table2, GitBranch, Radar, Settings, Loader2 } from 'lucide-react';
 import { useScoresStore } from '../../stores/scoresStore';
 import { useAssetContextStore } from '../../stores/assetContextStore';
+import { useBackendModeStore } from '../../stores/backendModeStore';
 import { PopularityIndicator, shouldShowPopularity } from './PopularityBadge';
-import { getConnectors, getDatabases, getSchemas } from '../../services/atlan/api';
+import * as unifiedLoader from '../../utils/unifiedAssetLoader';
+import * as mdlhClient from '../../services/mdlhClient';
 import { loadAssetsForContext, generateContextLabel } from '../../utils/assetContextLoader';
 import { useNavigate } from 'react-router-dom';
+import { logger } from '../../utils/logger';
 import './GlobalSearch.css';
 
 const STORAGE_KEY = 'mqp.search.recent';
@@ -43,10 +46,15 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   const [connections, setConnections] = useState<SearchResult[]>([]);
   const [databases, setDatabases] = useState<SearchResult[]>([]);
   const [schemas, setSchemas] = useState<SearchResult[]>([]);
+  const [mdlhSearchResults, setMdlhSearchResults] = useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { assetsWithScores } = useScoresStore();
   const { setContext, setLoading, contextHistory } = useAssetContextStore();
+  const { dataBackend, snowflakeStatus, connectionVersion } = useBackendModeStore();
+  const isMdlhConnected = dataBackend === 'mdlh' && snowflakeStatus.connected;
   const navigate = useNavigate();
 
   // Load recent searches from localStorage
@@ -70,10 +78,13 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
     }
   }, [isOpen]);
 
-  // Load context data (connections, databases, schemas)
+  // Load context data (connections, databases, schemas) using unified loader
+  // Refresh when connectionVersion changes (after MDLH connect/disconnect)
   const loadContextData = useCallback(async () => {
     try {
-      const connectors = await getConnectors();
+      logger.debug('[GlobalSearch] Loading context data via unified loader');
+      const result = await unifiedLoader.loadConnectors();
+      const connectors = result.data;
       const connItems: SearchResult[] = connectors.map(conn => ({
         id: `conn-${conn.id}`,
         type: 'connection',
@@ -102,7 +113,8 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
 
       for (const conn of connectors.slice(0, 3)) {
         try {
-          const dbs = await getDatabases(conn.qualifiedName);
+          const dbResult = await unifiedLoader.loadDatabases(conn.name);
+          const dbs = dbResult.data;
           dbs.forEach(db => {
             allDatabases.push({
               id: `db-${db.guid}`,
@@ -130,7 +142,8 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
           // Load schemas for top databases
           for (const db of dbs.slice(0, 2)) {
             try {
-              const schemaList = await getSchemas(db.qualifiedName);
+              const schemaResult = await unifiedLoader.loadSchemas(conn.name, db.qualifiedName, db.name);
+              const schemaList = schemaResult.data;
               schemaList.forEach(schema => {
                 allSchemas.push({
                   id: `schema-${schema.guid}`,
@@ -170,14 +183,26 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
     }
   }, [setContext, setLoading, onClose, navigate]);
 
-  // Load connections/databases/schemas when modal opens
+  // Load connections/databases/schemas when modal opens or connection version changes
+  // connectionVersion changes when Snowflake connects/disconnects
   useEffect(() => {
     if (isOpen && connections.length === 0) {
       loadContextData(); // eslint-disable-line react-hooks/set-state-in-effect
     }
   }, [isOpen, connections.length, loadContextData]);
+  
+  // Refresh context data when connection version changes (MDLH connected/disconnected)
+  useEffect(() => {
+    if (connectionVersion > 0) {
+      logger.debug('[GlobalSearch] Connection version changed, refreshing context data');
+      setConnections([]); // Clear to force reload
+      setDatabases([]);
+      setSchemas([]);
+      setMdlhSearchResults([]);
+    }
+  }, [connectionVersion]);
 
-  // Save search to recent
+  // Save search to recent - MUST be defined before effects that use it
   const saveRecentSearch = useCallback((search: string) => {
     if (!search.trim()) return;
 
@@ -192,6 +217,60 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
       return updated;
     });
   }, []);
+
+  // MDLH search with debounce - searches server-side when MDLH is connected
+  useEffect(() => {
+    if (!isMdlhConnected || !query.trim() || query.length < 2) {
+      setMdlhSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    setIsSearching(true);
+
+    // Debounce search by 300ms
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        logger.debug('[GlobalSearch] Searching MDLH for:', query);
+        const result = await mdlhClient.searchAssets({
+          query: query.trim(),
+          limit: 10,
+        });
+
+        const searchItems: SearchResult[] = result.assets.map((asset) => ({
+          id: `mdlh-asset-${asset.guid}`,
+          type: 'asset' as const,
+          title: asset.name,
+          subtitle: `${asset.typeName} • ${asset.connectionName || 'Unknown'}`,
+          icon: <Database size={16} />,
+          action: async () => {
+            saveRecentSearch(query);
+            onClose();
+            // Could open asset inspector or navigate to asset
+          },
+        }));
+
+        setMdlhSearchResults(searchItems);
+        logger.debug('[GlobalSearch] MDLH search returned:', searchItems.length, 'results');
+      } catch (err) {
+        logger.error('[GlobalSearch] MDLH search failed:', err);
+        setMdlhSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [query, isMdlhConnected, saveRecentSearch, onClose]);
 
   // Navigation pages
   const pages: SearchResult[] = useMemo(() => [
@@ -323,39 +402,45 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
     // Search schemas
     schemas.filter(filterFn).slice(0, 5).forEach(item => searchResults.push(item));
 
-    // Search assets
-    assetsWithScores.forEach((item) => {
-      const name = item.asset.name.toLowerCase();
-      const connection = (item.metadata.connection || '').toLowerCase();
-      const owner = (item.metadata.owner || '').toLowerCase();
+    // If MDLH is connected, use server-side search results instead of client-side asset search
+    if (isMdlhConnected && mdlhSearchResults.length > 0) {
+      // Add MDLH search results
+      mdlhSearchResults.forEach(item => searchResults.push(item));
+    } else {
+      // Client-side asset search (fallback for API mode)
+      assetsWithScores.forEach((item) => {
+        const name = item.asset.name.toLowerCase();
+        const connection = (item.metadata.connection || '').toLowerCase();
+        const owner = (item.metadata.owner || '').toLowerCase();
 
-      if (
-        name.includes(lowerQuery) ||
-        connection.includes(lowerQuery) ||
-        owner.includes(lowerQuery)
-      ) {
-        const showPopularity = shouldShowPopularity(item.asset);
-        searchResults.push({
-          id: `asset-${item.asset.guid}`,
-          type: 'asset',
-          title: (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              {item.asset.name}
-              {showPopularity && <PopularityIndicator asset={item.asset} size="sm" />}
-            </span>
-          ),
-          subtitle: `${item.metadata.assetType} • ${item.metadata.connection}`,
-          icon: <Database size={16} />,
-          action: () => {
-            saveRecentSearch(query);
-            onClose();
-          },
-        });
-      }
-    });
+        if (
+          name.includes(lowerQuery) ||
+          connection.includes(lowerQuery) ||
+          owner.includes(lowerQuery)
+        ) {
+          const showPopularity = shouldShowPopularity(item.asset);
+          searchResults.push({
+            id: `asset-${item.asset.guid}`,
+            type: 'asset',
+            title: (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                {item.asset.name}
+                {showPopularity && <PopularityIndicator asset={item.asset} size="sm" />}
+              </span>
+            ),
+            subtitle: `${item.metadata.assetType} • ${item.metadata.connection}`,
+            icon: <Database size={16} />,
+            action: () => {
+              saveRecentSearch(query);
+              onClose();
+            },
+          });
+        }
+      });
+    }
 
     return searchResults.slice(0, 15);
-  }, [query, assetsWithScores, pages, connections, databases, schemas, recentContextItems, saveRecentSearch, onClose]);
+  }, [query, assetsWithScores, pages, connections, databases, schemas, recentContextItems, mdlhSearchResults, isMdlhConnected, saveRecentSearch, onClose]);
 
   // Keyboard navigation
   const handleKeyDown = useCallback(
@@ -446,7 +531,13 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
 
         {/* Results */}
         <div className="global-search-results" ref={resultsRef}>
-          {results.length === 0 && query && (
+          {isSearching && (
+            <div className="global-search-loading">
+              <Loader2 size={16} className="global-search-spinner" />
+              <span>Searching{isMdlhConnected ? ' MDLH' : ''}...</span>
+            </div>
+          )}
+          {results.length === 0 && query && !isSearching && (
             <div className="global-search-empty">
               No results found for "{query}"
             </div>

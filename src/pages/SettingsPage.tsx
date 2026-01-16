@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useUIPreferences, type CertificationStatus } from '../stores/uiPreferencesStore';
 import { ChartStyleSelector } from '../components/settings/ChartStylePreview';
+import { DataBackendSettings } from '../components/settings/DataBackendSettings';
 import {
   useQualityRules,
   DEFAULT_THRESHOLDS,
@@ -163,6 +164,9 @@ export function SettingsPage() {
   return (
     <div className="settings-page">
       <div className="settings-content">
+        {/* Data Backend Section */}
+        <DataBackendSettings />
+
         {/* Appearance Section */}
         <Card className="settings-card">
           <div className="settings-card-header">

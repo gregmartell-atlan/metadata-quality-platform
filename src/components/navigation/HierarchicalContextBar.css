@@ -331,3 +331,50 @@
   background: rgba(0, 212, 170, 0.12);
   color: var(--accent-primary, #00d4aa);
 }
+
+/* ========================================
+   BACKEND STATUS INDICATOR
+   ======================================== */
+
+.backend-status-indicator {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  padding-left: 8px;
+  border-left: 1px solid var(--border-subtle);
+}
+
+.backend-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.backend-badge svg {
+  flex-shrink: 0;
+}
+
+.backend-badge.backend-mdlh {
+  background: rgba(0, 150, 255, 0.1);
+  color: var(--accent-blue, #0096ff);
+  border: 1px solid rgba(0, 150, 255, 0.2);
+}
+
+.backend-badge.backend-api {
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+}
+
+.backend-badge.backend-fallback {
+  background: rgba(255, 170, 0, 0.1);
+  color: var(--warning, #ffaa00);
+  border: 1px solid rgba(255, 170, 0, 0.2);
+}

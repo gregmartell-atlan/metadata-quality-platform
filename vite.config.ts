@@ -34,6 +34,15 @@ export default defineConfig({
           });
         },
       },
+      // Proxy /api/snowflake/* and /api/mdlh/* requests to the Python backend
+      '/api/snowflake': {
+        target: `http://${PROXY_HOST}:8000`,
+        changeOrigin: true,
+      },
+      '/api/mdlh': {
+        target: `http://${PROXY_HOST}:8000`,
+        changeOrigin: true,
+      },
     },
   },
 })

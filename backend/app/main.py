@@ -20,7 +20,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
-from .routers import atlan_proxy, state_store, health
+from .routers import atlan_proxy, state_store, health, snowflake, mdlh
 
 # Configure logging
 logging.basicConfig(
@@ -64,6 +64,8 @@ app.add_middleware(
 app.include_router(health.router, tags=["Health"])
 app.include_router(atlan_proxy.router, prefix="/api/atlan", tags=["Atlan API"])
 app.include_router(state_store.router, prefix="/api/state", tags=["State Store"])
+app.include_router(snowflake.router, prefix="/api", tags=["Snowflake"])
+app.include_router(mdlh.router, prefix="/api", tags=["MDLH"])
 
 # Static files path (built React app)
 STATIC_PATH = Path(__file__).parent / "static"

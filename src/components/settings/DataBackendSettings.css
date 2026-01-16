@@ -1,0 +1,178 @@
+/* DataBackendSettings Component Styles */
+
+.data-backend-settings {
+  padding: 1rem;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  background: var(--bg-secondary, #ffffff);
+}
+
+.data-backend-settings h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary, #1f2937);
+}
+
+/* Radio button group */
+.data-backend-settings .backend-options {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.data-backend-settings .backend-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.data-backend-settings .backend-option:hover {
+  border-color: var(--primary-color, #3b82f6);
+}
+
+.data-backend-settings .backend-option.selected {
+  border-color: var(--primary-color, #3b82f6);
+  background: var(--primary-bg, #eff6ff);
+}
+
+.data-backend-settings .backend-option.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Connection status card */
+.data-backend-settings .connection-status {
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.data-backend-settings .connection-status.connected {
+  background: #ecfdf5;
+  border: 1px solid #10b981;
+}
+
+.data-backend-settings .connection-status.disconnected {
+  background: #fef3c7;
+  border: 1px solid #fbbf24;
+}
+
+.data-backend-settings .status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 0.5rem;
+}
+
+.data-backend-settings .status-indicator.connected {
+  background: #10b981;
+}
+
+.data-backend-settings .status-indicator.disconnected {
+  background: #fbbf24;
+}
+
+/* Connect button */
+.data-backend-settings .connect-btn {
+  padding: 0.5rem 1rem;
+  background: var(--primary-color, #3b82f6);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background 0.15s ease;
+}
+
+.data-backend-settings .connect-btn:hover:not(:disabled) {
+  background: var(--primary-hover, #2563eb);
+}
+
+.data-backend-settings .connect-btn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Disconnect button */
+.data-backend-settings .disconnect-btn {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.data-backend-settings .disconnect-btn:hover {
+  background: #fecaca;
+}
+
+/* Error message */
+.data-backend-settings .error-message {
+  padding: 0.75rem;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+/* Advanced options */
+.data-backend-settings .advanced-toggle {
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--primary-color, #3b82f6);
+  cursor: pointer;
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.data-backend-settings .advanced-options {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: #f3f4f6;
+  border-radius: 6px;
+}
+
+.data-backend-settings .advanced-options input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+/* Spinner animation */
+@keyframes backend-spinner {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.data-backend-settings .spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid white;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: backend-spinner 1s linear infinite;
+}

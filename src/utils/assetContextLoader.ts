@@ -1,7 +1,11 @@
 /**
  * Asset Context Loader
  *
- * Utility functions to load assets based on context type and filters
+ * Utility functions to load assets based on context type and filters.
+ * 
+ * This module now uses the unified asset loader which automatically
+ * routes requests to either Atlan REST API or MDLH (Snowflake) based
+ * on the current backend configuration.
  */
 
 import type { AtlanAsset } from '../services/atlan/types';
@@ -22,6 +26,7 @@ import {
   type BulkLoadOptions,
   type BulkLoadResult,
 } from '../services/atlan/bulkLoader';
+import * as unifiedLoader from './unifiedAssetLoader';
 import { logger } from './logger';
 
 // Cache for loaded assets to avoid redundant API calls
@@ -172,6 +177,7 @@ function setCachedBulkResult(key: string, result: BulkLoadResult): void {
 
 /**
  * Load all assets with full metadata (totalCount, isSampled, etc.)
+ * Now uses unified loader for backend-aware routing.
  */
 export async function loadAllAssetsWithMetadata(options?: {
   assetTypes?: string[];
@@ -192,26 +198,34 @@ export async function loadAllAssetsWithMetadata(options?: {
     return cachedResult;
   }
 
-  logger.info('Loading all assets using bulk loader');
+  logger.info('Loading all assets using unified loader');
 
   try {
-    // Use bulk loader which auto-selects strategy based on count
-    const result = await loadAssetsBulk({
-      assetTypes: options?.assetTypes || ['Table', 'View', 'MaterializedView'],
-      maxAssets: options?.limit || 10000,
-      batchSize: 1000,
-      signal: options?.signal,
+    // Use unified loader which routes to MDLH or API based on backend config
+    const loadResult = await unifiedLoader.loadAllAssets({
+      limit: options?.limit || 10000,
       onProgress: (loaded, total) => {
         options?.onProgress?.(loaded, total);
         logger.debug('All assets load progress', { loaded, total });
       },
     });
 
+    const result: BulkLoadResult = {
+      assets: loadResult.data.assets as AtlanAsset[],
+      totalCount: loadResult.data.totalCount,
+      loadedCount: loadResult.data.assets.length,
+      isSampled: loadResult.data.totalCount > loadResult.data.assets.length,
+      sampleRate: loadResult.data.totalCount > 0 
+        ? loadResult.data.assets.length / loadResult.data.totalCount 
+        : 1,
+    };
+
     logger.info('Loaded all assets', {
       loadedCount: result.loadedCount,
       totalCount: result.totalCount,
       isSampled: result.isSampled,
-      sampleRate: result.sampleRate ? `${(result.sampleRate * 100).toFixed(1)}%` : 'N/A'
+      source: loadResult.source,
+      fallbackUsed: loadResult.fallbackUsed,
     });
 
     // Cache both assets and metadata
@@ -246,6 +260,7 @@ export async function loadAssetsForConnection(
 
 /**
  * Load assets for a connection with full metadata (totalCount, isSampled, etc.)
+ * Now uses unified loader for backend-aware routing.
  */
 export async function loadAssetsForConnectionWithMetadata(
   connectionName: string,
@@ -273,25 +288,32 @@ export async function loadAssetsForConnectionWithMetadata(
   logger.info('loadAssetsForConnection: Starting', { connectionName });
 
   try {
-    // Use bulk loader which handles pagination and sampling automatically
-    const result = await loadAssetsBulk({
-      connectionName,
-      assetTypes: options?.assetTypes || ['Table', 'View', 'MaterializedView'],
-      maxAssets: options?.limit || 10000,
-      batchSize: 1000,
-      signal: options?.signal,
+    // Use unified loader which routes to MDLH or API based on backend config
+    const loadResult = await unifiedLoader.loadAssetsForConnection(connectionName, {
+      limit: options?.limit || 10000,
       onProgress: (loaded, total) => {
         options?.onProgress?.(loaded, total);
         logger.debug('Connection load progress', { connectionName, loaded, total });
       },
     });
 
+    const result: BulkLoadResult = {
+      assets: loadResult.data.assets as AtlanAsset[],
+      totalCount: loadResult.data.totalCount,
+      loadedCount: loadResult.data.assets.length,
+      isSampled: loadResult.data.totalCount > loadResult.data.assets.length,
+      sampleRate: loadResult.data.totalCount > 0 
+        ? loadResult.data.assets.length / loadResult.data.totalCount 
+        : 1,
+    };
+
     logger.info('loadAssetsForConnection: Completed', {
       connectionName,
       loadedCount: result.loadedCount,
       totalCount: result.totalCount,
       isSampled: result.isSampled,
-      sampleRate: result.sampleRate ? `${(result.sampleRate * 100).toFixed(1)}%` : 'N/A'
+      source: loadResult.source,
+      fallbackUsed: loadResult.fallbackUsed,
     });
 
     // Cache both assets and metadata
@@ -310,6 +332,7 @@ export async function loadAssetsForConnectionWithMetadata(
 
 /**
  * Load assets for a specific database
+ * Now uses unified loader for backend-aware routing.
  */
 export async function loadAssetsForDatabase(
   connectionName: string,
@@ -324,22 +347,22 @@ export async function loadAssetsForDatabase(
   }
 
   try {
-    // First, get the database to find its qualified name
-    const databases = await getDatabases(connectionName);
-    const database = databases.find((db) => db.name === databaseName);
+    // Use unified loader which routes to MDLH or API based on backend config
+    const loadResult = await unifiedLoader.loadAssetsForDatabase(
+      connectionName,
+      databaseName,
+      { limit: options?.limit || 1000 }
+    );
 
-    if (!database) {
-      throw new Error(`Database ${databaseName} not found in ${connectionName}`);
-    }
+    const assets = loadResult.data.assets as AtlanAsset[];
 
-    // Single query to get all assets in this database
-    const assets = await fetchAssetsForModel({
-      databaseQualifiedName: database.qualifiedName,
-      assetTypes: options?.assetTypes || ['Table', 'View', 'MaterializedView'],
-      size: options?.limit || 1000,
+    logger.info('loadAssetsForDatabase: Completed', { 
+      connectionName, 
+      databaseName, 
+      totalAssets: assets.length,
+      source: loadResult.source,
+      fallbackUsed: loadResult.fallbackUsed,
     });
-
-    logger.info('loadAssetsForDatabase: Completed', { connectionName, databaseName, totalAssets: assets.length });
     setCachedAssets(cacheKey, assets);
     return assets;
   } catch (err) {
@@ -350,6 +373,7 @@ export async function loadAssetsForDatabase(
 
 /**
  * Load assets for a specific schema
+ * Now uses unified loader for backend-aware routing.
  */
 export async function loadAssetsForSchema(
   connectionName: string,
@@ -367,28 +391,24 @@ export async function loadAssetsForSchema(
   logger.debug('Loading assets for schema', { connectionName, databaseName, schemaName });
 
   try {
-    const databases = await getDatabases(connectionName);
-    const database = databases.find((db) => db.name === databaseName);
-    
-    if (!database) {
-      throw new Error(`Database ${databaseName} not found in ${connectionName}`);
-    }
+    // Use unified loader which routes to MDLH or API based on backend config
+    const loadResult = await unifiedLoader.loadAssetsForSchema(
+      connectionName,
+      databaseName,
+      schemaName,
+      { limit: options?.limit || 1000 }
+    );
 
-    const schemas = await getSchemas(database.qualifiedName);
-    const schema = schemas.find((s) => s.name === schemaName);
-    
-    if (!schema) {
-      throw new Error(`Schema ${schemaName} not found in ${databaseName}`);
-    }
+    const assets = loadResult.data.assets as AtlanAsset[];
 
-    const assets = await fetchAssetsForModel({
-      connector: connectionName,
-      schemaQualifiedName: schema.qualifiedName,
-      assetTypes: options?.assetTypes || ['Table', 'View', 'MaterializedView'],
-      size: options?.limit || 1000, // Increased from 200 to handle larger schemas
+    logger.debug('Loaded schema assets', { 
+      connectionName, 
+      databaseName, 
+      schemaName, 
+      count: assets.length,
+      source: loadResult.source,
+      fallbackUsed: loadResult.fallbackUsed,
     });
-
-    logger.debug('Loaded schema assets', { connectionName, databaseName, schemaName, count: assets.length });
     setCachedAssets(cacheKey, assets);
     return assets;
   } catch (err) {
@@ -400,6 +420,7 @@ export async function loadAssetsForSchema(
 /**
  * Load a single table/view as the context asset
  * Returns the table itself (and optionally its columns in the future)
+ * Now uses unified loader for backend-aware routing.
  */
 export async function loadAssetsForTable(
   connectionName: string,
@@ -419,33 +440,39 @@ export async function loadAssetsForTable(
   logger.debug('Loading assets for table', { connectionName, databaseName, schemaName, tableName });
 
   try {
-    // If we have a GUID, fetch the specific asset directly
+    // If we have a GUID, fetch the specific asset directly using unified loader
     if (tableGuid) {
-      const asset = await getAsset(tableGuid);
-      if (asset) {
-        const assets = [asset];
+      const loadResult = await unifiedLoader.loadAssetDetails(tableGuid);
+      if (loadResult.data) {
+        const assets = [loadResult.data];
+        logger.debug('Loaded table by GUID', { 
+          tableName, 
+          guid: tableGuid,
+          source: loadResult.source,
+          fallbackUsed: loadResult.fallbackUsed,
+        });
         setCachedAssets(cacheKey, assets);
         return assets;
       }
     }
 
-    // Otherwise, find the table by navigating the hierarchy
-    const databases = await getDatabases(connectionName);
-    const database = databases.find((db) => db.name === databaseName);
+    // Otherwise, find the table by navigating the hierarchy using unified loader
+    const databasesResult = await unifiedLoader.loadDatabases(connectionName);
+    const database = databasesResult.data.find((db) => db.name === databaseName);
 
     if (!database) {
       throw new Error(`Database ${databaseName} not found in ${connectionName}`);
     }
 
-    const schemas = await getSchemas(database.qualifiedName);
-    const schema = schemas.find((s) => s.name === schemaName);
+    const schemasResult = await unifiedLoader.loadSchemas(connectionName, database.qualifiedName, databaseName);
+    const schema = schemasResult.data.find((s) => s.name === schemaName);
 
     if (!schema) {
       throw new Error(`Schema ${schemaName} not found in ${databaseName}`);
     }
 
-    const tables = await getTables(schema.qualifiedName);
-    const table = tables.find((t) => t.name === tableName);
+    const tablesResult = await unifiedLoader.loadTables(connectionName, databaseName, schema.qualifiedName, schemaName);
+    const table = tablesResult.data.find((t) => t.name === tableName);
 
     if (!table) {
       throw new Error(`Table ${tableName} not found in ${schemaName}`);
@@ -454,7 +481,12 @@ export async function loadAssetsForTable(
     // Return the table's full entity as the context asset
     const assets: AtlanAsset[] = table.fullEntity ? [table.fullEntity as AtlanAsset] : [];
 
-    logger.debug('Loaded table assets', { tableName, count: assets.length });
+    logger.debug('Loaded table assets', { 
+      tableName, 
+      count: assets.length,
+      source: tablesResult.source,
+      fallbackUsed: tablesResult.fallbackUsed,
+    });
     setCachedAssets(cacheKey, assets);
     return assets;
   } catch (err) {

@@ -662,3 +662,127 @@ export function aggregateQualityScores(assets: AssetMetadata[]): {
     overall: Math.round(totals.overall / count),
   };
 }
+
+// ============================================
+// MDLH Integration
+// ============================================
+
+import { useBackendModeStore } from '../stores/backendModeStore';
+import * as mdlhClient from './mdlhClient';
+
+/**
+ * Fetch quality scores using the appropriate backend.
+ * 
+ * In API mode: Fetches assets and calculates scores client-side
+ * In MDLH mode: Fetches pre-calculated scores from Snowflake
+ */
+export async function fetchQualityScores(options?: {
+  assetType?: string;
+  connector?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{
+  scores: Array<{
+    guid: string;
+    name: string;
+    typeName: string;
+    connector: string | null;
+    completeness: number;
+    accuracy: number;
+    timeliness: number;
+    consistency: number;
+    usability: number;
+    overall: number;
+  }>;
+  totalCount?: number;
+}> {
+  const { dataBackend, snowflakeStatus } = useBackendModeStore.getState();
+
+  // Use MDLH if selected and connected
+  if (dataBackend === 'mdlh' && snowflakeStatus.connected) {
+    const result = await mdlhClient.getQualityScores({
+      assetType: options?.assetType,
+      connector: options?.connector,
+      limit: options?.limit || 100,
+      offset: options?.offset || 0,
+    });
+
+    return {
+      scores: result.scores,
+    };
+  }
+
+  // Fallback to API mode - return empty for now
+  // (actual asset fetching and scoring would be done in the component)
+  return { scores: [] };
+}
+
+/**
+ * Fetch aggregated quality metrics using the appropriate backend.
+ * 
+ * In API mode: Fetches assets and aggregates client-side
+ * In MDLH mode: Uses server-side aggregation for better performance
+ */
+export async function fetchAggregatedMetrics(options?: {
+  dimension?: 'connector' | 'database' | 'schema' | 'asset_type';
+  assetType?: string;
+}): Promise<{
+  totalAssets: number;
+  averageScores: {
+    completeness: number;
+    accuracy: number;
+    timeliness: number;
+    consistency: number;
+    usability: number;
+    overall: number;
+  };
+  byDimension: Array<{
+    dimensionValue: string;
+    totalAssets: number;
+    avgCompleteness: number;
+    avgAccuracy: number;
+    avgTimeliness: number;
+    avgConsistency: number;
+    avgUsability: number;
+    avgOverall?: number;
+  }>;
+}> {
+  const { dataBackend, snowflakeStatus } = useBackendModeStore.getState();
+
+  // Use MDLH if selected and connected
+  if (dataBackend === 'mdlh' && snowflakeStatus.connected) {
+    const result = await mdlhClient.getAggregatedQualityMetrics({
+      dimension: options?.dimension,
+      assetType: options?.assetType,
+    });
+
+    return {
+      totalAssets: result.totalAssets,
+      averageScores: result.averageScores,
+      byDimension: result.byDimension.map((r) => ({
+        dimensionValue: r.DIMENSION_VALUE,
+        totalAssets: r.TOTAL_ASSETS,
+        avgCompleteness: r.AVG_COMPLETENESS,
+        avgAccuracy: r.AVG_ACCURACY,
+        avgTimeliness: r.AVG_TIMELINESS,
+        avgConsistency: r.AVG_CONSISTENCY,
+        avgUsability: r.AVG_USABILITY,
+        avgOverall: r.AVG_OVERALL,
+      })),
+    };
+  }
+
+  // Fallback to empty for API mode
+  return {
+    totalAssets: 0,
+    averageScores: {
+      completeness: 0,
+      accuracy: 0,
+      timeliness: 0,
+      consistency: 0,
+      usability: 0,
+      overall: 0,
+    },
+    byDimension: [],
+  };
+}
