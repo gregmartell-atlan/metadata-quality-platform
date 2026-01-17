@@ -20,6 +20,9 @@ const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage').then(m => ({ de
 const AssessmentPage = lazy(() => import('./pages/AssessmentPage').then(m => ({ default: m.AssessmentPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const HomePage = lazy(() => import('./pages/HomePage').then(m => ({ default: m.HomePage })));
+const ModelingAssistantPage = lazy(() => import('./pages/ModelingAssistantPage').then(m => ({ default: m.ModelingAssistantPage })));
+const DebugPage = lazy(() => import('./pages/DebugPage').then(m => ({ default: m.DebugPage })));
+const TenantConfigPage = lazy(() => import('./pages/TenantConfigPage').then(m => ({ default: m.TenantConfigPage })));
 
 // V2 Assessment Run components
 const StartScreen = lazy(() => import('./components/v2run').then(m => ({ default: m.StartScreen })));
@@ -127,6 +130,9 @@ function App() {
                     <Route path="export" element={<ExportView />} />
                   </Route>
                   <Route path="/trends" element={<div className="page-placeholder">Quality Trends</div>} />
+                  <Route path="/modeling-assistant" element={<ModelingAssistantPage />} />
+                  <Route path="/debug" element={<DebugPage />} />
+                  <Route path="/tenant-config" element={<TenantConfigPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                 </Routes>
               </Suspense>

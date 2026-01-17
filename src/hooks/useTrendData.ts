@@ -2,12 +2,15 @@
  * Trend Data Hook
  *
  * Provides access to historical trend data for charts and analysis.
+ * Supports both localStorage (for API mode) and MDLH backend (for MDLH mode).
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { storageService } from '../services/storage';
 import type { DailyAggregation, TrendData } from '../services/storage';
 import { logger } from '../utils/logger';
+import { useBackendModeStore } from '../stores/backendModeStore';
+import * as mdlhClient from '../services/mdlhClient';
 
 interface UseTrendDataResult {
   trendData: TrendData | null;
@@ -78,8 +81,14 @@ export function useTrendData(): UseTrendDataResult {
 
 /**
  * Hook for trend chart data formatted for visualization
+ *
+ * In MDLH mode: Fetches coverage trends from Snowflake based on asset modification dates
+ * In API mode: Uses localStorage-based historical snapshots
  */
-export function useTrendChartData(days: number = 30) {
+export function useTrendChartData(
+  days: number = 30,
+  options?: { assetType?: string; connector?: string }
+) {
   const [chartData, setChartData] = useState<
     Array<{
       date: string;
@@ -91,33 +100,86 @@ export function useTrendChartData(days: number = 30) {
       consistency: number;
       usability: number;
       totalAssets: number;
+      // MDLH-specific coverage metrics
+      pctWithDescription?: number;
+      pctWithOwner?: number;
+      pctWithTags?: number;
+      pctCertified?: number;
+      pctWithLineage?: number;
     }>
   >([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [dataSource, setDataSource] = useState<'localStorage' | 'mdlh'>('localStorage');
+
+  const { dataBackend, snowflakeStatus } = useBackendModeStore();
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoading(true);
-        const aggregations = await storageService.getRecentTrend(days);
 
-        // Sort by date ascending for charts
-        const sorted = [...aggregations].sort((a, b) => a.timestamp - b.timestamp);
+        // Use MDLH if connected and selected
+        if (dataBackend === 'mdlh' && snowflakeStatus.connected) {
+          setDataSource('mdlh');
+          logger.debug('[useTrendChartData] Using MDLH backend');
 
-        const data = sorted.map((agg) => ({
-          date: agg.date,
-          timestamp: agg.timestamp,
-          overall: agg.scores.overall,
-          completeness: agg.scores.completeness,
-          accuracy: agg.scores.accuracy,
-          timeliness: agg.scores.timeliness,
-          consistency: agg.scores.consistency,
-          usability: agg.scores.usability,
-          totalAssets: agg.totalAssets,
-        }));
+          const result = await mdlhClient.getCoverageTrends({
+            days,
+            assetType: options?.assetType,
+            connector: options?.connector,
+          });
 
-        setChartData(data);
-        logger.debug('[useTrendChartData] Prepared', data.length, 'data points');
+          // Transform MDLH trend points to chart format
+          const data = result.trend_points.map((point) => ({
+            date: point.date,
+            timestamp: new Date(point.date).getTime(),
+            // Derive overall from completeness for now
+            overall: Math.round(point.avg_completeness),
+            completeness: Math.round(point.avg_completeness),
+            // These are coverage-based, not full quality scores
+            accuracy: 0,
+            timeliness: 0,
+            consistency: 0,
+            usability: 0,
+            totalAssets: point.assets_modified,
+            // Additional coverage metrics from MDLH
+            pctWithDescription: Math.round(point.pct_with_description * 100),
+            pctWithOwner: Math.round(point.pct_with_owner * 100),
+            pctWithTags: Math.round(point.pct_with_tags * 100),
+            pctCertified: Math.round(point.pct_certified * 100),
+            pctWithLineage: Math.round(point.pct_with_lineage * 100),
+          }));
+
+          // Sort by date ascending for charts
+          const sorted = [...data].sort((a, b) => a.timestamp - b.timestamp);
+
+          setChartData(sorted);
+          logger.debug('[useTrendChartData] MDLH prepared', sorted.length, 'data points');
+        } else {
+          // Fallback to localStorage
+          setDataSource('localStorage');
+          logger.debug('[useTrendChartData] Using localStorage backend');
+
+          const aggregations = await storageService.getRecentTrend(days);
+
+          // Sort by date ascending for charts
+          const sorted = [...aggregations].sort((a, b) => a.timestamp - b.timestamp);
+
+          const data = sorted.map((agg) => ({
+            date: agg.date,
+            timestamp: agg.timestamp,
+            overall: agg.scores.overall,
+            completeness: agg.scores.completeness,
+            accuracy: agg.scores.accuracy,
+            timeliness: agg.scores.timeliness,
+            consistency: agg.scores.consistency,
+            usability: agg.scores.usability,
+            totalAssets: agg.totalAssets,
+          }));
+
+          setChartData(data);
+          logger.debug('[useTrendChartData] localStorage prepared', data.length, 'data points');
+        }
       } catch (err) {
         logger.error('[useTrendChartData] Failed to load chart data:', err);
       } finally {
@@ -126,9 +188,9 @@ export function useTrendChartData(days: number = 30) {
     };
 
     loadData();
-  }, [days]);
+  }, [days, dataBackend, snowflakeStatus.connected, options?.assetType, options?.connector]);
 
-  return { chartData, isLoading };
+  return { chartData, isLoading, dataSource };
 }
 
 /**
@@ -204,4 +266,262 @@ export function useTrendComparison(
   }, [currentDays, previousDays]);
 
   return { comparison, isLoading };
+}
+
+// ============================================
+// MDLH-Specific Hooks
+// ============================================
+
+/**
+ * Hook to fetch current quality snapshot from MDLH
+ *
+ * Returns real-time quality metrics for the current state of assets.
+ * Can be used to take periodic snapshots for trend tracking.
+ */
+export function useMdlhSnapshot(options?: {
+  assetType?: string;
+  connector?: string;
+  enabled?: boolean;
+}) {
+  const [snapshot, setSnapshot] = useState<mdlhClient.MdlhSnapshot | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const { dataBackend, snowflakeStatus } = useBackendModeStore();
+  const enabled = options?.enabled !== false;
+
+  const refresh = useCallback(async () => {
+    if (!enabled || dataBackend !== 'mdlh' || !snowflakeStatus.connected) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const result = await mdlhClient.getSnapshot({
+        assetType: options?.assetType,
+        connector: options?.connector,
+      });
+
+      setSnapshot(result);
+      logger.debug('[useMdlhSnapshot] Loaded snapshot:', {
+        totalAssets: result.total_assets,
+        avgOverall: result.avg_overall,
+      });
+    } catch (err) {
+      logger.error('[useMdlhSnapshot] Failed to load snapshot:', err);
+      setError(err instanceof Error ? err : new Error('Failed to load snapshot'));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [enabled, dataBackend, snowflakeStatus.connected, options?.assetType, options?.connector]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return {
+    snapshot,
+    isLoading,
+    error,
+    refresh,
+    isAvailable: dataBackend === 'mdlh' && snowflakeStatus.connected,
+  };
+}
+
+/**
+ * Hook to fetch lineage metrics from MDLH
+ *
+ * Returns detailed lineage breakdown (upstream/downstream counts, orphaned status)
+ */
+export function useMdlhLineageMetrics(options?: {
+  assetType?: string;
+  connector?: string;
+  limit?: number;
+  enabled?: boolean;
+}) {
+  const [metrics, setMetrics] = useState<mdlhClient.MdlhLineageMetric[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const { dataBackend, snowflakeStatus } = useBackendModeStore();
+  const enabled = options?.enabled !== false;
+
+  const refresh = useCallback(async () => {
+    if (!enabled || dataBackend !== 'mdlh' || !snowflakeStatus.connected) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const result = await mdlhClient.getLineageMetrics({
+        assetType: options?.assetType,
+        connector: options?.connector,
+        limit: options?.limit || 1000,
+      });
+
+      setMetrics(result.assets);
+      setTotalCount(result.total_count);
+      logger.debug('[useMdlhLineageMetrics] Loaded metrics:', {
+        count: result.assets.length,
+        total: result.total_count,
+      });
+    } catch (err) {
+      logger.error('[useMdlhLineageMetrics] Failed to load metrics:', err);
+      setError(err instanceof Error ? err : new Error('Failed to load lineage metrics'));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [
+    enabled,
+    dataBackend,
+    snowflakeStatus.connected,
+    options?.assetType,
+    options?.connector,
+    options?.limit,
+  ]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  // Calculate summary statistics
+  const summary = metrics.length > 0
+    ? {
+        totalAssets: metrics.length,
+        withUpstream: metrics.filter((m) => m.has_upstream === 1).length,
+        withDownstream: metrics.filter((m) => m.has_downstream === 1).length,
+        withFullLineage: metrics.filter((m) => m.full_lineage === 1).length,
+        orphaned: metrics.filter((m) => m.orphaned === 1).length,
+        avgUpstreamCount: metrics.reduce((sum, m) => sum + m.upstream_count, 0) / metrics.length,
+        avgDownstreamCount: metrics.reduce((sum, m) => sum + m.downstream_count, 0) / metrics.length,
+      }
+    : null;
+
+  return {
+    metrics,
+    totalCount,
+    summary,
+    isLoading,
+    error,
+    refresh,
+    isAvailable: dataBackend === 'mdlh' && snowflakeStatus.connected,
+  };
+}
+
+/**
+ * Hook to fetch lineage rollup by dimension from MDLH
+ */
+export function useMdlhLineageRollup(options?: {
+  dimension?: 'connector' | 'database' | 'schema' | 'asset_type' | 'certificate_status';
+  assetType?: string;
+  enabled?: boolean;
+}) {
+  const [rollup, setRollup] = useState<mdlhClient.MdlhLineageRollup[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const { dataBackend, snowflakeStatus } = useBackendModeStore();
+  const enabled = options?.enabled !== false;
+
+  const refresh = useCallback(async () => {
+    if (!enabled || dataBackend !== 'mdlh' || !snowflakeStatus.connected) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const result = await mdlhClient.getLineageRollup({
+        dimension: options?.dimension,
+        assetType: options?.assetType,
+      });
+
+      setRollup(result.rollups);
+      logger.debug('[useMdlhLineageRollup] Loaded rollup:', {
+        dimension: result.dimension,
+        count: result.rollups.length,
+      });
+    } catch (err) {
+      logger.error('[useMdlhLineageRollup] Failed to load rollup:', err);
+      setError(err instanceof Error ? err : new Error('Failed to load lineage rollup'));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [enabled, dataBackend, snowflakeStatus.connected, options?.dimension, options?.assetType]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return {
+    rollup,
+    isLoading,
+    error,
+    refresh,
+    isAvailable: dataBackend === 'mdlh' && snowflakeStatus.connected,
+  };
+}
+
+/**
+ * Hook to fetch owner list from MDLH
+ */
+export function useMdlhOwners(options?: {
+  assetType?: string;
+  limit?: number;
+  enabled?: boolean;
+}) {
+  const [owners, setOwners] = useState<mdlhClient.MdlhOwnerInfo[]>([]);
+  const [totalOwners, setTotalOwners] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const { dataBackend, snowflakeStatus } = useBackendModeStore();
+  const enabled = options?.enabled !== false;
+
+  const refresh = useCallback(async () => {
+    if (!enabled || dataBackend !== 'mdlh' || !snowflakeStatus.connected) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const result = await mdlhClient.getOwners({
+        assetType: options?.assetType,
+        limit: options?.limit,
+      });
+
+      setOwners(result.owners);
+      setTotalOwners(result.total_owners);
+      logger.debug('[useMdlhOwners] Loaded owners:', {
+        count: result.owners.length,
+        total: result.total_owners,
+      });
+    } catch (err) {
+      logger.error('[useMdlhOwners] Failed to load owners:', err);
+      setError(err instanceof Error ? err : new Error('Failed to load owners'));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [enabled, dataBackend, snowflakeStatus.connected, options?.assetType, options?.limit]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return {
+    owners,
+    totalOwners,
+    isLoading,
+    error,
+    refresh,
+    isAvailable: dataBackend === 'mdlh' && snowflakeStatus.connected,
+  };
 }

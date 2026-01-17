@@ -17,8 +17,13 @@ from snowflake.connector import SnowflakeConnection
 from snowflake.connector.errors import ProgrammingError, DatabaseError
 
 from ..config import get_settings
+from .cache import query_cache, metadata_cache
 
 logger = logging.getLogger(__name__)
+
+# SQL identifier validation regex
+import re
+IDENTIFIER_REGEX = re.compile(r'^[A-Za-z_][A-Za-z0-9_$]*$')
 
 
 class SnowflakeSession:
@@ -74,10 +79,15 @@ class SnowflakeSession:
 
 class SnowflakeService:
     """
-    Manages Snowflake connections for MDLH queries.
+    DEPRECATED: Use SessionManager from session.py instead.
 
-    This service maintains a session pool and handles both SSO and PAT
-    authentication methods.
+    This class is deprecated due to race conditions (no locking).
+    SessionManager provides thread-safe session management with:
+    - RLock for thread safety
+    - Background cleanup thread
+    - 30-minute session expiry
+
+    This class is kept for backward compatibility but will be removed in a future version.
     """
 
     def __init__(self):
@@ -442,6 +452,328 @@ class SnowflakeService:
         finally:
             cursor.close()
 
+    def _validate_identifier(self, name: str) -> str:
+        """
+        Validate SQL identifier to prevent injection.
+
+        Raises ValueError if invalid.
+        Returns uppercase identifier if valid.
+        """
+        if not name or not IDENTIFIER_REGEX.match(name):
+            raise ValueError(f"Invalid SQL identifier: {name}")
+        return name.upper()
+
+    def execute_query_cached(
+        self,
+        query: str,
+        params: dict[str, Any] | None = None,
+        session_id: str | None = None,
+        use_cache: bool = True,
+    ) -> list[dict[str, Any]]:
+        """
+        Execute query with caching support.
+
+        Args:
+            query: SQL query to execute
+            params: Query parameters
+            session_id: Session to use
+            use_cache: Whether to use query cache (default True)
+
+        Returns:
+            List of result rows as dictionaries
+        """
+        # Check cache first
+        if use_cache:
+            cached = query_cache.get(query, params)
+            if cached is not None:
+                logger.debug(f"Cache hit for query: {query[:50]}...")
+                return cached
+
+        # Execute query
+        results = self.execute_query(query, params, session_id)
+
+        # Cache results
+        if use_cache:
+            query_cache.set(query, params, results)
+
+        return results
+
+    def get_databases(
+        self,
+        session_id: str | None = None,
+        use_cache: bool = True,
+    ) -> list[str]:
+        """
+        Get list of accessible databases.
+
+        Uses metadata cache when available.
+        """
+        settings = get_settings()
+        account = settings.snowflake_account or "unknown"
+
+        # Check cache
+        if use_cache:
+            cached = metadata_cache.get_databases(account)
+            if cached is not None:
+                logger.debug(f"Cache hit for databases")
+                return cached
+
+        # Query Snowflake
+        query = "SHOW DATABASES"
+        results = self.execute_query(query, session_id=session_id)
+
+        databases = [row.get("name", row.get("NAME", "")) for row in results]
+        databases = [d for d in databases if d]  # Filter empty
+
+        # Cache
+        if use_cache:
+            metadata_cache.set_databases(account, databases)
+
+        return databases
+
+    def get_schemas(
+        self,
+        database: str,
+        session_id: str | None = None,
+        use_cache: bool = True,
+    ) -> list[str]:
+        """
+        Get list of schemas in a database.
+
+        Args:
+            database: Database name
+            session_id: Session to use
+            use_cache: Whether to use cache
+
+        Returns:
+            List of schema names
+        """
+        settings = get_settings()
+        account = settings.snowflake_account or "unknown"
+        database = self._validate_identifier(database)
+
+        # Check cache
+        if use_cache:
+            cached = metadata_cache.get_schemas(account, database)
+            if cached is not None:
+                logger.debug(f"Cache hit for schemas in {database}")
+                return cached
+
+        # Query Snowflake
+        query = f'SHOW SCHEMAS IN DATABASE "{database}"'
+        results = self.execute_query(query, session_id=session_id)
+
+        schemas = [row.get("name", row.get("NAME", "")) for row in results]
+        schemas = [s for s in schemas if s and s not in ("INFORMATION_SCHEMA",)]
+
+        # Cache
+        if use_cache:
+            metadata_cache.set_schemas(account, database, schemas)
+
+        return schemas
+
+    def get_tables(
+        self,
+        database: str,
+        schema: str,
+        session_id: str | None = None,
+        use_cache: bool = True,
+        include_views: bool = True,
+    ) -> list[dict[str, Any]]:
+        """
+        Get list of tables in a schema with metadata.
+
+        Args:
+            database: Database name
+            schema: Schema name
+            session_id: Session to use
+            use_cache: Whether to use cache
+            include_views: Include views in results
+
+        Returns:
+            List of table info dicts with name, type, rows, bytes
+        """
+        settings = get_settings()
+        account = settings.snowflake_account or "unknown"
+        database = self._validate_identifier(database)
+        schema = self._validate_identifier(schema)
+
+        # Check cache
+        if use_cache:
+            cached = metadata_cache.get_tables(account, database, schema)
+            if cached is not None:
+                logger.debug(f"Cache hit for tables in {database}.{schema}")
+                return cached
+
+        # Query Snowflake
+        query = f'SHOW TABLES IN "{database}"."{schema}"'
+        results = self.execute_query(query, session_id=session_id)
+
+        tables = []
+        for row in results:
+            tables.append({
+                "name": row.get("name", row.get("NAME", "")),
+                "type": "TABLE",
+                "rows": row.get("rows", row.get("ROWS", 0)),
+                "bytes": row.get("bytes", row.get("BYTES", 0)),
+            })
+
+        # Also get views if requested
+        if include_views:
+            view_query = f'SHOW VIEWS IN "{database}"."{schema}"'
+            try:
+                view_results = self.execute_query(view_query, session_id=session_id)
+                for row in view_results:
+                    tables.append({
+                        "name": row.get("name", row.get("NAME", "")),
+                        "type": "VIEW",
+                        "rows": 0,
+                        "bytes": 0,
+                    })
+            except Exception as e:
+                logger.warning(f"Could not fetch views: {e}")
+
+        # Cache
+        if use_cache:
+            metadata_cache.set_tables(account, database, schema, tables)
+
+        return tables
+
+    def get_columns(
+        self,
+        database: str,
+        schema: str,
+        table: str,
+        session_id: str | None = None,
+        use_cache: bool = True,
+    ) -> list[dict[str, Any]]:
+        """
+        Get list of columns in a table with metadata.
+
+        Args:
+            database: Database name
+            schema: Schema name
+            table: Table name
+            session_id: Session to use
+            use_cache: Whether to use cache
+
+        Returns:
+            List of column info dicts with name, type, nullable
+        """
+        settings = get_settings()
+        account = settings.snowflake_account or "unknown"
+        database = self._validate_identifier(database)
+        schema = self._validate_identifier(schema)
+        table = self._validate_identifier(table)
+
+        # Check cache
+        if use_cache:
+            cached = metadata_cache.get_columns(account, database, schema, table)
+            if cached is not None:
+                logger.debug(f"Cache hit for columns in {database}.{schema}.{table}")
+                return cached
+
+        # Query using INFORMATION_SCHEMA for richer metadata
+        query = f"""
+        SELECT
+            COLUMN_NAME,
+            DATA_TYPE,
+            IS_NULLABLE,
+            COLUMN_DEFAULT,
+            ORDINAL_POSITION,
+            COMMENT
+        FROM "{database}".INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s
+        ORDER BY ORDINAL_POSITION
+        """
+        results = self.execute_query(query, {"1": schema, "2": table}, session_id)
+
+        columns = []
+        for row in results:
+            columns.append({
+                "name": row.get("COLUMN_NAME", ""),
+                "type": row.get("DATA_TYPE", ""),
+                "nullable": row.get("IS_NULLABLE", "YES") == "YES",
+                "default": row.get("COLUMN_DEFAULT"),
+                "position": row.get("ORDINAL_POSITION", 0),
+                "comment": row.get("COMMENT"),
+            })
+
+        # Cache
+        if use_cache:
+            metadata_cache.set_columns(account, database, schema, table, columns)
+
+        return columns
+
+    def get_table_preview(
+        self,
+        database: str,
+        schema: str,
+        table: str,
+        limit: int = 100,
+        session_id: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Get preview data from a table.
+
+        Args:
+            database: Database name
+            schema: Schema name
+            table: Table name
+            limit: Max rows to return
+            session_id: Session to use
+
+        Returns:
+            Dict with columns and rows
+        """
+        database = self._validate_identifier(database)
+        schema = self._validate_identifier(schema)
+        table = self._validate_identifier(table)
+        limit = min(max(1, limit), 1000)  # Clamp to 1-1000
+
+        # Get columns first
+        columns = self.get_columns(database, schema, table, session_id)
+
+        # Query data
+        query = f'SELECT * FROM "{database}"."{schema}"."{table}" LIMIT {limit}'
+        rows = self.execute_query(query, session_id=session_id)
+
+        return {
+            "columns": columns,
+            "rows": rows,
+            "total_rows": len(rows),
+            "limit": limit,
+        }
+
+    def get_cache_stats(self) -> dict[str, Any]:
+        """Get statistics for both query and metadata caches."""
+        return {
+            "query_cache": query_cache.get_stats(),
+            "metadata_cache": metadata_cache.get_stats(),
+        }
+
+    def invalidate_cache(self, cache_type: str = "all") -> dict[str, Any]:
+        """
+        Invalidate caches.
+
+        Args:
+            cache_type: "query", "metadata", or "all"
+
+        Returns:
+            Summary of invalidation
+        """
+        result = {}
+
+        if cache_type in ("query", "all"):
+            count = query_cache.invalidate()
+            result["query_entries_cleared"] = count
+
+        if cache_type in ("metadata", "all"):
+            metadata_cache.invalidate_all()
+            result["metadata_cleared"] = True
+
+        return result
+
     def close_all(self) -> None:
         """Close all active sessions."""
         for session_id, session in list(self._sessions.items()):
@@ -450,12 +782,27 @@ class SnowflakeService:
         logger.info("All Snowflake sessions closed")
 
 
-# Singleton instance
+# Singleton instance (DEPRECATED)
 _snowflake_service: SnowflakeService | None = None
 
 
 def get_snowflake_service() -> SnowflakeService:
-    """Get the singleton Snowflake service instance."""
+    """
+    DEPRECATED: Use session_manager from session.py instead.
+
+    This function is deprecated due to race conditions in SnowflakeService.
+    Use SessionManager for thread-safe session management.
+
+    Example:
+        from .session import session_manager
+        session = session_manager.get_session(session_id)
+    """
+    import warnings
+    warnings.warn(
+        "get_snowflake_service() is deprecated. Use session_manager from session.py instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
     global _snowflake_service
     if _snowflake_service is None:
         _snowflake_service = SnowflakeService()

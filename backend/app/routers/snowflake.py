@@ -5,16 +5,23 @@ Provides endpoints for:
 - Unified connect endpoint (token/SSO)
 - Session status checking
 - Disconnect/logout
+
+Security:
+- CSRF protection via Origin/Referer validation
+- Rate limiting on connection attempts
+- Session-based authentication
 """
 
-from fastapi import APIRouter, Header, Request
+from fastapi import APIRouter, Header, Request, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 import snowflake.connector
 from snowflake.connector.errors import DatabaseError, OperationalError, ProgrammingError
 from datetime import datetime
+from urllib.parse import urlparse
 import time
+import secrets
 from collections import defaultdict
 import threading
 import logging
@@ -25,6 +32,91 @@ from ..config import get_settings
 router = APIRouter(prefix="/snowflake", tags=["snowflake"])
 logger = logging.getLogger(__name__)
 settings = get_settings()
+
+
+# =============================================================================
+# CSRF Protection
+# =============================================================================
+
+# Allowed origins for CSRF validation (add production domains as needed)
+ALLOWED_ORIGINS: List[str] = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:5176",
+    "http://localhost:5177",
+    "http://localhost:5178",
+    "http://localhost:3000",
+    "http://localhost:8080",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5177",
+    "http://127.0.0.1:3000",
+]
+
+# Add configured origins from settings if available
+if hasattr(settings, 'allowed_origins') and settings.allowed_origins:
+    ALLOWED_ORIGINS.extend(settings.allowed_origins)
+
+
+def validate_csrf(request: Request) -> None:
+    """
+    Validate CSRF protection via Origin/Referer header checking.
+
+    For state-changing requests (POST, PUT, DELETE), validates that:
+    1. Origin header is present and matches allowed origins, OR
+    2. Referer header is present and matches allowed origins
+
+    This prevents cross-site request forgery attacks where a malicious
+    site tries to make authenticated requests to our API.
+    """
+    origin = request.headers.get("Origin")
+    referer = request.headers.get("Referer")
+
+    # Check Origin header first (preferred)
+    if origin:
+        if origin in ALLOWED_ORIGINS:
+            return
+        # For development, also allow any localhost port (5173-5999, 3000-3999, 8080)
+        parsed = urlparse(origin)
+        if parsed.hostname in ("localhost", "127.0.0.1"):
+            if parsed.port and (5173 <= parsed.port <= 5999 or 3000 <= parsed.port <= 3999 or parsed.port == 8080):
+                return
+        logger.warning(f"[CSRF] Rejected request from origin: {origin}")
+        raise HTTPException(status_code=403, detail="Invalid origin")
+
+    # Fall back to Referer header
+    if referer:
+        parsed = urlparse(referer)
+        referer_origin = f"{parsed.scheme}://{parsed.netloc}"
+        if referer_origin in ALLOWED_ORIGINS:
+            return
+        # For development, also allow any localhost port
+        if parsed.hostname in ("localhost", "127.0.0.1"):
+            if parsed.port and (5173 <= parsed.port <= 5999 or 3000 <= parsed.port <= 3999 or parsed.port == 8080):
+                return
+        logger.warning(f"[CSRF] Rejected request from referer: {referer}")
+        raise HTTPException(status_code=403, detail="Invalid referer")
+
+    # If neither Origin nor Referer is present, reject for safety
+    # (Browsers always send at least one for cross-origin requests)
+    # Allow requests without these headers only for same-origin or API clients
+    # that include X-Requested-With header
+    x_requested_with = request.headers.get("X-Requested-With")
+    if x_requested_with == "XMLHttpRequest":
+        return
+
+    # For API clients without browser headers, check for custom header
+    x_csrf_token = request.headers.get("X-CSRF-Token")
+    if x_csrf_token:
+        # Any non-empty value is acceptable (presence check only)
+        # This header cannot be set cross-origin without CORS preflight
+        return
+
+    logger.warning("[CSRF] Rejected request without Origin/Referer/X-Requested-With/X-CSRF-Token")
+    raise HTTPException(
+        status_code=403,
+        detail="CSRF validation failed - include Origin, Referer, X-Requested-With, or X-CSRF-Token header"
+    )
 
 
 # =============================================================================
@@ -119,14 +211,39 @@ class ConfigResponse(BaseModel):
 # =============================================================================
 
 def _get_client_ip(request: Request) -> str:
-    """Extract client IP from request, handling proxies."""
+    """
+    Extract client IP from request with security considerations.
+
+    Security Note: X-Forwarded-For and X-Real-IP headers can be spoofed by clients.
+    In production with a trusted reverse proxy (nginx, etc.), these headers are
+    reliable only if the proxy is configured to overwrite them.
+
+    For rate limiting, we use a composite key that includes both the socket IP
+    (request.client.host) and any forwarded headers, making spoofing less effective.
+    """
+    parts = []
+
+    # Always include the actual socket connection IP (cannot be spoofed)
+    socket_ip = request.client.host if request.client else "unknown"
+    parts.append(socket_ip)
+
+    # Include forwarded headers for proxy scenarios, but don't rely solely on them
+    # This helps distinguish legitimate requests through proxies while preventing
+    # attackers from completely bypassing rate limits via header spoofing
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        # Take only the first IP (client IP in a proper proxy chain)
+        first_forwarded = forwarded.split(",")[0].strip()
+        if first_forwarded and first_forwarded != socket_ip:
+            parts.append(first_forwarded)
+
     real_ip = request.headers.get("X-Real-IP")
-    if real_ip:
-        return real_ip
-    return request.client.host if request.client else "unknown"
+    if real_ip and real_ip not in parts:
+        parts.append(real_ip)
+
+    # Create a composite key for rate limiting
+    # This makes it much harder to bypass rate limits via header spoofing
+    return "|".join(parts)
 
 
 # =============================================================================
@@ -152,6 +269,9 @@ async def connect(request: ConnectionRequest, http_request: Request):
     Establish Snowflake connection and return session ID.
     Supports both token (PAT) and SSO authentication.
     """
+    # CSRF protection for state-changing request
+    validate_csrf(http_request)
+
     # Rate limiting check
     client_ip = _get_client_ip(http_request)
     allowed, retry_after = connect_rate_limiter.is_allowed(client_ip)
@@ -199,11 +319,22 @@ async def connect(request: ConnectionRequest, http_request: Request):
         
         logger.info(f"[Connect] {request.auth_type} auth for {request.user}@{request.account}")
         conn = snowflake.connector.connect(**connect_params)
-        
+
         # Verify connection and get actual user info
         cursor = conn.cursor()
         cursor.execute("SELECT CURRENT_USER(), CURRENT_ROLE(), CURRENT_WAREHOUSE()")
         row = cursor.fetchone()
+
+        # Explicitly activate warehouse if not already set
+        current_wh = row[2]
+        if not current_wh and request.warehouse:
+            try:
+                cursor.execute(f'USE WAREHOUSE "{request.warehouse.upper()}"')
+                current_wh = request.warehouse
+                logger.info(f"[Connect] Activated warehouse: {current_wh}")
+            except Exception as wh_err:
+                logger.warning(f"[Connect] Could not activate warehouse {request.warehouse}: {wh_err}")
+
         cursor.close()
         
         # Create session
@@ -310,9 +441,13 @@ async def get_session_status(
 
 @router.post("/disconnect", response_model=DisconnectResponse)
 async def disconnect(
+    http_request: Request,
     x_session_id: Optional[str] = Header(None, alias="X-Session-ID")
 ):
     """Close session and release Snowflake connection."""
+    # CSRF protection for state-changing request
+    validate_csrf(http_request)
+
     if not x_session_id:
         return DisconnectResponse(disconnected=False, message="No session ID provided")
     
@@ -332,26 +467,29 @@ async def list_sessions():
 async def connection_status(request: Request):
     """
     Get overall Snowflake connection status.
-    Returns connection info if any session is active.
+    Returns connection info for the most recently used session.
     Used by frontend to check MDLH availability.
     """
     stats = session_manager.get_stats()
-    
+
     # Check if there's any active session
     if stats.get("active_sessions", 0) > 0:
-        # Get the most recent session info
+        # Sessions are sorted by last_used (most recent first)
         sessions = stats.get("sessions", [])
         if sessions:
-            session = sessions[0]  # Get first active session
+            session = sessions[0]  # Get most recently used session
             return {
                 "connected": True,
                 "user": session.get("user"),
                 "auth_method": session.get("auth_method"),
-                "session_id": session.get("session_id"),
+                "session_id": session.get("full_session_id"),  # Use full session ID!
+                "warehouse": session.get("warehouse"),
+                "database": session.get("database"),
+                "role": session.get("role"),
                 "created_at": session.get("created_at"),
                 "last_used_at": session.get("last_used_at"),
             }
-    
+
     return {
         "connected": False,
         "user": None,

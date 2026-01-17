@@ -109,7 +109,9 @@ ORDER BY POPULARITY_SCORE DESC NULLS LAST, ASSET_NAME ASC;
 -- =============================================================================
 
 -- SQL_ASSET_DETAIL
-SELECT 
+-- Note: OWNER_GROUPS and TABLE_TOTAL_QUERY_COUNT do not exist in official schema
+-- DATABASE_NAME and SCHEMA_NAME derived from ASSET_QUALIFIED_NAME
+SELECT
     A.GUID,
     A.ASSET_NAME,
     A.ASSET_TYPE,
@@ -121,7 +123,6 @@ SELECT
     A.HAS_LINEAGE,
     A.POPULARITY_SCORE,
     A.OWNER_USERS,
-    A.OWNER_GROUPS,
     A.TAGS,
     A.TERM_GUIDS,
     A.README_GUID,
@@ -131,16 +132,16 @@ SELECT
     A.CREATED_BY,
     A.UPDATED_BY,
     A.STATUS,
-    
-    -- Relational details (if available)
+
+    -- Relational details (from RELATIONAL_ASSET_DETAILS view)
     R.TABLE_COLUMN_COUNT,
     R.TABLE_ROW_COUNT,
     R.TABLE_SIZE_BYTES,
     R.TABLE_TOTAL_READ_COUNT,
-    R.TABLE_TOTAL_QUERY_COUNT,
-    R.DATABASE_NAME,
-    R.SCHEMA_NAME
-    
+    -- Derive database/schema from qualified name
+    SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 1) AS DATABASE_NAME,
+    SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 2) AS SCHEMA_NAME
+
 FROM ATLAN_GOLD.PUBLIC.ASSETS A
 LEFT JOIN ATLAN_GOLD.PUBLIC.RELATIONAL_ASSET_DETAILS R ON A.GUID = R.GUID
 WHERE A.GUID = %(guid)s;

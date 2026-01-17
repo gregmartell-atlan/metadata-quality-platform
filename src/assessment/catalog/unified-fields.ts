@@ -34,6 +34,9 @@ const ownershipFields: UnifiedField[] = [
     coreForUseCases: ['self_service_discovery', 'data_governance', 'ai_agents'],
     atlanDocsUrl: 'https://solutions.atlan.com/asset-export-basic/',
     atlanApiHint: 'IndexSearch includeAttributes ownerUsers',
+    mdlhColumn: 'OWNER_USERS',
+    mdlhTable: 'ASSETS',
+    mdlhAvailable: 'available',
     status: 'active',
   },
   {
@@ -51,6 +54,9 @@ const ownershipFields: UnifiedField[] = [
     coreForUseCases: ['data_governance'],
     atlanDocsUrl: 'https://solutions.atlan.com/asset-export-basic/',
     atlanApiHint: 'IndexSearch includeAttributes ownerGroups',
+    mdlhColumn: 'OWNER_GROUPS',
+    mdlhTable: 'ASSETS',
+    mdlhAvailable: 'missing',  // OWNER_GROUPS does NOT exist in MDLH ASSETS table (verified against DDL)
     status: 'active',
   },
   {
@@ -104,6 +110,9 @@ const documentationFields: UnifiedField[] = [
     coreForUseCases: ['self_service_discovery', 'rag', 'text_to_sql', 'ai_agents'],
     atlanDocsUrl: 'https://solutions.atlan.com/asset-export-basic/',
     atlanApiHint: 'IndexSearch includeAttributes description, userDescription',
+    mdlhColumn: 'DESCRIPTION',
+    mdlhTable: 'ASSETS',
+    mdlhAvailable: 'available',
     status: 'active',
   },
   {
@@ -122,6 +131,9 @@ const documentationFields: UnifiedField[] = [
     coreForUseCases: [],
     atlanDocsUrl: 'https://solutions.atlan.com/asset-import/',
     atlanApiHint: 'IndexSearch includeAttributes readme (Readme relationship)',
+    mdlhColumn: 'README_GUID',
+    mdlhTable: 'ASSETS',
+    mdlhAvailable: 'available',  // README_GUID available; full content in README_DETAILS view
     status: 'active',
   },
   {
@@ -139,6 +151,9 @@ const documentationFields: UnifiedField[] = [
     coreForUseCases: ['business_glossary'],
     atlanDocsUrl: 'https://solutions.atlan.com/enrichment_report/',
     atlanApiHint: 'IndexSearch include relationAttributes meanings',
+    mdlhColumn: 'TERM_GUIDS',
+    mdlhTable: 'ASSETS',
+    mdlhAvailable: 'available',
     status: 'active',
   },
 ];
@@ -163,6 +178,9 @@ const lineageFields: UnifiedField[] = [
     coreForUseCases: ['impact_analysis', 'rca'],
     atlanDocsUrl: 'https://developer.atlan.com/models/',
     atlanApiHint: 'IndexSearch includeAttributes __hasLineage',
+    mdlhColumn: 'HAS_LINEAGE',
+    mdlhTable: 'ASSETS',
+    mdlhAvailable: 'available',
     status: 'active',
   },
   {
@@ -260,6 +278,9 @@ const classificationFields: UnifiedField[] = [
     coreForUseCases: ['dsar_retention'],
     atlanDocsUrl: 'https://solutions.atlan.com/metadata_propagator/',
     atlanApiHint: 'IndexSearch includeAttributes classificationNames',
+    mdlhColumn: 'TAGS',
+    mdlhTable: 'ASSETS',
+    mdlhAvailable: 'available',  // Classifications stored as TAGS array in MDLH
     status: 'active',
   },
   {
@@ -467,6 +488,9 @@ const usageFields: UnifiedField[] = [
     coreForUseCases: [],
     atlanDocsUrl: 'https://developer.atlan.com/models/',
     atlanApiHint: 'IndexSearch includeAttributes popularityScore, queryCount, queryUserCount',
+    mdlhColumn: 'POPULARITY_SCORE',
+    mdlhTable: 'ASSETS',
+    mdlhAvailable: 'available',
     status: 'active',
   },
   {
@@ -522,6 +546,9 @@ const trustFields: UnifiedField[] = [
     coreForUseCases: ['data_governance'],
     atlanDocsUrl: 'https://solutions.atlan.com/asset-export-basic/',
     atlanApiHint: 'IndexSearch includeAttributes certificateStatus',
+    mdlhColumn: 'CERTIFICATE_STATUS',
+    mdlhTable: 'ASSETS',
+    mdlhAvailable: 'available',
     status: 'active',
   },
   {
@@ -669,6 +696,9 @@ const lifecycleFields: UnifiedField[] = [
     useCases: ['auditing', 'lifecycle'],
     coreForUseCases: [],
     atlanDocsUrl: 'https://solutions.atlan.com/asset-export-basic/',
+    mdlhColumn: 'CREATED_AT',
+    mdlhTable: 'ASSETS',
+    mdlhAvailable: 'available',  // Epoch ms (NUMBER(19,0))
     status: 'active',
   },
   {
@@ -681,6 +711,9 @@ const lifecycleFields: UnifiedField[] = [
     contributesToSignals: [],
     useCases: ['auditing', 'rca'],
     coreForUseCases: [],
+    mdlhColumn: 'UPDATED_AT',
+    mdlhTable: 'ASSETS',
+    mdlhAvailable: 'available',  // Epoch ms (NUMBER(19,0))
     status: 'active',
   },
   {
@@ -693,6 +726,9 @@ const lifecycleFields: UnifiedField[] = [
     contributesToSignals: [],
     useCases: ['auditing', 'data_governance'],
     coreForUseCases: [],
+    mdlhColumn: 'CREATED_BY',
+    mdlhTable: 'ASSETS',
+    mdlhAvailable: 'available',
     status: 'active',
   },
   {
@@ -705,6 +741,9 @@ const lifecycleFields: UnifiedField[] = [
     contributesToSignals: [],
     useCases: ['auditing', 'data_governance'],
     coreForUseCases: [],
+    mdlhColumn: 'UPDATED_BY',
+    mdlhTable: 'ASSETS',
+    mdlhAvailable: 'available',
     status: 'active',
   },
 ];

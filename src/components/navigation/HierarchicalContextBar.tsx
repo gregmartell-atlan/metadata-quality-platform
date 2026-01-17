@@ -505,6 +505,7 @@ export function HierarchicalContextBar() {
 
   // Get backend status for indicator
   const isUsingMdlh = dataBackend === 'mdlh' && snowflakeStatus.connected && !isInFallbackMode;
+  const needsMdlhConnection = dataBackend === 'mdlh' && !snowflakeStatus.connected;
 
   return (
     <div className="hierarchical-context-bar" ref={barRef}>
@@ -880,17 +881,27 @@ export function HierarchicalContextBar() {
         )}
 
         {/* Backend status indicator */}
-        <div className="backend-status-indicator" title={isUsingMdlh ? 'Using MDLH (Snowflake)' : isInFallbackMode ? 'API Fallback Mode' : 'Using Atlan API'}>
+        <div
+          className="backend-status-indicator"
+          title={isUsingMdlh ? 'Connected to MDLH (Snowflake)' : needsMdlhConnection ? 'Click to connect to MDLH' : 'Using Atlan API'}
+        >
           {isUsingMdlh ? (
             <span className="backend-badge backend-mdlh">
               <Snowflake size={12} />
               <span>MDLH</span>
             </span>
-          ) : isInFallbackMode ? (
-            <span className="backend-badge backend-fallback">
-              <Link2 size={12} />
-              <span>API (fallback)</span>
-            </span>
+          ) : needsMdlhConnection ? (
+            <button
+              className="backend-badge backend-disconnected"
+              onClick={() => {
+                // Navigate to settings to connect
+                window.location.href = '/settings';
+              }}
+              style={{ cursor: 'pointer', border: 'none', background: 'transparent' }}
+            >
+              <Snowflake size={12} />
+              <span>Connect MDLH</span>
+            </button>
           ) : (
             <span className="backend-badge backend-api">
               <Link2 size={12} />

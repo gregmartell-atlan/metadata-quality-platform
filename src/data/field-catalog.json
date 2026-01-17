@@ -1,0 +1,3186 @@
+{
+  "fieldLibrary": {
+    "name": {
+      "description": "Human-readable display name of the asset.",
+      "sourceDocUrl": "https://solutions.atlan.com/asset-export-basic/",
+      "assetTypes": [
+        "All"
+      ],
+      "useCases": [
+        "All"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "qualified_name": {
+      "description": "Globally-unique technical identifier for the asset.",
+      "sourceDocUrl": "https://developer.atlan.com/models/",
+      "assetTypes": [
+        "All"
+      ],
+      "useCases": [
+        "RCA, automation, lineage, imports"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "description": {
+      "description": "Short prose description of the asset\u2019s purpose.",
+      "sourceDocUrl": "https://solutions.atlan.com/asset-export-basic/",
+      "assetTypes": [
+        "All"
+      ],
+      "useCases": [
+        "Discovery, RCA, DQ"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "readme": {
+      "description": "Long-form documentation including examples and caveats.",
+      "sourceDocUrl": "https://solutions.atlan.com/asset-import/",
+      "assetTypes": [
+        "All"
+      ],
+      "useCases": [
+        "Discovery, Enablement, RCA, AI/ML"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "owner_users": {
+      "description": "Individual users accountable for the asset.",
+      "sourceDocUrl": "https://solutions.atlan.com/asset-export-basic/",
+      "assetTypes": [
+        "All"
+      ],
+      "useCases": [
+        "Addressability, Governance"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "owner_groups": {
+      "description": "Groups or teams accountable for the asset.",
+      "sourceDocUrl": "https://solutions.atlan.com/asset-export-basic/",
+      "assetTypes": [
+        "All"
+      ],
+      "useCases": [
+        "Addressability, Governance"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "steward_users": {
+      "description": "Stewards responsible for metadata quality for the asset.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Tables, columns, terms, metrics"
+      ],
+      "useCases": [
+        "Governance, DQ"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "created_at": {
+      "description": "Timestamp when the asset was created in Atlan.",
+      "sourceDocUrl": "https://solutions.atlan.com/asset-export-basic/",
+      "assetTypes": [
+        "All"
+      ],
+      "useCases": [
+        "Auditing, Lifecycle"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "ISO datetime"
+    },
+    "updated_at": {
+      "description": "Timestamp when the asset was last updated in Atlan.",
+      "sourceDocUrl": "https://solutions.atlan.com/asset-export-basic/",
+      "assetTypes": [
+        "All"
+      ],
+      "useCases": [
+        "Auditing, RCA"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "ISO datetime"
+    },
+    "created_by": {
+      "description": "User who created the asset in Atlan.",
+      "sourceDocUrl": "https://solutions.atlan.com/asset-export-basic/",
+      "assetTypes": [
+        "All"
+      ],
+      "useCases": [
+        "Auditing, Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "updated_by": {
+      "description": "User who last updated the asset\u2019s metadata.",
+      "sourceDocUrl": "https://solutions.atlan.com/asset-export-basic/",
+      "assetTypes": [
+        "All"
+      ],
+      "useCases": [
+        "Auditing, Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "tags": {
+      "description": "Business or technical tags applied to the asset.",
+      "sourceDocUrl": "https://solutions.atlan.com/metadata_propagator/",
+      "assetTypes": [
+        "All"
+      ],
+      "useCases": [
+        "Discovery, Governance, PII, AI/ML"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "finance, cde, gold, pii"
+    },
+    "domain": {
+      "description": "Business domain owning or responsible for the asset.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "All"
+      ],
+      "useCases": [
+        "Data products, Governance, Discovery"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "Finance, Sales, Risk, Marketing"
+    },
+    "subdomain": {
+      "description": "Field name,Description,Source doc URL,Asset types,Use case(s),Core vs Recommended,Sample enum values",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "All"
+      ],
+      "useCases": [
+        "Discovery, Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "Billing, Collections"
+    },
+    "certificate_status": {
+      "description": "Governance certificate or status of the asset.",
+      "sourceDocUrl": "https://solutions.atlan.com/asset-export-basic/",
+      "assetTypes": [
+        "All"
+      ],
+      "useCases": [
+        "Trust, Governance"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "Draft, Verified, Deprecated"
+    },
+    "lifecycle_stage": {
+      "description": "Stage in the lifecycle of the asset.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "All"
+      ],
+      "useCases": [
+        "Lifecycle, Cost optimization"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "Active, Candidate, Deprecated, Archived"
+    },
+    "planned_retirement_date": {
+      "description": "Planned date when the asset will be retired.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Tables, views, dashboards, models"
+      ],
+      "useCases": [
+        "Lifecycle, Cost optimization"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "ISO date"
+    },
+    "business_criticality": {
+      "description": "Business importance of the asset.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Tables, dashboards, terms, models"
+      ],
+      "useCases": [
+        "Discovery, Risk"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "High, Medium, Low"
+    },
+    "consumer_impact_if_wrong": {
+      "description": "Impact on consumers if the asset is wrong or stale.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Tables, dashboards, metrics, models"
+      ],
+      "useCases": [
+        "Risk, RCA"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "1-5 scale or free text"
+    },
+    "metadata_completeness_score": {
+      "description": "Composite score summarizing how fully the asset is enriched.",
+      "sourceDocUrl": "https://developer.atlan.com/samples/events/score-calculator/",
+      "assetTypes": [
+        "All"
+      ],
+      "useCases": [
+        "Coverage, AI/ML readiness, Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "0-100"
+    },
+    "glossary_enrichment_level": {
+      "description": "Percentage of terms in a glossary that are enriched.",
+      "sourceDocUrl": "https://solutions.atlan.com/enrichment_report/",
+      "assetTypes": [
+        "Glossaries"
+      ],
+      "useCases": [
+        "Glossary, Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "0-100"
+    },
+    "connection_name": {
+      "description": "Logical Atlan connection name for the source system.",
+      "sourceDocUrl": "https://developer.atlan.com/models/",
+      "assetTypes": [
+        "Databases, schemas, tables, views"
+      ],
+      "useCases": [
+        "RCA, Ops"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "database_name": {
+      "description": "Physical database or catalog name.",
+      "sourceDocUrl": "https://developer.atlan.com/models/entities/catalog/",
+      "assetTypes": [
+        "Databases, schemas, tables, views"
+      ],
+      "useCases": [
+        "RCA, Lineage"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "schema_name": {
+      "description": "Schema name in the database.",
+      "sourceDocUrl": "https://solutions.atlan.com/relational-assets-builder/",
+      "assetTypes": [
+        "Schemas, tables, views"
+      ],
+      "useCases": [
+        "RCA, Lineage"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "table_name": {
+      "description": "Physical table name in the schema.",
+      "sourceDocUrl": "https://solutions.atlan.com/relational-assets-builder/",
+      "assetTypes": [
+        "Tables"
+      ],
+      "useCases": [
+        "RCA, Discovery"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "table_type": {
+      "description": "Type of table or view.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Tables, views"
+      ],
+      "useCases": [
+        "RCA, Cost, Modeling"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "TABLE, VIEW, MATERIALIZED_VIEW"
+    },
+    "environment": {
+      "description": "Environment where the asset lives.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "All (esp. SQL assets)"
+      ],
+      "useCases": [
+        "Governance, Risk, RCA"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "DEV, TEST, UAT, PROD"
+    },
+    "row_count": {
+      "description": "Approximate number of rows in a table or view.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Tables, views"
+      ],
+      "useCases": [
+        "DQ, Cost, Performance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "Integer"
+    },
+    "size_bytes": {
+      "description": "Approximate storage size of the table.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Tables"
+      ],
+      "useCases": [
+        "Cost optimization"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "Integer"
+    },
+    "partition_keys": {
+      "description": "List of partition keys defined on the table.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Tables"
+      ],
+      "useCases": [
+        "Performance, DQ"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "clustering_keys": {
+      "description": "List of clustering or distribution keys.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Tables"
+      ],
+      "useCases": [
+        "Performance, DQ"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "table_owner_system": {
+      "description": "Owner or schema owner in the source system.",
+      "sourceDocUrl": "https://solutions.atlan.com/asset-description-reverse-sync/",
+      "assetTypes": [
+        "Tables"
+      ],
+      "useCases": [
+        "Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "column_name": {
+      "description": "Physical column name.",
+      "sourceDocUrl": "https://solutions.atlan.com/relational-assets-builder/",
+      "assetTypes": [
+        "Columns"
+      ],
+      "useCases": [
+        "RCA, Discovery"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "data_type": {
+      "description": "Column data type in the source system.",
+      "sourceDocUrl": "https://developer.atlan.com/models/",
+      "assetTypes": [
+        "Columns"
+      ],
+      "useCases": [
+        "Modeling, DQ"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "STRING, INT, TIMESTAMP"
+    },
+    "logical_type": {
+      "description": "Normalized semantic type of the column.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Columns"
+      ],
+      "useCases": [
+        "Modeling, AI/ML, Data products"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "EMAIL, CURRENCY, COUNTRY"
+    },
+    "is_nullable": {
+      "description": "Whether the column allows null values.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Columns"
+      ],
+      "useCases": [
+        "Modeling, DQ"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "true, false"
+    },
+    "default_value": {
+      "description": "Default value defined for the column.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Columns"
+      ],
+      "useCases": [
+        "Modeling, RCA"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "primary_key": {
+      "description": "Whether the column is part of the primary key.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Columns"
+      ],
+      "useCases": [
+        "Modeling, Data products"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "true, false"
+    },
+    "foreign_key": {
+      "description": "Whether the column participates in a foreign key.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Columns"
+      ],
+      "useCases": [
+        "Modeling, Lineage"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "true, false"
+    },
+    "referenced_table": {
+      "description": "Table referenced by the foreign key.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Columns"
+      ],
+      "useCases": [
+        "Modeling, RCA"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "referenced_column": {
+      "description": "Column referenced by the foreign key.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Columns"
+      ],
+      "useCases": [
+        "Modeling, RCA"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "column_profile_null_pct": {
+      "description": "Profiling: fraction of rows that are null.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Columns"
+      ],
+      "useCases": [
+        "DQ, Monitoring"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "0.0-1.0"
+    },
+    "column_profile_distinct_count": {
+      "description": "Profiling: number of distinct values.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Columns"
+      ],
+      "useCases": [
+        "DQ, PK detection"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "Integer"
+    },
+    "column_profile_min": {
+      "description": "Profiling: minimum value observed.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Columns"
+      ],
+      "useCases": [
+        "DQ, Monitoring"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "column_profile_max": {
+      "description": "Profiling: maximum value observed.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Columns"
+      ],
+      "useCases": [
+        "DQ, Monitoring"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "term_name": {
+      "description": "Glossary term display name.",
+      "sourceDocUrl": "https://atlan.com/what-is-a-business-glossary/",
+      "assetTypes": [
+        "Glossary terms"
+      ],
+      "useCases": [
+        "Glossary, Discovery"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "term_definition_short": {
+      "description": "One-line, plain-language definition of the term.",
+      "sourceDocUrl": "https://atlan.com/business-glossary-template/",
+      "assetTypes": [
+        "Glossary terms"
+      ],
+      "useCases": [
+        "Glossary, Discovery"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "term_definition_long": {
+      "description": "Detailed description of the term including scope and non-goals.",
+      "sourceDocUrl": "https://atlan.com/business-glossary-template/",
+      "assetTypes": [
+        "Glossary terms"
+      ],
+      "useCases": [
+        "Glossary, Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "term_examples": {
+      "description": "Examples illustrating how to interpret or use the term.",
+      "sourceDocUrl": "https://atlan.com/business-glossary-template/",
+      "assetTypes": [
+        "Glossary terms"
+      ],
+      "useCases": [
+        "Glossary, Enablement"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "term_scope": {
+      "description": "Description of what is in-scope and out-of-scope for the term.",
+      "sourceDocUrl": "https://atlan.com/business-glossary-template/",
+      "assetTypes": [
+        "Glossary terms"
+      ],
+      "useCases": [
+        "Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "related_terms": {
+      "description": "Terms related to this term (synonyms, parents, children).",
+      "sourceDocUrl": "https://atlan.com/business-glossary-template/",
+      "assetTypes": [
+        "Glossary terms"
+      ],
+      "useCases": [
+        "Glossary, Discovery"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "glossary_name": {
+      "description": "Name of the glossary this term belongs to.",
+      "sourceDocUrl": "https://solutions.atlan.com/asset-export-basic/",
+      "assetTypes": [
+        "Glossary terms"
+      ],
+      "useCases": [
+        "Glossary"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "glossary_category": {
+      "description": "Category or sub-domain classification of the term.",
+      "sourceDocUrl": "https://solutions.atlan.com/asset-export-basic/",
+      "assetTypes": [
+        "Glossary terms"
+      ],
+      "useCases": [
+        "Glossary, Discovery"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "Sales, Risk, Customer"
+    },
+    "term_status": {
+      "description": "Lifecycle status of the term.",
+      "sourceDocUrl": "https://atlan.com/what-fields-are-required-when-creating-a-business-glossary/",
+      "assetTypes": [
+        "Glossary terms"
+      ],
+      "useCases": [
+        "Governance"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "Proposed, In review, Approved, Deprecated"
+    },
+    "metric_name": {
+      "description": "Display name of the metric or KPI.",
+      "sourceDocUrl": "https://atlan.com/resources/readme-template-metric/",
+      "assetTypes": [
+        "Metrics, metric terms"
+      ],
+      "useCases": [
+        "Metrics catalog"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "metric_formula": {
+      "description": "Business definition or expression for how the metric is calculated.",
+      "sourceDocUrl": "https://atlan.com/resources/readme-template-metric/",
+      "assetTypes": [
+        "Metrics"
+      ],
+      "useCases": [
+        "Metrics, RCA"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "metric_grain": {
+      "description": "The grain at which the metric is defined.",
+      "sourceDocUrl": "https://atlan.com/resources/readme-template-metric/",
+      "assetTypes": [
+        "Metrics"
+      ],
+      "useCases": [
+        "Metrics, Modeling"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "Order, Customer, Day"
+    },
+    "metric_source_asset": {
+      "description": "Canonical table or view that powers the metric.",
+      "sourceDocUrl": "https://atlan.com/resources/readme-template-metric/",
+      "assetTypes": [
+        "Metrics"
+      ],
+      "useCases": [
+        "Metrics, RCA"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "metric_filters": {
+      "description": "Required filters or constraints for correct interpretation of the metric.",
+      "sourceDocUrl": "https://atlan.com/resources/readme-template-metric/",
+      "assetTypes": [
+        "Metrics"
+      ],
+      "useCases": [
+        "Metrics catalog"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "metric_sla": {
+      "description": "Freshness or availability SLA for the metric.",
+      "sourceDocUrl": "https://atlan.com/resources/readme-template-metric/",
+      "assetTypes": [
+        "Metrics"
+      ],
+      "useCases": [
+        "DQ, Metrics"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "Hourly, Daily by 09:00"
+    },
+    "metric_owner_business": {
+      "description": "Business owner responsible for the metric.",
+      "sourceDocUrl": "https://atlan.com/what-fields-are-required-when-creating-a-business-glossary/",
+      "assetTypes": [
+        "Metrics"
+      ],
+      "useCases": [
+        "Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "metric_owner_technical": {
+      "description": "Technical owner implementing the metric.",
+      "sourceDocUrl": "https://atlan.com/what-fields-are-required-when-creating-a-business-glossary/",
+      "assetTypes": [
+        "Metrics"
+      ],
+      "useCases": [
+        "Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "metric_status": {
+      "description": "Lifecycle status of the metric.",
+      "sourceDocUrl": "https://atlan.com/what-fields-are-required-when-creating-a-business-glossary/",
+      "assetTypes": [
+        "Metrics"
+      ],
+      "useCases": [
+        "Governance"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "Draft, In review, Approved, Deprecated"
+    },
+    "dq_score": {
+      "description": "Composite data quality score for the asset.",
+      "sourceDocUrl": "https://atlan.com/data-quality-audit/",
+      "assetTypes": [
+        "Tables, columns, metrics"
+      ],
+      "useCases": [
+        "DQ, Trust"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "0-100 or Red/Amber/Green"
+    },
+    "pii_flag": {
+      "description": "Whether the asset or column contains PII.",
+      "sourceDocUrl": "https://solutions.atlan.com/bigid/",
+      "assetTypes": [
+        "Tables, columns, terms"
+      ],
+      "useCases": [
+        "PII & security"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "true, false"
+    },
+    "pii_type": {
+      "description": "Specific PII subtype classification.",
+      "sourceDocUrl": "https://solutions.atlan.com/bigid/",
+      "assetTypes": [
+        "Columns, terms"
+      ],
+      "useCases": [
+        "PII & security"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "Email, Phone, Government ID"
+    },
+    "sensitivity_classification": {
+      "description": "Overall sensitivity level of the data.",
+      "sourceDocUrl": "https://solutions.atlan.com/lake-formation-tag-sync/",
+      "assetTypes": [
+        "Tables, columns"
+      ],
+      "useCases": [
+        "PII, Access control"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "public, internal, confidential, restricted"
+    },
+    "regulatory_scope": {
+      "description": "Regulatory regimes that apply to the data.",
+      "sourceDocUrl": "https://atlan.com/data-governance-best-practices/",
+      "assetTypes": [
+        "Tables, columns, terms"
+      ],
+      "useCases": [
+        "Compliance, AI/ML"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "GDPR, CCPA, HIPAA"
+    },
+    "data_subject_category": {
+      "description": "Category of data subjects represented.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Tables, columns, terms"
+      ],
+      "useCases": [
+        "Privacy, Compliance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "Customer, Employee, Vendor, Child"
+    },
+    "processing_activity": {
+      "description": "High-level description of the processing activity.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Tables, columns, terms"
+      ],
+      "useCases": [
+        "Privacy, AI/ML"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "Marketing analytics, Fraud detection"
+    },
+    "legal_basis": {
+      "description": "Legal basis for processing personal data.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Tables, columns, terms"
+      ],
+      "useCases": [
+        "Privacy"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "Consent, Contract, Legitimate interest"
+    },
+    "retention_rule": {
+      "description": "Retention policy for the data.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Tables"
+      ],
+      "useCases": [
+        "Compliance, Lifecycle"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "e.g. 7 years post-contract"
+    },
+    "lf_tag_name": {
+      "description": "AWS Lake Formation tag name mapped from an Atlan tag.",
+      "sourceDocUrl": "https://solutions.atlan.com/lake-formation-tag-sync/",
+      "assetTypes": [
+        "Tables, columns"
+      ],
+      "useCases": [
+        "Access control"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "classification"
+    },
+    "lf_tag_value": {
+      "description": "AWS Lake Formation tag value.",
+      "sourceDocUrl": "https://solutions.atlan.com/lake-formation-tag-sync/",
+      "assetTypes": [
+        "Tables, columns"
+      ],
+      "useCases": [
+        "Access control"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "public, confidential"
+    },
+    "model_name": {
+      "description": "ML/AI model name.",
+      "sourceDocUrl": "https://developer.atlan.com/models/entities/modeldatamodel/",
+      "assetTypes": [
+        "Models"
+      ],
+      "useCases": [
+        "AI/ML governance"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "model_version": {
+      "description": "Version identifier for the model.",
+      "sourceDocUrl": "https://developer.atlan.com/models/entities/modelversion/",
+      "assetTypes": [
+        "Models"
+      ],
+      "useCases": [
+        "AI/ML governance"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "v1, v1.1"
+    },
+    "model_type": {
+      "description": "Type or family of the model.",
+      "sourceDocUrl": "https://developer.atlan.com/patterns/create/ai/",
+      "assetTypes": [
+        "Models"
+      ],
+      "useCases": [
+        "AI/ML governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "classification, regression, LLM, clustering"
+    },
+    "model_stage": {
+      "description": "Promotion stage of the model.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Models"
+      ],
+      "useCases": [
+        "AI/ML governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "Dev, Test, Prod, Retired"
+    },
+    "model_owner_business": {
+      "description": "Business owner for the model\u2019s outcomes.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Models"
+      ],
+      "useCases": [
+        "Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "model_owner_technical": {
+      "description": "ML engineer / data scientist accountable for the model.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Models"
+      ],
+      "useCases": [
+        "Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "model_training_data_assets": {
+      "description": "Linked training datasets used to train the model.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Models"
+      ],
+      "useCases": [
+        "AI/ML"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "model_serving_data_assets": {
+      "description": "Linked datasets used at inference time.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Models"
+      ],
+      "useCases": [
+        "AI/ML"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "model_performance_metric": {
+      "description": "Primary performance metric(s) for the model.",
+      "sourceDocUrl": "https://atlan.com/machine-learning-data-catalog-features/",
+      "assetTypes": [
+        "Models"
+      ],
+      "useCases": [
+        "AI/ML"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "AUC=0.87, RMSE=2.4"
+    },
+    "model_fairness_metrics": {
+      "description": "Key fairness or bias-related metrics.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Models"
+      ],
+      "useCases": [
+        "Responsible AI"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "SPD, EOD"
+    },
+    "model_training_data_range": {
+      "description": "Time range covered by training data.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Models, datasets"
+      ],
+      "useCases": [
+        "AI/ML"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "2023-01-01 to 2023-06-30"
+    },
+    "model_risk_rating": {
+      "description": "Qualitative risk rating of the model.",
+      "sourceDocUrl": "https://atlan.com/data-governance-best-practices/",
+      "assetTypes": [
+        "Models"
+      ],
+      "useCases": [
+        "AI/ML, Compliance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "Low, Medium, High"
+    },
+    "ai_readiness_score": {
+      "description": "Aggregate score for AI readiness of data and metadata.",
+      "sourceDocUrl": "https://developer.atlan.com/samples/events/score-calculator/",
+      "assetTypes": [
+        "Datasets, models, terms"
+      ],
+      "useCases": [
+        "AI/ML governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "0-100"
+    },
+    "data_product_name": {
+      "description": "Name of the data product.",
+      "sourceDocUrl": "https://atlan.com/data-mesh-principles/",
+      "assetTypes": [
+        "Data product entities, collections"
+      ],
+      "useCases": [
+        "Data products"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "data_product_description": {
+      "description": "Description of the data product\u2019s scope and value.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Data products"
+      ],
+      "useCases": [
+        "Data products"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "data_product_owner_team": {
+      "description": "Team that owns the data product.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Data products"
+      ],
+      "useCases": [
+        "Data products, Governance"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "data_product_sla": {
+      "description": "SLA for freshness and availability of the data product.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Data products"
+      ],
+      "useCases": [
+        "Data products, DQ"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "D+1, Near real-time"
+    },
+    "data_product_maturity": {
+      "description": "Maturity level of the data product.",
+      "sourceDocUrl": "https://atlan.com/data-value-curve/",
+      "assetTypes": [
+        "Data products"
+      ],
+      "useCases": [
+        "Portfolio, Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "Bronze, Silver, Gold"
+    },
+    "data_product_kpi": {
+      "description": "KPIs used to measure the product\u2019s business value.",
+      "sourceDocUrl": "https://atlan.com/data-governance-business-value/",
+      "assetTypes": [
+        "Data products"
+      ],
+      "useCases": [
+        "Value, Exec reporting"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "interface_contract_version": {
+      "description": "Version of the schema/interface contract.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Data products"
+      ],
+      "useCases": [
+        "Data contracts"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "1.0.0"
+    },
+    "interface_breaking_change_policy": {
+      "description": "Policy describing allowed schema changes.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Data products"
+      ],
+      "useCases": [
+        "Data contracts"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "None, Minor only"
+    },
+    "source_qualified_name": {
+      "description": "Upstream asset qualified name in lineage.",
+      "sourceDocUrl": "https://solutions.atlan.com/lineage-builder/",
+      "assetTypes": [
+        "Lineage edges"
+      ],
+      "useCases": [
+        "RCA"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "target_qualified_name": {
+      "description": "Downstream asset qualified name in lineage.",
+      "sourceDocUrl": "https://solutions.atlan.com/lineage-builder/",
+      "assetTypes": [
+        "Lineage edges"
+      ],
+      "useCases": [
+        "RCA"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "transformation_type": {
+      "description": "Type of transformation between source and target.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Lineage edges"
+      ],
+      "useCases": [
+        "RCA, DQ"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "copy, aggregate, join, filter"
+    },
+    "relationship_type": {
+      "description": "Semantic type of lineage relationship.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Lineage edges"
+      ],
+      "useCases": [
+        "RCA"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "parentOf, derivedFrom"
+    },
+    "job_name": {
+      "description": "Name of the job or pipeline.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Jobs, workflows"
+      ],
+      "useCases": [
+        "RCA, Ops"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "job_type": {
+      "description": "Type of job or pipeline.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Jobs"
+      ],
+      "useCases": [
+        "Ops"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "dbt, Airflow, ETL, BI refresh"
+    },
+    "schedule": {
+      "description": "Execution schedule or cron expression.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Jobs"
+      ],
+      "useCases": [
+        "Ops"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "0 6 * * *"
+    },
+    "last_run_time": {
+      "description": "Time of last execution.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Jobs"
+      ],
+      "useCases": [
+        "RCA, Ops"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "ISO datetime"
+    },
+    "last_run_status": {
+      "description": "Status of the last job run.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Jobs"
+      ],
+      "useCases": [
+        "RCA, Ops"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "Success, Failed, Partial"
+    },
+    "failure_rate_30d": {
+      "description": "Failure rate of the job over the last 30 days.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Jobs"
+      ],
+      "useCases": [
+        "DQ, Reliability"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "0.0-1.0"
+    },
+    "bi_tool": {
+      "description": "Name of the BI tool.",
+      "sourceDocUrl": "https://developer.atlan.com/models/",
+      "assetTypes": [
+        "Dashboards, reports"
+      ],
+      "useCases": [
+        "Discovery"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "Tableau, Power BI, Looker, Superset"
+    },
+    "bi_project": {
+      "description": "BI project or workspace name.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Dashboards, reports"
+      ],
+      "useCases": [
+        "RCA, Discovery"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "bi_folder": {
+      "description": "Folder or path for the BI asset.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Dashboards, reports"
+      ],
+      "useCases": [
+        "Discovery"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "bi_url": {
+      "description": "Direct URL for the dashboard or report.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Dashboards, reports"
+      ],
+      "useCases": [
+        "Natively accessible"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "-"
+    },
+    "sheet_name": {
+      "description": "Worksheet or tab name inside the BI asset.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Dashboards"
+      ],
+      "useCases": [
+        "RCA"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "filter_summary": {
+      "description": "Textual description of global filters in the BI asset.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Dashboards"
+      ],
+      "useCases": [
+        "Metrics, RCA"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "-"
+    },
+    "is_certified_report": {
+      "description": "Whether the BI asset is certified.",
+      "sourceDocUrl": "-",
+      "assetTypes": [
+        "Dashboards, reports"
+      ],
+      "useCases": [
+        "Trust, Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "true, false"
+    },
+    "domain_value_score": {
+      "description": "Value score for the domain from value/viability assessment.",
+      "sourceDocUrl": "FY25 Atlan Blueprint",
+      "assetTypes": [
+        "Domains"
+      ],
+      "useCases": [
+        "Portfolio planning"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "2026-05-01 00:00:00"
+    },
+    "domain_viability_score": {
+      "description": "Viability score for the domain.",
+      "sourceDocUrl": "FY25 Atlan Blueprint",
+      "assetTypes": [
+        "Domains"
+      ],
+      "useCases": [
+        "Portfolio planning"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "2026-05-01 00:00:00"
+    },
+    "is_documented": {
+      "description": "Whether the asset has both description and readme.",
+      "sourceDocUrl": "https://solutions.atlan.com/s3-asset-export/",
+      "assetTypes": [
+        "All"
+      ],
+      "useCases": [
+        "DQ, Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "true, false"
+    },
+    "badge_name": {
+      "description": "Name of the badge shown on assets.",
+      "sourceDocUrl": "https://developer.atlan.com/models/entities/badge/",
+      "assetTypes": [
+        "Badges"
+      ],
+      "useCases": [
+        "Governance",
+        "Trust signals"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": ""
+    },
+    "badge_description": {
+      "description": "Description of what the badge means for consumers.",
+      "sourceDocUrl": "https://developer.atlan.com/models/entities/badge/",
+      "assetTypes": [
+        "Badges"
+      ],
+      "useCases": [
+        "Governance",
+        "Enablement"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": ""
+    },
+    "badge_condition_expression": {
+      "description": "Logical condition (using other fields) under which the badge is applied.",
+      "sourceDocUrl": "https://developer.atlan.com/models/structs/badgecondition/",
+      "assetTypes": [
+        "Badges"
+      ],
+      "useCases": [
+        "Governance automation",
+        "Outcomes"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": ""
+    },
+    "badge_priority": {
+      "description": "Priority or ordering of the badge when multiple are applied.",
+      "sourceDocUrl": "https://developer.atlan.com/models/entities/badge/",
+      "assetTypes": [
+        "Badges"
+      ],
+      "useCases": [
+        "Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "High;Medium;Low"
+    },
+    "persona_name": {
+      "description": "Name of the persona used for access control.",
+      "sourceDocUrl": "https://developer.atlan.com/models/entities/persona/",
+      "assetTypes": [
+        "Personas"
+      ],
+      "useCases": [
+        "Security",
+        "Access governance"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": ""
+    },
+    "persona_description": {
+      "description": "Description of who this persona represents.",
+      "sourceDocUrl": "https://developer.atlan.com/models/entities/persona/",
+      "assetTypes": [
+        "Personas"
+      ],
+      "useCases": [
+        "Security",
+        "Enablement"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": ""
+    },
+    "persona_policies": {
+      "description": "List of authorization policies attached to this persona.",
+      "sourceDocUrl": "https://developer.atlan.com/models/entities/persona/",
+      "assetTypes": [
+        "Personas"
+      ],
+      "useCases": [
+        "Security",
+        "Access governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": ""
+    },
+    "purpose_name": {
+      "description": "Name of the purpose object (why access is granted).",
+      "sourceDocUrl": "https://developer.atlan.com/models/entities/purpose/",
+      "assetTypes": [
+        "Purposes"
+      ],
+      "useCases": [
+        "Security",
+        "Access governance"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": ""
+    },
+    "purpose_description": {
+      "description": "Narrative description of the purpose.",
+      "sourceDocUrl": "https://developer.atlan.com/models/entities/purpose/",
+      "assetTypes": [
+        "Purposes"
+      ],
+      "useCases": [
+        "Security",
+        "Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": ""
+    },
+    "purpose_policies": {
+      "description": "Policies linked to this purpose.",
+      "sourceDocUrl": "https://developer.atlan.com/models/entities/purpose/",
+      "assetTypes": [
+        "Purposes"
+      ],
+      "useCases": [
+        "Security",
+        "Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": ""
+    },
+    "auth_policy_name": {
+      "description": "Name of the authorization policy.",
+      "sourceDocUrl": "https://developer.atlan.com/models/entities/authpolicy/",
+      "assetTypes": [
+        "AuthPolicy"
+      ],
+      "useCases": [
+        "Security",
+        "Governance"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": ""
+    },
+    "auth_policy_type": {
+      "description": "Type of policy from AuthPolicyType enumeration.",
+      "sourceDocUrl": "https://developer.atlan.com/models/enums/authpolicytype/",
+      "assetTypes": [
+        "AuthPolicy"
+      ],
+      "useCases": [
+        "Security",
+        "Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "AuthPolicyType enum"
+    },
+    "auth_policy_category": {
+      "description": "Category from AuthPolicyCategory enumeration.",
+      "sourceDocUrl": "https://developer.atlan.com/models/enums/authpolicycategory/",
+      "assetTypes": [
+        "AuthPolicy"
+      ],
+      "useCases": [
+        "Security",
+        "Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "AuthPolicyCategory enum"
+    },
+    "auth_policy_resource_category": {
+      "description": "Resource category from AuthPolicyResourceCategory enumeration.",
+      "sourceDocUrl": "https://developer.atlan.com/models/enums/authpolicyresourcecategory/",
+      "assetTypes": [
+        "AuthPolicy"
+      ],
+      "useCases": [
+        "Security",
+        "Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "AuthPolicyResourceCategory enum"
+    },
+    "business_policy_name": {
+      "description": "Name of a business (governance) policy.",
+      "sourceDocUrl": "https://developer.atlan.com/models/entities/businesspolicy/",
+      "assetTypes": [
+        "BusinessPolicy"
+      ],
+      "useCases": [
+        "Policy governance",
+        "Compliance"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": ""
+    },
+    "business_policy_rule": {
+      "description": "Structured rule logic backing the business policy.",
+      "sourceDocUrl": "https://developer.atlan.com/models/structs/businesspolicyrule/",
+      "assetTypes": [
+        "BusinessPolicy"
+      ],
+      "useCases": [
+        "Policy governance",
+        "Compliance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": ""
+    },
+    "business_policy_category": {
+      "description": "Category or grouping for business policies.",
+      "sourceDocUrl": "https://developer.atlan.com/models/entities/businesspolicy/",
+      "assetTypes": [
+        "BusinessPolicy"
+      ],
+      "useCases": [
+        "Policy governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": ""
+    },
+    "incident_name": {
+      "description": "Human-readable title of the incident.",
+      "sourceDocUrl": "https://developer.atlan.com/models/entities/incident/",
+      "assetTypes": [
+        "Incident",
+        "BusinessPolicyIncident"
+      ],
+      "useCases": [
+        "Data quality incidents",
+        "Policy incidents"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": ""
+    },
+    "incident_severity": {
+      "description": "Severity of the incident (enum incident_severity).",
+      "sourceDocUrl": "https://developer.atlan.com/models/enums/incident_severity/",
+      "assetTypes": [
+        "Incident",
+        "BusinessPolicyIncident"
+      ],
+      "useCases": [
+        "Data quality",
+        "Risk",
+        "RCA"
+      ],
+      "coreVsRecommended": "Core",
+      "sampleEnumValues": "LOW;MEDIUM;HIGH"
+    },
+    "incident_status": {
+      "description": "Current lifecycle status of the incident.",
+      "sourceDocUrl": "https://developer.atlan.com/models/entities/incident/",
+      "assetTypes": [
+        "Incident"
+      ],
+      "useCases": [
+        "Data quality",
+        "RCA"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "Open;Investigating;Mitigated;Resolved;Closed"
+    },
+    "incident_category": {
+      "description": "Category or type of incident (data-quality; access; policy; performance).",
+      "sourceDocUrl": "https://developer.atlan.com/models/entities/incident/",
+      "assetTypes": [
+        "Incident"
+      ],
+      "useCases": [
+        "Data quality",
+        "Compliance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": ""
+    },
+    "incident_start_time": {
+      "description": "Timestamp when the incident started or was first detected.",
+      "sourceDocUrl": "https://developer.atlan.com/models/entities/incident/",
+      "assetTypes": [
+        "Incident"
+      ],
+      "useCases": [
+        "Data quality",
+        "RCA"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "ISO datetime"
+    },
+    "incident_end_time": {
+      "description": "Timestamp when the incident was resolved or closed.",
+      "sourceDocUrl": "https://developer.atlan.com/models/entities/incident/",
+      "assetTypes": [
+        "Incident"
+      ],
+      "useCases": [
+        "Data quality",
+        "RCA"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "ISO datetime"
+    },
+    "cm_raci_responsible": {
+      "description": "Custom-metadata list of people or groups Responsible (R) in a RACI model.",
+      "sourceDocUrl": "https://developer.atlan.com/snippets/common-examples/custom-metadata/",
+      "assetTypes": [
+        "All assets using RACI CM"
+      ],
+      "useCases": [
+        "Ownership",
+        "Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": ""
+    },
+    "cm_raci_accountable": {
+      "description": "Custom-metadata list of people or groups Accountable (A).",
+      "sourceDocUrl": "https://developer.atlan.com/snippets/common-examples/custom-metadata/",
+      "assetTypes": [
+        "All assets using RACI CM"
+      ],
+      "useCases": [
+        "Ownership",
+        "Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": ""
+    },
+    "cm_raci_consulted": {
+      "description": "Custom-metadata list of people or groups Consulted (C).",
+      "sourceDocUrl": "https://developer.atlan.com/snippets/common-examples/custom-metadata/",
+      "assetTypes": [
+        "All assets using RACI CM"
+      ],
+      "useCases": [
+        "Ownership",
+        "Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": ""
+    },
+    "cm_raci_informed": {
+      "description": "Custom-metadata list of people or groups Informed (I).",
+      "sourceDocUrl": "https://developer.atlan.com/snippets/common-examples/custom-metadata/",
+      "assetTypes": [
+        "All assets using RACI CM"
+      ],
+      "useCases": [
+        "Ownership",
+        "Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": ""
+    },
+    "cm_ai_risk_rating": {
+      "description": "Custom-metadata risk rating for AI/ML use of this asset.",
+      "sourceDocUrl": "",
+      "assetTypes": [
+        "Datasets",
+        "models",
+        "terms"
+      ],
+      "useCases": [
+        "AI governance",
+        "Risk"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "Low;Medium;High"
+    },
+    "cm_ai_use_case": {
+      "description": "Custom-metadata description of the AI use case this asset participates in.",
+      "sourceDocUrl": "",
+      "assetTypes": [
+        "Datasets",
+        "models",
+        "terms"
+      ],
+      "useCases": [
+        "AI governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": ""
+    },
+    "cm_ai_business_owner": {
+      "description": "Business owner recorded in the AI governance CM group.",
+      "sourceDocUrl": "",
+      "assetTypes": [
+        "Datasets",
+        "models"
+      ],
+      "useCases": [
+        "AI governance",
+        "Compliance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": ""
+    },
+    "cm_ai_approver": {
+      "description": "Approver or committee recorded in the AI governance CM group.",
+      "sourceDocUrl": "",
+      "assetTypes": [
+        "Datasets",
+        "models"
+      ],
+      "useCases": [
+        "AI governance",
+        "Compliance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": ""
+    },
+    "cm_contract_version": {
+      "description": "Custom-metadata field capturing the data contract version.",
+      "sourceDocUrl": "https://developer.atlan.com/specs/data-contracts/",
+      "assetTypes": [
+        "Tables",
+        "views",
+        "topics",
+        "APIs",
+        "data products"
+      ],
+      "useCases": [
+        "Data contracts",
+        "Change safety"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "SemVer (e.g. 1.0.0)"
+    },
+    "cm_contract_status": {
+      "description": "Custom-metadata lifecycle status of the data contract.",
+      "sourceDocUrl": "https://developer.atlan.com/specs/data-contracts/",
+      "assetTypes": [
+        "Data contracts",
+        "assets"
+      ],
+      "useCases": [
+        "Data contracts",
+        "Governance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "Draft;Active;Sunset;Archived"
+    },
+    "cm_contract_breaking_change_policy": {
+      "description": "Custom-metadata description of allowed schema changes under this contract.",
+      "sourceDocUrl": "https://developer.atlan.com/specs/data-contracts/",
+      "assetTypes": [
+        "Data contracts",
+        "data products"
+      ],
+      "useCases": [
+        "Data contracts",
+        "RCA"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "None;Minor only;Breaking allowed"
+    },
+    "data_product_criticality": {
+      "description": "Criticality of a data product (DataProductCriticality enum).",
+      "sourceDocUrl": "https://developer.atlan.com/models/enums/dataproductcriticality/",
+      "assetTypes": [
+        "Data products"
+      ],
+      "useCases": [
+        "Data products",
+        "Portfolio",
+        "Risk"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "Low;Medium;High"
+    },
+    "data_product_sensitivity": {
+      "description": "Information sensitivity of a data product (DataProductSensitivity enum).",
+      "sourceDocUrl": "https://developer.atlan.com/models/enums/dataproductsensitivity/",
+      "assetTypes": [
+        "Data products"
+      ],
+      "useCases": [
+        "Data products",
+        "PII/compliance"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "Public;Internal;Confidential"
+    },
+    "data_product_status": {
+      "description": "Status of a data product (DataProductStatus enum).",
+      "sourceDocUrl": "https://developer.atlan.com/models/enums/dataproductstatus/",
+      "assetTypes": [
+        "Data products"
+      ],
+      "useCases": [
+        "Data products",
+        "Lifecycle"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "Active;Sunset;Archived;Draft"
+    },
+    "data_product_visibility": {
+      "description": "Visibility of a data product (DataProductVisibility enum).",
+      "sourceDocUrl": "https://developer.atlan.com/models/enums/dataproductvisibility/",
+      "assetTypes": [
+        "Data products"
+      ],
+      "useCases": [
+        "Data products",
+        "Access control"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "Private;Protected;Public"
+    },
+    "glossary_terms": {
+      "description": "Glossary terms linked to the asset.",
+      "sourceDocUrl": "https://solutions.atlan.com/asset-term-link/",
+      "assetTypes": [
+        "Tables, columns, dashboards"
+      ],
+      "useCases": [
+        "Glossary, Metrics, RCA"
+      ],
+      "coreVsRecommended": "Recommended",
+      "sampleEnumValues": "Term list"
+    }
+  },
+  "useCaseGrid": [
+    {
+      "useCase": "Self-service discovery",
+      "assetTypes": [
+        "Tables",
+        "views"
+      ],
+      "objectives": [
+        "Discoverable",
+        "Understandable",
+        "Trustworthy"
+      ],
+      "coreFields": [
+        "name",
+        "qualified_name",
+        "description",
+        "owner_users",
+        "owner_groups",
+        "tags",
+        "domain",
+        "certificate_status"
+      ],
+      "recommendedFields": [
+        "readme",
+        "business_criticality",
+        "consumer_impact_if_wrong",
+        "metadata_completeness_score",
+        "dq_score",
+        "badge_name"
+      ]
+    },
+    {
+      "useCase": "Self-service discovery",
+      "assetTypes": [
+        "Columns"
+      ],
+      "objectives": [
+        "Discoverable",
+        "Understandable"
+      ],
+      "coreFields": [
+        "column_name",
+        "data_type",
+        "description",
+        "tags",
+        "glossary_terms",
+        "pii_flag"
+      ],
+      "recommendedFields": [
+        "logical_type",
+        "pii_type",
+        "sensitivity_classification",
+        "column_profile_null_pct"
+      ]
+    },
+    {
+      "useCase": "Self-service discovery",
+      "assetTypes": [
+        "Dashboards",
+        "reports"
+      ],
+      "objectives": [
+        "Discoverable",
+        "Understandable",
+        "Trustworthy"
+      ],
+      "coreFields": [
+        "name",
+        "bi_tool",
+        "bi_url",
+        "description",
+        "owner_users",
+        "owner_groups",
+        "tags",
+        "certificate_status"
+      ],
+      "recommendedFields": [
+        "filter_summary",
+        "business_criticality",
+        "consumer_impact_if_wrong",
+        "metadata_completeness_score",
+        "badge_name"
+      ]
+    },
+    {
+      "useCase": "Business glossary & metrics",
+      "assetTypes": [
+        "Glossary terms"
+      ],
+      "objectives": [
+        "Understandable",
+        "Discoverable",
+        "Trustworthy"
+      ],
+      "coreFields": [
+        "term_name",
+        "term_definition_short",
+        "glossary_name",
+        "glossary_category",
+        "owner_users",
+        "term_status"
+      ],
+      "recommendedFields": [
+        "term_definition_long",
+        "term_examples",
+        "term_scope",
+        "related_terms",
+        "tags",
+        "glossary_enrichment_level"
+      ]
+    },
+    {
+      "useCase": "Business glossary & metrics",
+      "assetTypes": [
+        "Metric terms / KPIs"
+      ],
+      "objectives": [
+        "Understandable",
+        "Trustworthy"
+      ],
+      "coreFields": [
+        "metric_name",
+        "metric_formula",
+        "metric_grain",
+        "metric_source_asset",
+        "metric_owner_business",
+        "metric_status"
+      ],
+      "recommendedFields": [
+        "metric_filters",
+        "metric_sla",
+        "metric_owner_technical",
+        "dq_score",
+        "readme",
+        "business_criticality",
+        "consumer_impact_if_wrong"
+      ]
+    },
+    {
+      "useCase": "Root-cause & impact analysis",
+      "assetTypes": [
+        "Tables",
+        "views"
+      ],
+      "objectives": [
+        "Interoperable",
+        "Addressable",
+        "Trustworthy"
+      ],
+      "coreFields": [
+        "name",
+        "qualified_name",
+        "description",
+        "owner_users",
+        "owner_groups",
+        "tags",
+        "domain"
+      ],
+      "recommendedFields": [
+        "source_qualified_name",
+        "target_qualified_name",
+        "environment",
+        "table_owner_system",
+        "business_criticality",
+        "consumer_impact_if_wrong",
+        "dq_score",
+        "glossary_terms",
+        "cm_raci_responsible"
+      ]
+    },
+    {
+      "useCase": "Root-cause & impact analysis",
+      "assetTypes": [
+        "Dashboards",
+        "reports"
+      ],
+      "objectives": [
+        "Interoperable",
+        "Trustworthy"
+      ],
+      "coreFields": [
+        "name",
+        "bi_tool",
+        "bi_url",
+        "description",
+        "owner_users",
+        "owner_groups",
+        "tags"
+      ],
+      "recommendedFields": [
+        "metric_source_asset",
+        "sheet_name",
+        "filter_summary",
+        "business_criticality",
+        "consumer_impact_if_wrong",
+        "dq_score",
+        "cm_raci_responsible"
+      ]
+    },
+    {
+      "useCase": "Data quality & lifecycle",
+      "assetTypes": [
+        "Tables"
+      ],
+      "objectives": [
+        "Trustworthy",
+        "Lifecycle"
+      ],
+      "coreFields": [
+        "name",
+        "qualified_name",
+        "description",
+        "owner_users",
+        "owner_groups",
+        "tags",
+        "domain"
+      ],
+      "recommendedFields": [
+        "dq_score",
+        "row_count",
+        "size_bytes",
+        "lifecycle_stage",
+        "planned_retirement_date",
+        "metadata_completeness_score",
+        "incident_name",
+        "incident_severity"
+      ]
+    },
+    {
+      "useCase": "Data quality & lifecycle",
+      "assetTypes": [
+        "Columns"
+      ],
+      "objectives": [
+        "Trustworthy"
+      ],
+      "coreFields": [
+        "column_name",
+        "data_type",
+        "description",
+        "tags"
+      ],
+      "recommendedFields": [
+        "column_profile_null_pct",
+        "column_profile_distinct_count",
+        "column_profile_min",
+        "column_profile_max",
+        "dq_score"
+      ]
+    },
+    {
+      "useCase": "Data quality & lifecycle",
+      "assetTypes": [
+        "Incidents"
+      ],
+      "objectives": [
+        "Trustworthy",
+        "Risk"
+      ],
+      "coreFields": [
+        "incident_name",
+        "incident_severity",
+        "incident_status",
+        "incident_start_time"
+      ],
+      "recommendedFields": [
+        "incident_category",
+        "incident_end_time",
+        "cm_raci_responsible",
+        "cm_raci_accountable"
+      ]
+    },
+    {
+      "useCase": "Security; PII & access",
+      "assetTypes": [
+        "Columns with PII"
+      ],
+      "objectives": [
+        "Secure",
+        "Addressable",
+        "Compliant"
+      ],
+      "coreFields": [
+        "column_name",
+        "data_type",
+        "description",
+        "owner_users",
+        "owner_groups",
+        "pii_flag",
+        "sensitivity_classification"
+      ],
+      "recommendedFields": [
+        "pii_type",
+        "regulatory_scope",
+        "data_subject_category",
+        "processing_activity",
+        "legal_basis",
+        "retention_rule",
+        "tags"
+      ]
+    },
+    {
+      "useCase": "Security; PII & access",
+      "assetTypes": [
+        "Tables containing PII"
+      ],
+      "objectives": [
+        "Secure",
+        "Interoperable",
+        "Compliant"
+      ],
+      "coreFields": [
+        "name",
+        "qualified_name",
+        "description",
+        "owner_users",
+        "owner_groups",
+        "tags",
+        "pii_flag"
+      ],
+      "recommendedFields": [
+        "sensitivity_classification",
+        "regulatory_scope",
+        "data_subject_category",
+        "retention_rule",
+        "glossary_terms"
+      ]
+    },
+    {
+      "useCase": "Security; PII & access",
+      "assetTypes": [
+        "Access control objects"
+      ],
+      "objectives": [
+        "Secure",
+        "Governed"
+      ],
+      "coreFields": [
+        "persona_name",
+        "persona_description",
+        "purpose_name",
+        "purpose_description",
+        "auth_policy_name"
+      ],
+      "recommendedFields": [
+        "persona_policies",
+        "purpose_policies",
+        "auth_policy_type",
+        "auth_policy_category",
+        "auth_policy_resource_category"
+      ]
+    },
+    {
+      "useCase": "AI / ML governance",
+      "assetTypes": [
+        "ML / AI models"
+      ],
+      "objectives": [
+        "Understandable",
+        "Trustworthy",
+        "Secure"
+      ],
+      "coreFields": [
+        "model_name",
+        "model_version",
+        "model_type",
+        "model_stage",
+        "model_owner_business",
+        "model_owner_technical",
+        "model_training_data_assets"
+      ],
+      "recommendedFields": [
+        "model_serving_data_assets",
+        "model_performance_metric",
+        "model_fairness_metrics",
+        "model_training_data_range",
+        "model_risk_rating",
+        "ai_readiness_score",
+        "cm_ai_risk_rating",
+        "cm_ai_use_case",
+        "cm_ai_business_owner",
+        "cm_ai_approver",
+        "pii_flag",
+        "pii_type",
+        "regulatory_scope"
+      ]
+    },
+    {
+      "useCase": "AI / ML governance",
+      "assetTypes": [
+        "Training datasets"
+      ],
+      "objectives": [
+        "Trustworthy",
+        "Secure"
+      ],
+      "coreFields": [
+        "name",
+        "qualified_name",
+        "description",
+        "owner_users",
+        "tags",
+        "pii_flag",
+        "sensitivity_classification"
+      ],
+      "recommendedFields": [
+        "dq_score",
+        "metric_sla",
+        "ai_readiness_score",
+        "data_subject_category",
+        "processing_activity",
+        "cm_ai_risk_rating"
+      ]
+    },
+    {
+      "useCase": "Data products & domains",
+      "assetTypes": [
+        "Data product entities"
+      ],
+      "objectives": [
+        "Discoverable",
+        "Addressable",
+        "Value-focused"
+      ],
+      "coreFields": [
+        "data_product_name",
+        "data_product_description",
+        "data_product_owner_team",
+        "domain",
+        "tags"
+      ],
+      "recommendedFields": [
+        "data_product_sla",
+        "data_product_maturity",
+        "data_product_kpi",
+        "data_product_criticality",
+        "data_product_sensitivity",
+        "data_product_status",
+        "data_product_visibility",
+        "interface_contract_version",
+        "interface_breaking_change_policy",
+        "metadata_completeness_score"
+      ]
+    },
+    {
+      "useCase": "Data products & domains",
+      "assetTypes": [
+        "Domains"
+      ],
+      "objectives": [
+        "Discoverable",
+        "Governed"
+      ],
+      "coreFields": [
+        "name",
+        "description",
+        "owner_users"
+      ],
+      "recommendedFields": [
+        "domain_value_score",
+        "domain_viability_score",
+        "tags"
+      ]
+    },
+    {
+      "useCase": "Data products & contracts",
+      "assetTypes": [
+        "Data contracts (logical objects)"
+      ],
+      "objectives": [
+        "Interoperable",
+        "Governed"
+      ],
+      "coreFields": [
+        "cm_contract_version",
+        "cm_contract_status",
+        "cm_contract_breaking_change_policy"
+      ],
+      "recommendedFields": [
+        "data_product_name",
+        "data_product_owner_team",
+        "data_product_criticality"
+      ]
+    },
+    {
+      "useCase": "Policy & control governance",
+      "assetTypes": [
+        "Business policies"
+      ],
+      "objectives": [
+        "Governed",
+        "Compliant"
+      ],
+      "coreFields": [
+        "business_policy_name",
+        "business_policy_category"
+      ],
+      "recommendedFields": [
+        "business_policy_rule",
+        "auth_policy_name",
+        "purpose_name",
+        "persona_name"
+      ]
+    },
+    {
+      "useCase": "Policy & control governance",
+      "assetTypes": [
+        "Incidents (policy / access)"
+      ],
+      "objectives": [
+        "Governed",
+        "Compliant",
+        "Risk"
+      ],
+      "coreFields": [
+        "incident_name",
+        "incident_severity",
+        "incident_status",
+        "incident_category"
+      ],
+      "recommendedFields": [
+        "incident_start_time",
+        "incident_end_time",
+        "business_policy_name",
+        "cm_raci_accountable",
+        "cm_raci_responsible"
+      ]
+    },
+    {
+      "useCase": "Operational outcomes & coverage",
+      "assetTypes": [
+        "Asset export rows"
+      ],
+      "objectives": [
+        "Monitor coverage",
+        "Monitor adoption"
+      ],
+      "coreFields": [
+        "name",
+        "qualified_name",
+        "asset_type",
+        "tags",
+        "domain",
+        "owner_users",
+        "owner_groups"
+      ],
+      "recommendedFields": [
+        "is_documented",
+        "glossary_terms",
+        "metadata_completeness_score",
+        "dq_score",
+        "badge_name"
+      ]
+    },
+    {
+      "useCase": "Operational outcomes & coverage",
+      "assetTypes": [
+        "Glossary export rows"
+      ],
+      "objectives": [
+        "Monitor glossary health"
+      ],
+      "coreFields": [
+        "term_name",
+        "term_definition_short",
+        "glossary_name",
+        "owner_users",
+        "term_status"
+      ],
+      "recommendedFields": [
+        "term_definition_long",
+        "term_examples",
+        "related_terms",
+        "glossary_enrichment_level"
+      ]
+    }
+  ],
+  "governancePatterns": [
+    {
+      "patternName": "Trust signals with badges",
+      "primaryUseCases": [
+        "Self-service discovery",
+        "Data products"
+      ],
+      "targetAssetTypes": [
+        "Tables",
+        "views",
+        "dashboards",
+        "data products"
+      ],
+      "description": "Use badges to visually encode trust and readiness based on metadata coverage, quality, and ownership.",
+      "requiredFields": [
+        "badge_name",
+        "badge_description",
+        "badge_condition_expression",
+        "badge_priority",
+        "certificate_status",
+        "dq_score",
+        "metadata_completeness_score"
+      ],
+      "optionalFields": [
+        "business_criticality",
+        "consumer_impact_if_wrong"
+      ]
+    },
+    {
+      "patternName": "RACI on critical data sets",
+      "primaryUseCases": [
+        "DQ & lifecycle",
+        "RCA",
+        "Data products"
+      ],
+      "targetAssetTypes": [
+        "Tables",
+        "views",
+        "dashboards",
+        "data products",
+        "domains"
+      ],
+      "description": "Apply a RACI custom-metadata group to clarify who is Responsible, Accountable, Consulted, Informed for key assets.",
+      "requiredFields": [
+        "cm_raci_responsible",
+        "cm_raci_accountable",
+        "cm_raci_consulted",
+        "cm_raci_informed",
+        "owner_users",
+        "owner_groups"
+      ],
+      "optionalFields": [
+        "domain",
+        "business_criticality"
+      ]
+    },
+    {
+      "patternName": "Policy-backed controls",
+      "primaryUseCases": [
+        "Policy & control governance",
+        "PII & security"
+      ],
+      "targetAssetTypes": [
+        "Business policies",
+        "tables",
+        "columns",
+        "data products"
+      ],
+      "description": "Model business policies and attach them to assets via conditions, then raise incidents when breached.",
+      "requiredFields": [
+        "business_policy_name",
+        "business_policy_category",
+        "business_policy_rule",
+        "auth_policy_name",
+        "purpose_name",
+        "persona_name",
+        "incident_name",
+        "incident_severity",
+        "incident_status"
+      ],
+      "optionalFields": [
+        "cm_contract_breaking_change_policy",
+        "data_product_status"
+      ]
+    },
+    {
+      "patternName": "Incident-driven DQ governance",
+      "primaryUseCases": [
+        "DQ & lifecycle",
+        "RCA"
+      ],
+      "targetAssetTypes": [
+        "Incidents",
+        "tables",
+        "dashboards"
+      ],
+      "description": "Represent data quality and policy violations as incidents with severity and lifecycle, and connect them to affected assets.",
+      "requiredFields": [
+        "incident_name",
+        "incident_severity",
+        "incident_status",
+        "incident_category",
+        "incident_start_time",
+        "incident_end_time",
+        "dq_score"
+      ],
+      "optionalFields": [
+        "cm_raci_responsible",
+        "cm_raci_accountable",
+        "business_policy_name"
+      ]
+    },
+    {
+      "patternName": "Purpose-based access",
+      "primaryUseCases": [
+        "Security",
+        "PII & access"
+      ],
+      "targetAssetTypes": [
+        "Personas",
+        "purposes",
+        "policies",
+        "PII-tagged assets"
+      ],
+      "description": "Use personas and purposes to represent who can access which assets and why, and manage access centrally.",
+      "requiredFields": [
+        "persona_name",
+        "persona_description",
+        "persona_policies",
+        "purpose_name",
+        "purpose_description",
+        "purpose_policies",
+        "auth_policy_name",
+        "pii_flag",
+        "sensitivity_classification",
+        "data_product_visibility"
+      ],
+      "optionalFields": [
+        "regulatory_scope",
+        "data_subject_category"
+      ]
+    },
+    {
+      "patternName": "AI risk tagging",
+      "primaryUseCases": [
+        "AI / ML governance",
+        "PII & compliance"
+      ],
+      "targetAssetTypes": [
+        "Models",
+        "training datasets",
+        "key terms"
+      ],
+      "description": "Tag models and datasets with AI-specific risk metadata to drive approvals and risk reviews.",
+      "requiredFields": [
+        "model_name",
+        "model_version",
+        "model_risk_rating",
+        "cm_ai_risk_rating",
+        "cm_ai_use_case",
+        "cm_ai_business_owner",
+        "cm_ai_approver",
+        "pii_flag",
+        "regulatory_scope"
+      ],
+      "optionalFields": [
+        "ai_readiness_score",
+        "model_performance_metric"
+      ]
+    },
+    {
+      "patternName": "Data contracts for critical interfaces",
+      "primaryUseCases": [
+        "Data products & contracts",
+        "RCA"
+      ],
+      "targetAssetTypes": [
+        "Data contracts",
+        "tables",
+        "views",
+        "topics",
+        "APIs"
+      ],
+      "description": "Use data contracts (version, status, breaking-change policy) on high-impact producer interfaces to manage change safely.",
+      "requiredFields": [
+        "cm_contract_version",
+        "cm_contract_status",
+        "cm_contract_breaking_change_policy",
+        "data_product_name",
+        "data_product_criticality"
+      ],
+      "optionalFields": [
+        "interface_contract_version",
+        "interface_breaking_change_policy"
+      ]
+    }
+  ],
+  "verticalPatterns": [
+    {
+      "vertical": "Financial services / insurance",
+      "flagshipUseCase": "Regulatory & risk reporting (Basel",
+      "primaryAssetTypes": [
+        "Solvency"
+      ],
+      "emphasizedFields": [
+        "stress tests)"
+      ],
+      "notes": "Tables; views; dashboards; data products"
+    },
+    {
+      "vertical": "Financial services / insurance",
+      "flagshipUseCase": "KYC / AML / fraud analytics",
+      "primaryAssetTypes": [
+        "Person",
+        "transaction",
+        "risk-score tables",
+        "models"
+      ],
+      "emphasizedFields": [
+        "pii_flag",
+        "pii_type",
+        "sensitivity_classification",
+        "processing_activity",
+        "legal_basis",
+        "data_subject_category",
+        "model_risk_rating",
+        "cm_ai_risk_rating",
+        "cm_ai_use_case"
+      ],
+      "notes": "Model subjects, transactions, and models with tight privacy and AI risk fields. Connect incidents to suspicious-activity DQ issues."
+    },
+    {
+      "vertical": "SaaS / B2B",
+      "flagshipUseCase": "Product analytics (activation; retention; feature adoption)",
+      "primaryAssetTypes": [
+        "Event tables",
+        "feature usage tables",
+        "dashboards",
+        "metrics"
+      ],
+      "emphasizedFields": [
+        "metric_name",
+        "metric_formula",
+        "metric_grain",
+        "metric_source_asset",
+        "metric_sla",
+        "term_examples",
+        "dq_score",
+        "business_criticality",
+        "badge_name",
+        "data_product_maturity",
+        "data_product_visibility"
+      ],
+      "notes": "Treat core metrics and dashboards as products; use badges and certificates to signal official product analytics."
+    },
+    {
+      "vertical": "SaaS / B2B",
+      "flagshipUseCase": "ARR / pipeline / sales performance reporting",
+      "primaryAssetTypes": [
+        "Sales fact tables",
+        "CRM extracts",
+        "dashboards",
+        "KPI glossary"
+      ],
+      "emphasizedFields": [
+        "glossary_terms",
+        "term_definition_short",
+        "term_scope",
+        "metric_* fields",
+        "cm_raci_accountable",
+        "business_criticality"
+      ],
+      "notes": "Heavy emphasis on glossary consistency and owner accountability for revenue metrics."
+    },
+    {
+      "vertical": "Telecom / Media / AdTech",
+      "flagshipUseCase": "Audience & segment definitions",
+      "primaryAssetTypes": [
+        "Customer/household tables",
+        "segment definition tables",
+        "terms"
+      ],
+      "emphasizedFields": [
+        "term_scope",
+        "term_examples",
+        "related_terms",
+        "data_subject_category",
+        "processing_activity",
+        "legal_basis",
+        "data_product_sensitivity",
+        "data_product_visibility"
+      ],
+      "notes": "Carefully model what a segment means, how it\u2019s used, and under what legal basis."
+    },
+    {
+      "vertical": "Telecom / Media / AdTech",
+      "flagshipUseCase": "Campaign performance & attribution",
+      "primaryAssetTypes": [
+        "Campaign fact tables",
+        "impression logs",
+        "dashboards"
+      ],
+      "emphasizedFields": [
+        "metric_name",
+        "metric_formula",
+        "metric_grain",
+        "metric_filters",
+        "dq_score",
+        "lifecycle_stage",
+        "business_criticality"
+      ],
+      "notes": "Focus on clear metric definitions and attribution logic to reduce disputes between teams."
+    },
+    {
+      "vertical": "Manufacturing / Industrial",
+      "flagshipUseCase": "Asset performance & telemetry",
+      "primaryAssetTypes": [
+        "Sensor/telemetry tables",
+        "asset master",
+        "maintenance logs",
+        "models"
+      ],
+      "emphasizedFields": [
+        "dq_score",
+        "column_profile_null_pct",
+        "incident_name",
+        "incident_severity",
+        "incident_category",
+        "data_product_criticality",
+        "lifecycle_stage"
+      ],
+      "notes": "Tie DQ and incidents to asset performance KPIs; treat downtime or mis-calibration as data incidents."
+    },
+    {
+      "vertical": "Manufacturing / Industrial",
+      "flagshipUseCase": "Quality & warranty analytics",
+      "primaryAssetTypes": [
+        "Defect / claim tables",
+        "production line data",
+        "dashboards"
+      ],
+      "emphasizedFields": [
+        "term_definition_short",
+        "term_examples",
+        "dq_score",
+        "cm_raci_responsible",
+        "cm_raci_accountable"
+      ],
+      "notes": "Model who owns the definitions of defects and warranty conditions; track incidents when data undermines quality decisions."
+    },
+    {
+      "vertical": "Healthcare / Life sciences",
+      "flagshipUseCase": "Clinical trials analytics",
+      "primaryAssetTypes": [
+        "Trial master data",
+        "patient/visit tables",
+        "lab results",
+        "models"
+      ],
+      "emphasizedFields": [
+        "pii_flag",
+        "pii_type",
+        "data_subject_category",
+        "processing_activity",
+        "legal_basis",
+        "regulatory_scope",
+        "data_product_sensitivity",
+        "model_risk_rating",
+        "cm_ai_risk_rating",
+        "cm_ai_approver"
+      ],
+      "notes": "Strong emphasis on PHI tagging and AI risk, especially for decision-support models."
+    },
+    {
+      "vertical": "Healthcare / Life sciences",
+      "flagshipUseCase": "Patient and claims analytics",
+      "primaryAssetTypes": [
+        "Claims",
+        "encounters",
+        "provider tables",
+        "cost dashboards"
+      ],
+      "emphasizedFields": [
+        "pii_flag",
+        "data_subject_category",
+        "sensitivity_classification",
+        "term_scope",
+        "term_examples",
+        "dq_score"
+      ],
+      "notes": "Balance analytics value with strict patient privacy and regulatory constraints."
+    }
+  ],
+  "relationshipFields": [
+    "glossary_terms",
+    "related_terms",
+    "source_qualified_name",
+    "target_qualified_name",
+    "domain",
+    "domains"
+  ],
+  "starterModels": [
+    {
+      "name": "Core self-service analytics model",
+      "targetVertical": "Any",
+      "primaryUseCases": [
+        "Self-service discovery",
+        "Business glossary & metrics"
+      ],
+      "assetTypes": [
+        "Top 200 tables",
+        "50 key dashboards",
+        "business glossary"
+      ],
+      "recommendedFields": [
+        "name",
+        "qualified_name",
+        "description",
+        "readme",
+        "owner_users",
+        "owner_groups",
+        "tags",
+        "domain",
+        "certificate_status",
+        "term_name",
+        "term_definition_short",
+        "glossary_name",
+        "metric_name",
+        "metric_formula",
+        "metric_grain"
+      ],
+      "notes": "Baseline enrichment for a first domain. Focus on top assets only; avoid over-modeling every table."
+    },
+    {
+      "name": "Regulatory reporting model",
+      "targetVertical": "Financial services",
+      "primaryUseCases": [
+        "Regulatory & risk reporting",
+        "DQ & lifecycle",
+        "Policy governance"
+      ],
+      "assetTypes": [
+        "Regulatory CDEs",
+        "lineage tables",
+        "exec dashboards"
+      ],
+      "recommendedFields": [
+        "name",
+        "qualified_name",
+        "description",
+        "owner_users",
+        "owner_groups",
+        "domain",
+        "business_criticality",
+        "dq_score",
+        "lifecycle_stage",
+        "planned_retirement_date",
+        "data_product_criticality",
+        "cm_contract_version",
+        "cm_contract_status",
+        "cm_contract_breaking_change_policy",
+        "incident_name",
+        "incident_severity",
+        "incident_status",
+        "cm_raci_accountable",
+        "cm_raci_responsible"
+      ],
+      "notes": "Use for one regulatory domain (e.g. capital adequacy) to prove out policy + contract + incident modeling."
+    },
+    {
+      "name": "Customer 360 & marketing model",
+      "targetVertical": "Telecom / Media / SaaS",
+      "primaryUseCases": [
+        "Self-service discovery",
+        "Audience segmentation",
+        "PII & access"
+      ],
+      "assetTypes": [
+        "Customer tables",
+        "segment definitions",
+        "marketing dashboards"
+      ],
+      "recommendedFields": [
+        "name",
+        "description",
+        "owner_users",
+        "tags",
+        "domain",
+        "pii_flag",
+        "pii_type",
+        "data_subject_category",
+        "processing_activity",
+        "legal_basis",
+        "data_product_sensitivity",
+        "data_product_visibility",
+        "term_scope",
+        "term_examples",
+        "metric_name",
+        "metric_formula",
+        "metric_filters"
+      ],
+      "notes": "Focus enrichment on customer & segment tables first; ensure privacy and access model are clear."
+    },
+    {
+      "name": "AI / ML risk-aware model",
+      "targetVertical": "Any regulated or high-risk AI",
+      "primaryUseCases": [
+        "AI / ML governance",
+        "PII & compliance",
+        "DQ"
+      ],
+      "assetTypes": [
+        "Models",
+        "training datasets",
+        "key terms"
+      ],
+      "recommendedFields": [
+        "model_name",
+        "model_version",
+        "model_type",
+        "model_stage",
+        "model_owner_business",
+        "model_owner_technical",
+        "model_training_data_assets",
+        "model_performance_metric",
+        "model_risk_rating",
+        "ai_readiness_score",
+        "cm_ai_risk_rating",
+        "cm_ai_use_case",
+        "cm_ai_business_owner",
+        "cm_ai_approver",
+        "pii_flag",
+        "regulatory_scope",
+        "dq_score"
+      ],
+      "notes": "Use for a subset of critical models (e.g. credit scoring, underwriting) rather than all experiments."
+    },
+    {
+      "name": "Data product portfolio model",
+      "targetVertical": "Any",
+      "primaryUseCases": [
+        "Data products & domains",
+        "Operational outcomes"
+      ],
+      "assetTypes": [
+        "Data product entities",
+        "domains",
+        "exec dashboards"
+      ],
+      "recommendedFields": [
+        "data_product_name",
+        "data_product_description",
+        "data_product_owner_team",
+        "domain",
+        "tags",
+        "data_product_maturity",
+        "data_product_criticality",
+        "data_product_sensitivity",
+        "data_product_status",
+        "data_product_visibility",
+        "data_product_sla",
+        "data_product_kpi",
+        "domain_value_score",
+        "domain_viability_score"
+      ],
+      "notes": "First step toward a data mesh: define a handful of flagship data products and make their value and risk visible."
+    }
+  ],
+  "signalCatalog": {
+    "signals": {
+      "ownership": {
+        "label": "Ownership",
+        "requirement": "Asset must have at least one owner (user or group) assigned",
+        "action": "Assign an owner in Atlan",
+        "fieldIds": [
+          "owner_users",
+          "owner_groups"
+        ],
+        "measureIds": [
+          "coverage.owner"
+        ],
+        "workstream": "OWNERSHIP"
+      },
+      "semantics": {
+        "label": "Description",
+        "requirement": "Asset must have a description or user description",
+        "action": "Add a description in Atlan",
+        "fieldIds": [
+          "description",
+          "readme"
+        ],
+        "measureIds": [
+          "coverage.asset_description",
+          "coverage.runbook"
+        ],
+        "workstream": "SEMANTICS"
+      },
+      "lineage": {
+        "label": "Lineage",
+        "requirement": "Asset must have upstream or downstream lineage relationships",
+        "action": "Establish lineage connections",
+        "fieldIds": [
+          "source_qualified_name",
+          "target_qualified_name"
+        ],
+        "measureIds": [
+          "coverage.lineage",
+          "coverage.joinability"
+        ],
+        "workstream": "LINEAGE"
+      },
+      "sensitivity": {
+        "label": "Classification",
+        "requirement": "Classified fields must have policy protection",
+        "action": "Apply classifications and policies to sensitive fields",
+        "fieldIds": [
+          "pii_flag",
+          "pii_type",
+          "sensitivity_classification",
+          "regulatory_scope",
+          "data_subject_category",
+          "processing_activity",
+          "legal_basis",
+          "retention_rule"
+        ],
+        "measureIds": [
+          "policy.protection"
+        ],
+        "workstream": "SENSITIVITY_ACCESS"
+      },
+      "access": {
+        "label": "Policy",
+        "requirement": "Assets with classifications must have access policies defined",
+        "action": "Configure access policies in Atlan",
+        "fieldIds": [
+          "auth_policy_type",
+          "auth_policy_category",
+          "auth_policy_resource_category"
+        ],
+        "measureIds": [
+          "policy.protection"
+        ],
+        "workstream": "SENSITIVITY_ACCESS"
+      },
+      "usage": {
+        "label": "Usage Telemetry",
+        "requirement": "Asset must have usage telemetry (query count, popularity)",
+        "action": "Enable query tracking and popularity signals",
+        "fieldIds": [],
+        "measureIds": [
+          "coverage.usage_telemetry"
+        ],
+        "workstream": "USAGE"
+      },
+      "freshness": {
+        "label": "Data Quality",
+        "requirement": "Asset must have DQ/freshness signals",
+        "action": "Set up data quality monitors and freshness SLAs",
+        "fieldIds": [],
+        "measureIds": [
+          "quality.freshness_sla",
+          "quality.incident_free",
+          "coverage.dq_signals"
+        ],
+        "workstream": "QUALITY_FRESHNESS"
+      },
+      "certification": {
+        "label": "Certification",
+        "requirement": "Asset should be certified",
+        "action": "Apply certificates to trusted assets",
+        "fieldIds": [
+          "certificate_status"
+        ],
+        "measureIds": [
+          "coverage.certified"
+        ],
+        "workstream": "TRUST"
+      },
+      "retention": {
+        "label": "Retention",
+        "requirement": "Retention policy evidence should be present",
+        "action": "Configure retention policy metadata",
+        "fieldIds": [
+          "retention_rule"
+        ],
+        "measureIds": [
+          "coverage.retention_policy"
+        ],
+        "workstream": "SENSITIVITY_ACCESS"
+      }
+    },
+    "measureMap": {
+      "coverage.owner": "ownership",
+      "coverage.asset_description": "semantics",
+      "coverage.runbook": "semantics",
+      "coverage.lineage": "lineage",
+      "coverage.joinability": "lineage",
+      "policy.protection": "sensitivity",
+      "coverage.usage_telemetry": "usage",
+      "quality.freshness_sla": "freshness",
+      "quality.incident_free": "freshness",
+      "coverage.dq_signals": "freshness",
+      "coverage.certified": "certification",
+      "coverage.retention_policy": "retention"
+    }
+  }
+}

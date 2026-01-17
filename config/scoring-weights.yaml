@@ -1,0 +1,240 @@
+# Metadata Quality Scoring Weights Configuration
+# ============================================
+# This configuration aligns with MDLH_INTEGRATION_SPEC.md and provides
+# consistent scoring across API and MDLH backends.
+#
+# IMPORTANT: Any changes here should be reflected in both:
+#   - backend/app/routers/mdlh.py (SQL queries)
+#   - src/config/quality/defaults/quality-config.default.json (frontend)
+#
+# Version: 2.0
+# Last Updated: 2026-01-15
+
+version: "2.0"
+
+# ============================================
+# Overall Quality Score Weights
+# ============================================
+# These weights determine how the five dimensions combine
+# into a single overall quality score.
+dimension_weights:
+  completeness: 0.30    # 30% - Metadata presence
+  accuracy: 0.25        # 25% - Data correctness
+  timeliness: 0.20      # 20% - Data freshness
+  consistency: 0.15     # 15% - Cross-system alignment
+  usability: 0.10       # 10% - Discovery and consumption
+
+# ============================================
+# Completeness Dimension Checks
+# ============================================
+# Points assigned for each metadata field being present.
+# Total points = 100, score = earned_points / 100
+completeness:
+  checks:
+    - id: hasDescription
+      weight: 25
+      description: "Asset has a non-empty description"
+    - id: hasOwner
+      weight: 20
+      description: "Asset has at least one owner assigned"
+    - id: hasCertification
+      weight: 15
+      description: "Asset has a certification status"
+    - id: hasTags
+      weight: 15
+      description: "Asset has classification tags"
+    - id: hasGlossaryTerms
+      weight: 10
+      description: "Asset is linked to glossary terms"
+    - id: hasLineage
+      weight: 10
+      description: "Asset has lineage connections"
+    - id: hasReadme
+      weight: 5
+      description: "Asset has a README document"
+
+# ============================================
+# Accuracy Dimension Checks
+# ============================================
+# Points for data correctness indicators
+accuracy:
+  checks:
+    - id: certificationStrength
+      weight: 40
+      description: "Certification status value (Verified=100, Draft=50, etc.)"
+      params:
+        verified_score: 100
+        draft_score: 50
+        deprecated_score: 20
+        none_score: 0
+    - id: namingCompliance
+      weight: 25
+      description: "Asset name follows naming conventions"
+      params:
+        required_regex: "^[a-z0-9_]+$"
+        optional_regex: "^(dim|fct|stg|tmp)_[a-z0-9_]+$"
+    - id: ownerPlausible
+      weight: 20
+      description: "Owner is a valid, non-placeholder value"
+      params:
+        denylist:
+          - unknown
+          - tbd
+          - na
+          - n/a
+          - test
+          - admin
+    - id: classificationPolicy
+      weight: 15
+      description: "Classifications follow organizational policy"
+
+# ============================================
+# Timeliness Dimension Settings
+# ============================================
+# Configuration for freshness calculations
+timeliness:
+  # Mode: "bands" (discrete levels) or "decay" (continuous)
+  mode: bands
+
+  # Band-based scoring thresholds (days since last update)
+  bands:
+    fresh: 7          # 100 points: updated within 7 days
+    recent: 30        # 75 points: updated within 30 days
+    aging: 90         # 50 points: updated within 90 days
+    stale: 180        # 25 points: updated within 180 days
+    # Older than stale = 0 points
+
+  # Decay-based scoring (exponential decay)
+  # score = 100 * exp(-days / tau)
+  decay:
+    tau_metadata_days: 60     # Metadata freshness half-life
+    tau_source_days: 90       # Source data freshness half-life
+    tau_usage_days: 30        # Usage recency half-life
+    tau_certification_days: 90 # Certification freshness half-life
+
+# ============================================
+# Consistency Dimension Checks
+# ============================================
+# Points for cross-system alignment
+consistency:
+  checks:
+    - id: domainGlossaryAlignment
+      weight: 35
+      description: "Asset's domain and glossary terms are aligned"
+    - id: taxonomyAllowlist
+      weight: 40
+      description: "Tags use approved taxonomy values"
+    - id: hierarchyIntegrity
+      weight: 25
+      description: "Asset hierarchy (db/schema/table) is complete"
+
+# ============================================
+# Usability Dimension Checks
+# ============================================
+# Points for discovery and consumption indicators
+usability:
+  checks:
+    - id: descriptionUsability
+      weight: 40
+      description: "Description is useful (length, content quality)"
+      params:
+        target_chars: 200
+        blacklist_phrases:
+          - tbd
+          - lorem ipsum
+          - temp
+          - fixme
+          - todo
+    - id: searchabilityProxy
+      weight: 35
+      description: "Asset is easily discoverable via search"
+      params:
+        discoverability_cap: 0.3
+    - id: engagement
+      weight: 25
+      description: "Asset has usage/engagement activity"
+      params:
+        # Normalization maximums for engagement metrics
+        popularity_max: 1000
+        view_max: 10000
+        query_max: 500
+
+# ============================================
+# Quality Band Thresholds
+# ============================================
+# For categorizing assets into quality tiers
+bands:
+  excellent: 80   # >= 80 = Excellent
+  good: 60        # >= 60 = Good
+  fair: 40        # >= 40 = Fair
+  poor: 20        # >= 20 = Poor
+  # < 20 = Critical
+
+# ============================================
+# Lineage Metrics Configuration
+# ============================================
+lineage:
+  # Scoring for lineage completeness
+  full_lineage_bonus: 10    # Extra points for having both upstream and downstream
+  orphaned_penalty: 0       # Penalty for having no lineage (0 = no penalty)
+
+  # Depth limits for lineage traversal
+  max_upstream_depth: 5
+  max_downstream_depth: 5
+
+# ============================================
+# MDLH-Specific Mappings
+# ============================================
+# Field mappings from MDLH Gold Layer columns to canonical fields
+mdlh_field_mappings:
+  description: DESCRIPTION
+  owner_users: OWNER_USERS
+  certificate_status: CERTIFICATE_STATUS
+  tags: TAGS
+  term_guids: TERM_GUIDS
+  readme_guid: README_GUID
+  has_lineage: HAS_LINEAGE
+  popularity_score: POPULARITY_SCORE
+  updated_at: UPDATED_AT
+  source_updated_at: SOURCE_UPDATED_AT
+
+# ============================================
+# Scoring Weight Profiles
+# ============================================
+# Alternative weight configurations for different use cases
+profiles:
+  # Default profile (data governance focus)
+  default:
+    dimension_weights:
+      completeness: 0.30
+      accuracy: 0.25
+      timeliness: 0.20
+      consistency: 0.15
+      usability: 0.10
+
+  # Compliance-focused profile
+  compliance:
+    dimension_weights:
+      completeness: 0.25
+      accuracy: 0.35
+      timeliness: 0.15
+      consistency: 0.20
+      usability: 0.05
+
+  # Discovery-focused profile
+  discovery:
+    dimension_weights:
+      completeness: 0.35
+      accuracy: 0.15
+      timeliness: 0.15
+      consistency: 0.10
+      usability: 0.25
+
+  # Operations-focused profile
+  operations:
+    dimension_weights:
+      completeness: 0.20
+      accuracy: 0.20
+      timeliness: 0.35
+      consistency: 0.15
+      usability: 0.10

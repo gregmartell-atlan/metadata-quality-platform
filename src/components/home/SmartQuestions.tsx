@@ -3,15 +3,18 @@
  * Natural language question prompts for quick context selection
  *
  * Provides suggested questions like "How does my Snowflake look today?"
- * that translate into context selections
+ * that translate into context selections.
+ *
+ * Uses unified loader for MDLH-aware data fetching.
  */
 
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageCircle, Sparkles, ArrowRight, Loader2 } from 'lucide-react';
-import { getConnectors } from '../../services/atlan/api';
+import { MessageCircle, Sparkles, ArrowRight, Loader2, Snowflake } from 'lucide-react';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
+import { useBackendModeStore } from '../../stores/backendModeStore';
+import { loadConnectors, MdlhConnectionRequiredError } from '../../utils/unifiedAssetLoader';
 import { loadAssetsForContext, generateContextLabel } from '../../utils/assetContextLoader';
 import type { ConnectorInfo } from '../../services/atlan/api';
 import './SmartQuestions.css';
@@ -29,17 +32,33 @@ export function SmartQuestions() {
   const [connectors, setConnectors] = useState<ConnectorInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeQuestion, setActiveQuestion] = useState<string | null>(null);
+  const [needsConnection, setNeedsConnection] = useState(false);
 
   const { setContext, setLoading } = useAssetContextStore();
   const { stats } = useScoresStore();
+  const { dataBackend, snowflakeStatus } = useBackendModeStore();
 
-  // Load connectors on mount
+  // Load connectors on mount using unified loader
   useEffect(() => {
-    getConnectors()
-      .then(setConnectors)
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
-  }, []);
+    const fetchConnectors = async () => {
+      try {
+        setNeedsConnection(false);
+        const result = await loadConnectors();
+        setConnectors(result.data);
+      } catch (err) {
+        if (err instanceof MdlhConnectionRequiredError) {
+          setNeedsConnection(true);
+          console.info('MDLH connection required for SmartQuestions');
+        } else {
+          console.error('Failed to load connectors:', err);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchConnectors();
+  }, [dataBackend, snowflakeStatus.connected]);
 
   // Generate smart questions based on available connections
   const questions = useMemo((): SmartQuestion[] => {
@@ -135,7 +154,33 @@ export function SmartQuestions() {
     setActiveQuestion(null);
   };
 
-  if (isLoading || questions.length === 0) {
+  if (isLoading) {
+    return null;
+  }
+
+  // Show connection prompt when MDLH is selected but not connected
+  if (needsConnection) {
+    return (
+      <section className="home-section smart-questions-section">
+        <h2 className="section-title">
+          <Sparkles size={16} />
+          Quick Questions
+        </h2>
+        <div className="smart-questions-connection-required">
+          <Snowflake size={24} />
+          <span>Connect to MDLH to see personalized questions</span>
+          <button
+            className="smart-questions-connect-btn"
+            onClick={() => navigate('/settings')}
+          >
+            Connect
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  if (questions.length === 0) {
     return null;
   }
 

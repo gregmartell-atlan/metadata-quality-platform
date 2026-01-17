@@ -167,21 +167,40 @@ class SessionManager:
             if expired:
                 print(f"[SessionManager] Cleaned up {len(expired)} expired sessions")
     
-    def get_stats(self) -> Dict[str, Any]:
-        """Get session manager statistics."""
+    def get_stats(self, include_full_session_ids: bool = False) -> Dict[str, Any]:
+        """Get session manager statistics.
+
+        Args:
+            include_full_session_ids: If True, include full session IDs (for internal use).
+                                     If False, truncate for display (default).
+        """
         with self._lock:
+            # Sort sessions by last_used (most recent first)
+            sorted_sessions = sorted(
+                self._sessions.items(),
+                key=lambda x: x[1].last_used,
+                reverse=True
+            )
+
             return {
                 "active_sessions": len(self._sessions),
                 "max_idle_minutes": self._max_idle_minutes,
                 "sessions": [
                     {
-                        "session_id": sid[:8] + "...",
+                        "session_id": sid if include_full_session_ids else (sid[:8] + "..."),
+                        "full_session_id": sid,  # Always include full ID for internal use
                         "user": s.user,
                         "warehouse": s.warehouse,
+                        "database": s.database,
+                        "schema": s.schema,
+                        "role": s.role,
+                        "auth_method": getattr(s, 'auth_method', None),
                         "idle_seconds": (datetime.utcnow() - s.last_used).total_seconds(),
-                        "query_count": s.query_count
+                        "query_count": s.query_count,
+                        "created_at": s.created_at.isoformat(),
+                        "last_used_at": s.last_used.isoformat(),
                     }
-                    for sid, s in self._sessions.items()
+                    for sid, s in sorted_sessions
                 ]
             }
     

@@ -2,7 +2,7 @@
  * Sidebar - Main navigation sidebar (logo now in UnifiedHeader)
  */
 
-import { Home, LayoutGrid, RefreshCw, GitBranch, Radar, Settings } from 'lucide-react';
+import { Home, LayoutGrid, RefreshCw, GitBranch, Radar, Settings, Target, Sparkles, Bug, Wrench } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import './Sidebar.css';
 
@@ -69,6 +69,14 @@ export function Sidebar({ isCollapsed }: SidebarProps) {
             <span>DaaP Analytics</span>
           </Link>
           <Link
+            to="/assessment"
+            className={`nav-item ${isActive('/assessment') ? 'active' : ''}`}
+            title="Metadata Assessment"
+          >
+            <Target size={18} />
+            <span>Assessment</span>
+          </Link>
+          <Link
             to="/trends"
             className={`nav-item ${isActive('/trends') ? 'active' : ''}`}
             title="Quality Trends"
@@ -77,6 +85,34 @@ export function Sidebar({ isCollapsed }: SidebarProps) {
             <span>Quality Trends</span>
           </Link>
 
+        </div>
+
+        <div className="nav-section">
+          <div className="nav-label">Tools</div>
+          <Link
+            to="/modeling-assistant"
+            className={`nav-item ${isActive('/modeling-assistant') ? 'active' : ''}`}
+            title="Modeling Assistant"
+          >
+            <Sparkles size={18} />
+            <span>Modeling Assistant</span>
+          </Link>
+          <Link
+            to="/debug"
+            className={`nav-item ${isActive('/debug') ? 'active' : ''}`}
+            title="Debug Tools"
+          >
+            <Bug size={18} />
+            <span>Debug Tools</span>
+          </Link>
+          <Link
+            to="/tenant-config"
+            className={`nav-item ${isActive('/tenant-config') ? 'active' : ''}`}
+            title="Tenant Config"
+          >
+            <Wrench size={18} />
+            <span>Tenant Config</span>
+          </Link>
         </div>
 
 

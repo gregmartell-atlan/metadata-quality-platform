@@ -1,14 +1,18 @@
 /**
  * Unified Asset Loader
  *
- * Backend-aware routing layer that automatically selects between
- * Atlan REST API and MDLH (Snowflake) based on current configuration.
+ * Backend-aware routing layer that routes requests to either
+ * Atlan REST API or MDLH (Snowflake) based on current configuration.
+ *
+ * IMPORTANT: NO automatic fallback to API when MDLH fails.
+ * If MDLH is selected, requests go to MDLH only. Errors propagate
+ * to the UI which should prompt the user to connect or switch backends.
  *
  * Features:
- * - Automatic backend selection based on backendModeStore
- * - Auto-fallback to API when MDLH fails or disconnects
+ * - Strict backend selection based on backendModeStore
+ * - No auto-fallback - errors propagate for UI handling
  * - Consistent interface regardless of backend
- * - Logging for debugging backend switches
+ * - Clear error messages for connection issues
  */
 
 import { useBackendModeStore } from '../stores/backendModeStore';
@@ -33,29 +37,57 @@ export interface LoadResult<T> {
   fallbackReason?: string;
 }
 
+/**
+ * Custom error for when MDLH connection is required but not available.
+ * UI should catch this and prompt the user to connect.
+ */
+export class MdlhConnectionRequiredError extends Error {
+  constructor(message: string = 'MDLH connection required. Please connect to Snowflake.') {
+    super(message);
+    this.name = 'MdlhConnectionRequiredError';
+  }
+}
+
 // ============================================
 // Backend Detection
 // ============================================
 
 /**
- * Get the effective backend to use.
- * Returns 'mdlh' only if MDLH is selected AND connected.
- * Falls back to 'api' if MDLH is selected but not connected.
+ * Get the configured backend.
+ * Does NOT auto-fallback. If MDLH is selected but not connected,
+ * throws MdlhConnectionRequiredError.
  */
 function getEffectiveBackend(): 'api' | 'mdlh' {
   const state = useBackendModeStore.getState();
-  
-  // Only use MDLH if explicitly selected AND connected
+
   if (state.dataBackend === 'mdlh') {
     if (state.snowflakeStatus.connected) {
       return 'mdlh';
     }
-    // MDLH selected but not connected - log and fall back to API
-    logger.debug('[UnifiedLoader] MDLH selected but not connected, using API fallback');
-    return 'api';
+    // MDLH selected but not connected - throw error for UI to handle
+    logger.warn('[UnifiedLoader] MDLH selected but not connected');
+    throw new MdlhConnectionRequiredError();
   }
-  
+
   return 'api';
+}
+
+/**
+ * Check if MDLH backend is selected (regardless of connection status).
+ * Use this to determine if UI should show MDLH-specific prompts.
+ */
+export function isMdlhSelected(): boolean {
+  const state = useBackendModeStore.getState();
+  return state.dataBackend === 'mdlh';
+}
+
+/**
+ * Check if MDLH is selected but not connected.
+ * UI should use this to show connection prompts.
+ */
+export function needsMdlhConnection(): boolean {
+  const state = useBackendModeStore.getState();
+  return state.dataBackend === 'mdlh' && !state.snowflakeStatus.connected;
 }
 
 /**
@@ -70,53 +102,34 @@ export function isMdlhAvailable(): boolean {
   );
 }
 
-/**
- * Trigger fallback to API mode
- */
-function triggerFallback(reason: string): void {
-  const state = useBackendModeStore.getState();
-  if (state.triggerFallback) {
-    state.triggerFallback(reason);
-  }
-  logger.warn('[UnifiedLoader] Fallback triggered:', reason);
-}
-
 // ============================================
 // Connector Loading
 // ============================================
 
 /**
- * Load connectors using the appropriate backend.
- * Auto-falls back to API if MDLH fails.
+ * Load connectors using the configured backend.
+ * Throws MdlhConnectionRequiredError if MDLH selected but not connected.
  */
 export async function loadConnectors(): Promise<LoadResult<ConnectorInfo[]>> {
-  const backend = getEffectiveBackend();
+  const backend = getEffectiveBackend(); // May throw MdlhConnectionRequiredError
 
   if (backend === 'mdlh') {
-    try {
-      logger.debug('[UnifiedLoader] Loading connectors from MDLH');
-      const connectors = await mdlhClient.getHierarchyConnectors();
-      return {
-        data: connectors,
-        source: 'mdlh',
-        fallbackUsed: false,
-      };
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : 'MDLH connector fetch failed';
-      logger.warn('[UnifiedLoader] MDLH connectors failed, falling back to API:', reason);
-      triggerFallback(reason);
-      // Fall through to API
-    }
+    logger.debug('[UnifiedLoader] Loading connectors from MDLH');
+    const connectors = await mdlhClient.getHierarchyConnectors();
+    return {
+      data: connectors,
+      source: 'mdlh',
+      fallbackUsed: false,
+    };
   }
 
-  // API path (or fallback)
+  // API path
   logger.debug('[UnifiedLoader] Loading connectors from API');
   const connectors = await atlanApi.getConnectors();
   return {
     data: connectors,
     source: 'api',
-    fallbackUsed: backend === 'mdlh',
-    fallbackReason: backend === 'mdlh' ? 'MDLH request failed' : undefined,
+    fallbackUsed: false,
   };
 }
 
@@ -125,38 +138,31 @@ export async function loadConnectors(): Promise<LoadResult<ConnectorInfo[]>> {
 // ============================================
 
 /**
- * Load databases for a connector using the appropriate backend.
+ * Load databases for a connector using the configured backend.
+ * Throws MdlhConnectionRequiredError if MDLH selected but not connected.
  */
 export async function loadDatabases(
   connectorName: string
 ): Promise<LoadResult<HierarchyItem[]>> {
-  const backend = getEffectiveBackend();
+  const backend = getEffectiveBackend(); // May throw MdlhConnectionRequiredError
 
   if (backend === 'mdlh') {
-    try {
-      logger.debug('[UnifiedLoader] Loading databases from MDLH for:', connectorName);
-      const databases = await mdlhClient.getHierarchyDatabases(connectorName);
-      return {
-        data: databases,
-        source: 'mdlh',
-        fallbackUsed: false,
-      };
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : 'MDLH database fetch failed';
-      logger.warn('[UnifiedLoader] MDLH databases failed, falling back to API:', reason);
-      triggerFallback(reason);
-      // Fall through to API
-    }
+    logger.debug('[UnifiedLoader] Loading databases from MDLH for:', connectorName);
+    const databases = await mdlhClient.getHierarchyDatabases(connectorName);
+    return {
+      data: databases,
+      source: 'mdlh',
+      fallbackUsed: false,
+    };
   }
 
-  // API path (or fallback)
+  // API path
   logger.debug('[UnifiedLoader] Loading databases from API for:', connectorName);
   const databases = await atlanApi.getDatabases(connectorName);
   return {
     data: databases,
     source: 'api',
-    fallbackUsed: backend === 'mdlh',
-    fallbackReason: backend === 'mdlh' ? 'MDLH request failed' : undefined,
+    fallbackUsed: false,
   };
 }
 
@@ -165,42 +171,35 @@ export async function loadDatabases(
 // ============================================
 
 /**
- * Load schemas for a database using the appropriate backend.
+ * Load schemas for a database using the configured backend.
+ * Throws MdlhConnectionRequiredError if MDLH selected but not connected.
  */
 export async function loadSchemas(
   connectorName: string,
   databaseQualifiedName: string,
   databaseName?: string
 ): Promise<LoadResult<HierarchyItem[]>> {
-  const backend = getEffectiveBackend();
+  const backend = getEffectiveBackend(); // May throw MdlhConnectionRequiredError
 
   if (backend === 'mdlh') {
-    try {
-      // For MDLH, we need the database name (not qualified name)
-      const dbName = databaseName || databaseQualifiedName.split('/').pop() || databaseQualifiedName;
-      logger.debug('[UnifiedLoader] Loading schemas from MDLH for:', connectorName, dbName);
-      const schemas = await mdlhClient.getHierarchySchemas(connectorName, dbName);
-      return {
-        data: schemas,
-        source: 'mdlh',
-        fallbackUsed: false,
-      };
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : 'MDLH schema fetch failed';
-      logger.warn('[UnifiedLoader] MDLH schemas failed, falling back to API:', reason);
-      triggerFallback(reason);
-      // Fall through to API
-    }
+    // For MDLH, we need the database name (not qualified name)
+    const dbName = databaseName || databaseQualifiedName.split('/').pop() || databaseQualifiedName;
+    logger.debug('[UnifiedLoader] Loading schemas from MDLH for:', connectorName, dbName);
+    const schemas = await mdlhClient.getHierarchySchemas(connectorName, dbName);
+    return {
+      data: schemas,
+      source: 'mdlh',
+      fallbackUsed: false,
+    };
   }
 
-  // API path (or fallback) - uses qualified name
+  // API path - uses qualified name
   logger.debug('[UnifiedLoader] Loading schemas from API for:', databaseQualifiedName);
   const schemas = await atlanApi.getSchemas(databaseQualifiedName);
   return {
     data: schemas,
     source: 'api',
-    fallbackUsed: backend === 'mdlh',
-    fallbackReason: backend === 'mdlh' ? 'MDLH request failed' : undefined,
+    fallbackUsed: false,
   };
 }
 
@@ -209,7 +208,8 @@ export async function loadSchemas(
 // ============================================
 
 /**
- * Load tables for a schema using the appropriate backend.
+ * Load tables for a schema using the configured backend.
+ * Throws MdlhConnectionRequiredError if MDLH selected but not connected.
  */
 export async function loadTables(
   connectorName: string,
@@ -217,35 +217,27 @@ export async function loadTables(
   schemaQualifiedName: string,
   schemaName?: string
 ): Promise<LoadResult<HierarchyItem[]>> {
-  const backend = getEffectiveBackend();
+  const backend = getEffectiveBackend(); // May throw MdlhConnectionRequiredError
 
   if (backend === 'mdlh') {
-    try {
-      // For MDLH, we need the schema name (not qualified name)
-      const sName = schemaName || schemaQualifiedName.split('/').pop() || schemaQualifiedName;
-      logger.debug('[UnifiedLoader] Loading tables from MDLH for:', connectorName, databaseName, sName);
-      const tables = await mdlhClient.getHierarchyTables(connectorName, databaseName, sName);
-      return {
-        data: tables,
-        source: 'mdlh',
-        fallbackUsed: false,
-      };
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : 'MDLH table fetch failed';
-      logger.warn('[UnifiedLoader] MDLH tables failed, falling back to API:', reason);
-      triggerFallback(reason);
-      // Fall through to API
-    }
+    // For MDLH, we need the schema name (not qualified name)
+    const sName = schemaName || schemaQualifiedName.split('/').pop() || schemaQualifiedName;
+    logger.debug('[UnifiedLoader] Loading tables from MDLH for:', connectorName, databaseName, sName);
+    const tables = await mdlhClient.getHierarchyTables(connectorName, databaseName, sName);
+    return {
+      data: tables,
+      source: 'mdlh',
+      fallbackUsed: false,
+    };
   }
 
-  // API path (or fallback) - uses qualified name
+  // API path - uses qualified name
   logger.debug('[UnifiedLoader] Loading tables from API for:', schemaQualifiedName);
   const tables = await atlanApi.getTables(schemaQualifiedName);
   return {
     data: tables,
     source: 'api',
-    fallbackUsed: backend === 'mdlh',
-    fallbackReason: backend === 'mdlh' ? 'MDLH request failed' : undefined,
+    fallbackUsed: false,
   };
 }
 
@@ -254,36 +246,29 @@ export async function loadTables(
 // ============================================
 
 /**
- * Load full asset details by GUID using the appropriate backend.
+ * Load full asset details by GUID using the configured backend.
+ * Throws MdlhConnectionRequiredError if MDLH selected but not connected.
  */
 export async function loadAssetDetails(guid: string): Promise<LoadResult<AtlanAsset | null>> {
-  const backend = getEffectiveBackend();
+  const backend = getEffectiveBackend(); // May throw MdlhConnectionRequiredError
 
   if (backend === 'mdlh') {
-    try {
-      logger.debug('[UnifiedLoader] Loading asset details from MDLH for:', guid);
-      const asset = await mdlhClient.getAssetDetails(guid);
-      return {
-        data: asset,
-        source: 'mdlh',
-        fallbackUsed: false,
-      };
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : 'MDLH asset detail fetch failed';
-      logger.warn('[UnifiedLoader] MDLH asset details failed, falling back to API:', reason);
-      triggerFallback(reason);
-      // Fall through to API
-    }
+    logger.debug('[UnifiedLoader] Loading asset details from MDLH for:', guid);
+    const asset = await mdlhClient.getAssetDetails(guid);
+    return {
+      data: asset,
+      source: 'mdlh',
+      fallbackUsed: false,
+    };
   }
 
-  // API path (or fallback)
+  // API path
   logger.debug('[UnifiedLoader] Loading asset details from API for:', guid);
   const asset = await atlanApi.getAsset(guid);
   return {
     data: asset,
     source: 'api',
-    fallbackUsed: backend === 'mdlh',
-    fallbackReason: backend === 'mdlh' ? 'MDLH request failed' : undefined,
+    fallbackUsed: false,
   };
 }
 
@@ -292,7 +277,8 @@ export async function loadAssetDetails(guid: string): Promise<LoadResult<AtlanAs
 // ============================================
 
 /**
- * Load assets for a connection context using the appropriate backend.
+ * Load assets for a connection context using the configured backend.
+ * Throws MdlhConnectionRequiredError if MDLH selected but not connected.
  */
 export async function loadAssetsForConnection(
   connectionName: string,
@@ -302,28 +288,21 @@ export async function loadAssetsForConnection(
     onProgress?: (loaded: number, total: number) => void;
   }
 ): Promise<LoadResult<{ assets: AtlanAssetSummary[]; totalCount: number }>> {
-  const backend = getEffectiveBackend();
+  const backend = getEffectiveBackend(); // May throw MdlhConnectionRequiredError
 
   if (backend === 'mdlh') {
-    try {
-      logger.debug('[UnifiedLoader] Loading connection assets from MDLH:', connectionName);
-      const result = await mdlhClient.getHierarchyAssets({
-        connector: connectionName,
-        limit: options?.limit || 1000,
-        offset: options?.offset || 0,
-      });
-      options?.onProgress?.(result.assets.length, result.totalCount);
-      return {
-        data: { assets: result.assets, totalCount: result.totalCount },
-        source: 'mdlh',
-        fallbackUsed: false,
-      };
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : 'MDLH connection assets fetch failed';
-      logger.warn('[UnifiedLoader] MDLH connection assets failed, falling back to API:', reason);
-      triggerFallback(reason);
-      // Fall through to API
-    }
+    logger.debug('[UnifiedLoader] Loading connection assets from MDLH:', connectionName);
+    const result = await mdlhClient.getHierarchyAssets({
+      connector: connectionName,
+      limit: options?.limit || 1000,
+      offset: options?.offset || 0,
+    });
+    options?.onProgress?.(result.assets.length, result.totalCount);
+    return {
+      data: { assets: result.assets, totalCount: result.totalCount },
+      source: 'mdlh',
+      fallbackUsed: false,
+    };
   }
 
   // API path - use the bulk loader
@@ -340,13 +319,13 @@ export async function loadAssetsForConnection(
   return {
     data: { assets: result.assets as AtlanAssetSummary[], totalCount: result.totalCount },
     source: 'api',
-    fallbackUsed: backend === 'mdlh',
-    fallbackReason: backend === 'mdlh' ? 'MDLH request failed' : undefined,
+    fallbackUsed: false,
   };
 }
 
 /**
- * Load assets for a database context using the appropriate backend.
+ * Load assets for a database context using the configured backend.
+ * Throws MdlhConnectionRequiredError if MDLH selected but not connected.
  */
 export async function loadAssetsForDatabase(
   connectionName: string,
@@ -356,28 +335,21 @@ export async function loadAssetsForDatabase(
     offset?: number;
   }
 ): Promise<LoadResult<{ assets: AtlanAssetSummary[]; totalCount: number }>> {
-  const backend = getEffectiveBackend();
+  const backend = getEffectiveBackend(); // May throw MdlhConnectionRequiredError
 
   if (backend === 'mdlh') {
-    try {
-      logger.debug('[UnifiedLoader] Loading database assets from MDLH:', connectionName, databaseName);
-      const result = await mdlhClient.getHierarchyAssets({
-        connector: connectionName,
-        database: databaseName,
-        limit: options?.limit || 1000,
-        offset: options?.offset || 0,
-      });
-      return {
-        data: { assets: result.assets, totalCount: result.totalCount },
-        source: 'mdlh',
-        fallbackUsed: false,
-      };
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : 'MDLH database assets fetch failed';
-      logger.warn('[UnifiedLoader] MDLH database assets failed, falling back to API:', reason);
-      triggerFallback(reason);
-      // Fall through to API
-    }
+    logger.debug('[UnifiedLoader] Loading database assets from MDLH:', connectionName, databaseName);
+    const result = await mdlhClient.getHierarchyAssets({
+      connector: connectionName,
+      database: databaseName,
+      limit: options?.limit || 1000,
+      offset: options?.offset || 0,
+    });
+    return {
+      data: { assets: result.assets, totalCount: result.totalCount },
+      source: 'mdlh',
+      fallbackUsed: false,
+    };
   }
 
   // API path - use fetchAssetsForModel
@@ -398,13 +370,13 @@ export async function loadAssetsForDatabase(
   return {
     data: { assets: assets as AtlanAssetSummary[], totalCount: assets.length },
     source: 'api',
-    fallbackUsed: backend === 'mdlh',
-    fallbackReason: backend === 'mdlh' ? 'MDLH request failed' : undefined,
+    fallbackUsed: false,
   };
 }
 
 /**
- * Load assets for a schema context using the appropriate backend.
+ * Load assets for a schema context using the configured backend.
+ * Throws MdlhConnectionRequiredError if MDLH selected but not connected.
  */
 export async function loadAssetsForSchema(
   connectionName: string,
@@ -415,29 +387,22 @@ export async function loadAssetsForSchema(
     offset?: number;
   }
 ): Promise<LoadResult<{ assets: AtlanAssetSummary[]; totalCount: number }>> {
-  const backend = getEffectiveBackend();
+  const backend = getEffectiveBackend(); // May throw MdlhConnectionRequiredError
 
   if (backend === 'mdlh') {
-    try {
-      logger.debug('[UnifiedLoader] Loading schema assets from MDLH:', connectionName, databaseName, schemaName);
-      const result = await mdlhClient.getHierarchyAssets({
-        connector: connectionName,
-        database: databaseName,
-        schema: schemaName,
-        limit: options?.limit || 1000,
-        offset: options?.offset || 0,
-      });
-      return {
-        data: { assets: result.assets, totalCount: result.totalCount },
-        source: 'mdlh',
-        fallbackUsed: false,
-      };
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : 'MDLH schema assets fetch failed';
-      logger.warn('[UnifiedLoader] MDLH schema assets failed, falling back to API:', reason);
-      triggerFallback(reason);
-      // Fall through to API
-    }
+    logger.debug('[UnifiedLoader] Loading schema assets from MDLH:', connectionName, databaseName, schemaName);
+    const result = await mdlhClient.getHierarchyAssets({
+      connector: connectionName,
+      database: databaseName,
+      schema: schemaName,
+      limit: options?.limit || 1000,
+      offset: options?.offset || 0,
+    });
+    return {
+      data: { assets: result.assets, totalCount: result.totalCount },
+      source: 'mdlh',
+      fallbackUsed: false,
+    };
   }
 
   // API path
@@ -466,40 +431,33 @@ export async function loadAssetsForSchema(
   return {
     data: { assets: assets as AtlanAssetSummary[], totalCount: assets.length },
     source: 'api',
-    fallbackUsed: backend === 'mdlh',
-    fallbackReason: backend === 'mdlh' ? 'MDLH request failed' : undefined,
+    fallbackUsed: false,
   };
 }
 
 /**
- * Load all assets using the appropriate backend.
+ * Load all assets using the configured backend.
+ * Throws MdlhConnectionRequiredError if MDLH selected but not connected.
  */
 export async function loadAllAssets(options?: {
   limit?: number;
   offset?: number;
   onProgress?: (loaded: number, total: number) => void;
 }): Promise<LoadResult<{ assets: AtlanAssetSummary[]; totalCount: number }>> {
-  const backend = getEffectiveBackend();
+  const backend = getEffectiveBackend(); // May throw MdlhConnectionRequiredError
 
   if (backend === 'mdlh') {
-    try {
-      logger.debug('[UnifiedLoader] Loading all assets from MDLH');
-      const result = await mdlhClient.getHierarchyAssets({
-        limit: options?.limit || 1000,
-        offset: options?.offset || 0,
-      });
-      options?.onProgress?.(result.assets.length, result.totalCount);
-      return {
-        data: { assets: result.assets, totalCount: result.totalCount },
-        source: 'mdlh',
-        fallbackUsed: false,
-      };
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : 'MDLH all assets fetch failed';
-      logger.warn('[UnifiedLoader] MDLH all assets failed, falling back to API:', reason);
-      triggerFallback(reason);
-      // Fall through to API
-    }
+    logger.debug('[UnifiedLoader] Loading all assets from MDLH');
+    const result = await mdlhClient.getHierarchyAssets({
+      limit: options?.limit || 1000,
+      offset: options?.offset || 0,
+    });
+    options?.onProgress?.(result.assets.length, result.totalCount);
+    return {
+      data: { assets: result.assets, totalCount: result.totalCount },
+      source: 'mdlh',
+      fallbackUsed: false,
+    };
   }
 
   // API path - use the bulk loader
@@ -515,8 +473,7 @@ export async function loadAllAssets(options?: {
   return {
     data: { assets: result.assets as AtlanAssetSummary[], totalCount: result.totalCount },
     source: 'api',
-    fallbackUsed: backend === 'mdlh',
-    fallbackReason: backend === 'mdlh' ? 'MDLH request failed' : undefined,
+    fallbackUsed: false,
   };
 }
 
@@ -524,4 +481,5 @@ export async function loadAllAssets(options?: {
 // Utility Exports
 // ============================================
 
+// Note: MdlhConnectionRequiredError is already exported at its class definition
 export { getEffectiveBackend };

@@ -24,24 +24,119 @@ from ..config import get_settings
 logger = logging.getLogger(__name__)
 
 
+# ============================================
+# Error Handling
+# ============================================
+
+
+class SessionExpiredError(Exception):
+    """Raised when a Snowflake session has expired or connection is lost."""
+    pass
+
+
+def handle_mdlh_errors(func):
+    """
+    Decorator for consistent error handling across MDLH endpoints.
+
+    Converts common Snowflake errors into appropriate HTTP responses:
+    - Warehouse suspended → 503 with resume instructions
+    - Connection lost → 503 with reconnect instructions
+    - Other errors → 500 with error details
+    """
+    from functools import wraps
+
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        try:
+            return await func(*args, **kwargs)
+        except HTTPException:
+            raise  # Re-raise HTTP exceptions as-is
+        except SessionExpiredError as e:
+            logger.warning(f"Session expired: {e}")
+            raise HTTPException(
+                status_code=503,
+                detail="Snowflake session expired. Please reconnect via /api/snowflake/connect."
+            )
+        except Exception as e:
+            error_msg = str(e).lower()
+
+            # Handle warehouse suspended
+            if "no active warehouse" in error_msg or "warehouse" in error_msg and "suspend" in error_msg:
+                logger.warning(f"Warehouse suspended: {e}")
+                raise HTTPException(
+                    status_code=503,
+                    detail="Snowflake warehouse is suspended. Resume it in Snowflake or wait for auto-resume."
+                )
+
+            # Handle connection issues
+            if any(pattern in error_msg for pattern in ["session", "connection", "network", "socket", "timeout"]):
+                logger.warning(f"Connection issue: {e}")
+                raise HTTPException(
+                    status_code=503,
+                    detail="Snowflake connection lost. Please reconnect via /api/snowflake/connect."
+                )
+
+            # Handle authentication issues
+            if "authentication" in error_msg or "unauthorized" in error_msg:
+                logger.warning(f"Authentication issue: {e}")
+                raise HTTPException(
+                    status_code=401,
+                    detail="Snowflake authentication failed. Please reconnect."
+                )
+
+            # Generic error
+            logger.exception(f"MDLH query failed: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Query failed: {str(e)}"
+            )
+
+    return wrapper
+
+
 def parse_json_array(value: Any) -> list | None:
     """Parse a JSON array string into a Python list.
 
     Snowflake returns ARRAY columns as JSON strings, so we need to parse them.
+    This function handles various edge cases to prevent Pydantic validation errors:
+    - None → None
+    - [] or ["a", "b"] → returns as-is
+    - '["a", "b"]' (JSON string) → parsed list
+    - "plain string" → None (not a valid array)
+    - 123 (number) → None (not a valid array)
+    - {} (dict) → None (not a valid array)
     """
     if value is None:
         return None
     if isinstance(value, list):
+        # Already a list, return as-is (handles empty lists too)
         return value
     if isinstance(value, str):
+        # Empty string
+        if not value.strip():
+            return None
         try:
             parsed = json.loads(value)
             if isinstance(parsed, list):
                 return parsed
+            # JSON parsed but not a list (could be object, string, number)
+            # Don't wrap in list - return None as it's not an array
             return None
-        except (json.JSONDecodeError, TypeError):
+        except (json.JSONDecodeError, TypeError, ValueError):
+            # Not valid JSON - return None instead of failing
             return None
+    # For any other type (int, float, dict, etc.), return None
     return None
+
+
+def safe_parse_array(value: Any) -> list:
+    """Parse array value with fallback to empty list.
+
+    Use this when you need a list and never None (for Pydantic fields that
+    default to empty list instead of None).
+    """
+    result = parse_json_array(value)
+    return result if result is not None else []
 
 router = APIRouter(prefix="/mdlh", tags=["mdlh"])
 
@@ -98,22 +193,41 @@ class LineageDirection(str, Enum):
 # ============================================
 SQL_QUALITY_SCORES = """
 SELECT
+    -- ==========================================================================
+    -- CORE ASSET FIELDS (ALL fields from ASSETS view)
+    -- ==========================================================================
     A.GUID,
     A.ASSET_NAME,
     A.ASSET_TYPE,
-    A.CONNECTOR_NAME,
     A.ASSET_QUALIFIED_NAME,
     A.DESCRIPTION,
-    A.CERTIFICATE_STATUS,
-    A.HAS_LINEAGE,
-    A.POPULARITY_SCORE,
-    A.UPDATED_AT,
-    A.SOURCE_UPDATED_AT,
-    A.OWNER_USERS,
-    A.TAGS,
-    A.TERM_GUIDS,
     A.README_GUID,
-    
+    A.STATUS,
+    -- Lifecycle timestamps
+    A.CREATED_AT,
+    A.CREATED_BY,
+    A.UPDATED_AT,
+    A.UPDATED_BY,
+    -- Certificate fields
+    A.CERTIFICATE_STATUS,
+    A.CERTIFICATE_UPDATED_BY,
+    A.CERTIFICATE_UPDATED_AT,
+    -- Connector fields
+    A.CONNECTOR_NAME,
+    A.CONNECTOR_QUALIFIED_NAME,
+    -- Source system timestamps
+    A.SOURCE_CREATED_AT,
+    A.SOURCE_CREATED_BY,
+    A.SOURCE_UPDATED_AT,
+    A.SOURCE_UPDATED_BY,
+    -- Ownership and classification
+    A.OWNER_USERS,
+    A.TERM_GUIDS,
+    A.TAGS,
+    -- Metrics
+    A.POPULARITY_SCORE,
+    A.HAS_LINEAGE,
+
     -- =========================================================================
     -- COMPLETENESS SCORE (8 checks, aligned with client-side scoreCompleteness)
     -- Checks: description, owner, certificate, tags, terms, readme, domain*, lineage
@@ -128,11 +242,10 @@ SELECT
      0 +  -- DOMAIN_GUIDS not available in MDLH Gold Layer
      CASE WHEN A.HAS_LINEAGE = TRUE THEN 1 ELSE 0 END
     ) / 8.0 * 100 AS completeness_score,
-    
+
     -- =========================================================================
     -- ACCURACY SCORE (5 checks, aligned with client-side scoreAccuracy)
     -- Checks: valid naming (regex), has owner, has certificate, has tags, not AI
-    -- Note: CERTIFICATE_UPDATED_AT doesn't exist in MDLH schema
     -- =========================================================================
     (CASE WHEN REGEXP_LIKE(A.ASSET_NAME, '^[\\w\\-\\.]+$') THEN 1 ELSE 0 END +
      CASE WHEN A.OWNER_USERS IS NOT NULL AND ARRAY_SIZE(A.OWNER_USERS) > 0 THEN 1 ELSE 0 END +
@@ -144,11 +257,12 @@ SELECT
     -- =========================================================================
     -- TIMELINESS SCORE (binary: 100 if ANY timestamp within 90 days, else 0)
     -- Aligned with client-side scoreTimeliness which checks multiple clocks
-    -- Note: CERTIFICATE_UPDATED_AT doesn't exist in MDLH schema
+    -- Now includes CERTIFICATE_UPDATED_AT which EXISTS in MDLH schema
     -- =========================================================================
     CASE WHEN (
         DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90 OR
-        DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.SOURCE_UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90
+        DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.SOURCE_UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90 OR
+        DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.CERTIFICATE_UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90
     ) THEN 100 ELSE 0 END AS timeliness_score,
     
     -- =========================================================================
@@ -208,7 +322,6 @@ SELECT
     ) AS avg_completeness,
     
     -- Accuracy (5 checks: valid naming, has owner, has certificate, has tags, not AI)
-    -- Note: CERTIFICATE_UPDATED_AT doesn't exist in MDLH schema
     AVG(
         (CASE WHEN REGEXP_LIKE(A.ASSET_NAME, '^[\\w\\-\\.]+$') THEN 1 ELSE 0 END +
          CASE WHEN A.OWNER_USERS IS NOT NULL AND ARRAY_SIZE(A.OWNER_USERS) > 0 THEN 1 ELSE 0 END +
@@ -219,11 +332,12 @@ SELECT
     ) AS avg_accuracy,
 
     -- Timeliness (binary: any timestamp within 90 days)
-    -- Note: CERTIFICATE_UPDATED_AT doesn't exist in MDLH schema
+    -- Note: CERTIFICATE_UPDATED_AT is available in MDLH schema (DDL line 18)
     AVG(
         CASE WHEN (
             DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90 OR
-            DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.SOURCE_UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90
+            DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.SOURCE_UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90 OR
+            DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.CERTIFICATE_UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90
         ) THEN 100.0 ELSE 0.0 END
     ) AS avg_timeliness,
     
@@ -274,20 +388,40 @@ ORDER BY LEVEL ASC
 
 SQL_SEARCH_ASSETS = """
 SELECT
+    -- ==========================================================================
+    -- ALL ASSETS FIELDS (25 columns from MDLH Gold Layer ASSETS view)
+    -- ==========================================================================
     A.GUID,
     A.ASSET_NAME,
     A.ASSET_TYPE,
     A.ASSET_QUALIFIED_NAME,
     A.DESCRIPTION,
-    A.CONNECTOR_NAME,
-    A.CERTIFICATE_STATUS,
-    A.HAS_LINEAGE,
-    A.POPULARITY_SCORE,
-    A.OWNER_USERS,
-    A.TAGS,
-    A.TERM_GUIDS,
+    A.README_GUID,
+    A.STATUS,
+    -- Lifecycle timestamps
+    A.CREATED_AT,
+    A.CREATED_BY,
     A.UPDATED_AT,
-    A.SOURCE_UPDATED_AT
+    A.UPDATED_BY,
+    -- Certificate fields
+    A.CERTIFICATE_STATUS,
+    A.CERTIFICATE_UPDATED_BY,
+    A.CERTIFICATE_UPDATED_AT,
+    -- Connector fields
+    A.CONNECTOR_NAME,
+    A.CONNECTOR_QUALIFIED_NAME,
+    -- Source system timestamps
+    A.SOURCE_CREATED_AT,
+    A.SOURCE_CREATED_BY,
+    A.SOURCE_UPDATED_AT,
+    A.SOURCE_UPDATED_BY,
+    -- Ownership and classification
+    A.OWNER_USERS,
+    A.TERM_GUIDS,
+    A.TAGS,
+    -- Metrics
+    A.POPULARITY_SCORE,
+    A.HAS_LINEAGE
 FROM ATLAN_GOLD.PUBLIC.ASSETS A
 WHERE A.STATUS = 'ACTIVE'
 {type_filter}
@@ -321,14 +455,14 @@ ORDER BY asset_count DESC
 
 SQL_DATABASES = """
 SELECT DISTINCT
-    SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 1) as database_name,
+    SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 4) as database_name,
     CONNECTOR_NAME,
     COUNT(*) as asset_count
 FROM ATLAN_GOLD.PUBLIC.ASSETS
 WHERE STATUS = 'ACTIVE'
-    AND ASSET_TYPE IN ('Database', 'Table', 'View', 'Schema')
+    AND UPPER(ASSET_TYPE) IN ('DATABASE', 'TABLE', 'VIEW', 'SCHEMA')
     AND ASSET_QUALIFIED_NAME IS NOT NULL
-GROUP BY SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 1), CONNECTOR_NAME
+GROUP BY SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 4), CONNECTOR_NAME
 ORDER BY asset_count DESC
 """
 
@@ -430,7 +564,7 @@ SELECT
         ) / 8.0 * 100
     ) AS avg_completeness,
 
-    -- Accuracy (5 checks) - CERTIFICATE_UPDATED_AT doesn't exist in MDLH schema
+    -- Accuracy (5 checks: valid naming, has owner, has certificate, has tags, not AI)
     AVG(
         (CASE WHEN REGEXP_LIKE(A.ASSET_NAME, '^[\\w\\-\\.]+$') THEN 1 ELSE 0 END +
          CASE WHEN A.OWNER_USERS IS NOT NULL AND ARRAY_SIZE(A.OWNER_USERS) > 0 THEN 1 ELSE 0 END +
@@ -440,11 +574,12 @@ SELECT
         ) / 5.0 * 100
     ) AS avg_accuracy,
 
-    -- Timeliness
+    -- Timeliness (includes CERTIFICATE_UPDATED_AT which is available in MDLH schema)
     AVG(
         CASE WHEN (
             DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90 OR
-            DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.SOURCE_UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90
+            DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.SOURCE_UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90 OR
+            DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.CERTIFICATE_UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90
         ) THEN 100.0 ELSE 0.0 END
     ) AS avg_timeliness,
 
@@ -714,11 +849,6 @@ class OwnersResponse(BaseModel):
 # ============================================
 
 
-class SessionExpiredError(Exception):
-    """Raised when a Snowflake session has expired or connection is lost."""
-    pass
-
-
 class MdlhSessionContext:
     """Context for MDLH queries - wraps a session with query helpers."""
 
@@ -733,7 +863,20 @@ class MdlhSessionContext:
         "connection reset",
     ]
 
-    MAX_RETRIES = 1  # One retry attempt after initial failure
+    # Errors that indicate warehouse needs to be resumed
+    # These are substring patterns - if ANY pattern matches, we try to resume
+    WAREHOUSE_SUSPENDED_PATTERNS = [
+        "no active warehouse",
+        "warehouse cannot be used",
+    ]
+    # Keywords that when both appear indicate suspension
+    WAREHOUSE_SUSPENDED_KEYWORDS = [
+        ("warehouse", "suspend"),  # matches "warehouse is suspended", "warehouse being suspended", etc.
+        ("warehouse", "not running"),
+        ("warehouse", "starting"),
+    ]
+
+    MAX_RETRIES = 2  # Retry attempts after initial failure (allows warehouse resume + query retry)
 
     def __init__(self, session: SnowflakeSession, session_id: str):
         self.session = session
@@ -743,6 +886,43 @@ class MdlhSessionContext:
         """Check if an error is likely to succeed on retry."""
         error_msg = str(error).lower()
         return any(pattern in error_msg for pattern in self.RETRYABLE_ERROR_PATTERNS)
+
+    def _is_warehouse_suspended_error(self, error: Exception) -> bool:
+        """Check if error indicates warehouse is suspended."""
+        error_msg = str(error).lower()
+        # Check direct pattern matches
+        if any(pattern in error_msg for pattern in self.WAREHOUSE_SUSPENDED_PATTERNS):
+            return True
+        # Check keyword pairs (both keywords must be present)
+        for keyword1, keyword2 in self.WAREHOUSE_SUSPENDED_KEYWORDS:
+            if keyword1 in error_msg and keyword2 in error_msg:
+                return True
+        return False
+
+    def _resume_warehouse(self) -> bool:
+        """Attempt to resume the Snowflake warehouse.
+
+        Returns True if resume was successful, False otherwise.
+        Includes a short wait time to allow the warehouse to start.
+        """
+        import time
+
+        warehouse = self.session.warehouse
+        if not warehouse:
+            return False
+
+        try:
+            cursor = self.session.conn.cursor()
+            # Use IF SUSPENDED to avoid errors if already running
+            cursor.execute(f"ALTER WAREHOUSE {warehouse} RESUME IF SUSPENDED")
+            cursor.close()
+            logger.info(f"[MDLH] Resumed warehouse: {warehouse}")
+            # Wait a moment for the warehouse to fully start
+            time.sleep(2)
+            return True
+        except Exception as e:
+            logger.warning(f"[MDLH] Failed to resume warehouse {warehouse}: {e}")
+            return False
 
     def _verify_connection(self) -> bool:
         """Verify the connection is still alive with a simple query."""
@@ -801,6 +981,25 @@ class MdlhSessionContext:
                 last_error = e
                 cursor.close()
 
+                error_str = str(e).lower()
+                logger.info(f"[MDLH] Query error (attempt {attempt + 1}/{self.MAX_RETRIES + 1}): {error_str[:200]}")
+
+                # Check if warehouse is suspended - try to resume it
+                is_warehouse_error = self._is_warehouse_suspended_error(e)
+                logger.info(f"[MDLH] Is warehouse suspended error: {is_warehouse_error}")
+
+                if attempt < self.MAX_RETRIES and is_warehouse_error:
+                    logger.warning(
+                        f"[MDLH] Query failed - warehouse suspended (attempt {attempt + 1}): {e}"
+                    )
+                    if self._resume_warehouse():
+                        logger.info("[MDLH] Warehouse resumed, retrying query...")
+                        continue
+                    else:
+                        logger.warning("[MDLH] Could not resume warehouse, raising error")
+                        # Could not resume, let error handler deal with it
+                        raise
+
                 # Check if this is a retryable error
                 if attempt < self.MAX_RETRIES and self._is_retryable_error(e):
                     logger.warning(
@@ -840,6 +1039,183 @@ class MdlhSessionContext:
         """Execute query and return single result or None."""
         results = self.execute_query(query, params)
         return results[0] if results else None
+
+    # ========================================
+    # Direct Snowflake Metadata Methods
+    # ========================================
+    # These query Snowflake directly (SHOW commands, INFORMATION_SCHEMA)
+    # for raw schema exploration - not just MDLH Gold Layer
+
+    def get_snowflake_databases(self, use_cache: bool = True) -> list[str]:
+        """Get list of accessible Snowflake databases."""
+        from ..services.cache import metadata_cache
+
+        account = self.session.account or "unknown"
+
+        if use_cache:
+            cached = metadata_cache.get_databases(account)
+            if cached is not None:
+                return cached
+
+        results = self.execute_query("SHOW DATABASES")
+        databases = [row.get("name", row.get("NAME", "")) for row in results]
+        databases = [d for d in databases if d]
+
+        if use_cache:
+            metadata_cache.set_databases(account, databases)
+
+        return databases
+
+    def get_snowflake_schemas(self, database: str, use_cache: bool = True) -> list[str]:
+        """Get list of schemas in a Snowflake database."""
+        from ..services.cache import metadata_cache
+        import re
+
+        # Validate identifier
+        if not re.match(r'^[A-Za-z_][A-Za-z0-9_$]*$', database):
+            raise ValueError(f"Invalid database name: {database}")
+
+        account = self.session.account or "unknown"
+        db_upper = database.upper()
+
+        if use_cache:
+            cached = metadata_cache.get_schemas(account, db_upper)
+            if cached is not None:
+                return cached
+
+        results = self.execute_query(f'SHOW SCHEMAS IN DATABASE "{db_upper}"')
+        schemas = [row.get("name", row.get("NAME", "")) for row in results]
+        schemas = [s for s in schemas if s and s != "INFORMATION_SCHEMA"]
+
+        if use_cache:
+            metadata_cache.set_schemas(account, db_upper, schemas)
+
+        return schemas
+
+    def get_snowflake_tables(
+        self, database: str, schema: str, include_views: bool = True, use_cache: bool = True
+    ) -> list[dict]:
+        """Get list of tables/views in a Snowflake schema."""
+        from ..services.cache import metadata_cache
+        import re
+
+        # Validate identifiers
+        if not re.match(r'^[A-Za-z_][A-Za-z0-9_$]*$', database):
+            raise ValueError(f"Invalid database name: {database}")
+        if not re.match(r'^[A-Za-z_][A-Za-z0-9_$]*$', schema):
+            raise ValueError(f"Invalid schema name: {schema}")
+
+        account = self.session.account or "unknown"
+        db_upper = database.upper()
+        schema_upper = schema.upper()
+
+        if use_cache:
+            cached = metadata_cache.get_tables(account, db_upper, schema_upper)
+            if cached is not None:
+                return cached
+
+        # Get tables
+        results = self.execute_query(f'SHOW TABLES IN "{db_upper}"."{schema_upper}"')
+        tables = []
+        for row in results:
+            tables.append({
+                "name": row.get("name", row.get("NAME", "")),
+                "type": "TABLE",
+                "rows": row.get("rows", row.get("ROWS", 0)),
+                "bytes": row.get("bytes", row.get("BYTES", 0)),
+            })
+
+        # Get views if requested
+        if include_views:
+            try:
+                view_results = self.execute_query(f'SHOW VIEWS IN "{db_upper}"."{schema_upper}"')
+                for row in view_results:
+                    tables.append({
+                        "name": row.get("name", row.get("NAME", "")),
+                        "type": "VIEW",
+                        "rows": 0,
+                        "bytes": 0,
+                    })
+            except Exception as e:
+                logger.warning(f"Could not fetch views: {e}")
+
+        if use_cache:
+            metadata_cache.set_tables(account, db_upper, schema_upper, tables)
+
+        return tables
+
+    def get_snowflake_columns(
+        self, database: str, schema: str, table: str, use_cache: bool = True
+    ) -> list[dict]:
+        """Get list of columns for a Snowflake table."""
+        from ..services.cache import metadata_cache
+        import re
+
+        # Validate identifiers
+        for name, label in [(database, "database"), (schema, "schema"), (table, "table")]:
+            if not re.match(r'^[A-Za-z_][A-Za-z0-9_$]*$', name):
+                raise ValueError(f"Invalid {label} name: {name}")
+
+        account = self.session.account or "unknown"
+        db_upper = database.upper()
+        schema_upper = schema.upper()
+        table_upper = table.upper()
+
+        if use_cache:
+            cached = metadata_cache.get_columns(account, db_upper, schema_upper, table_upper)
+            if cached is not None:
+                return cached
+
+        query = f"""
+        SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT, ORDINAL_POSITION, COMMENT
+        FROM "{db_upper}".INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = '{schema_upper}' AND TABLE_NAME = '{table_upper}'
+        ORDER BY ORDINAL_POSITION
+        """
+        results = self.execute_query(query)
+
+        columns = []
+        for row in results:
+            columns.append({
+                "name": row.get("COLUMN_NAME", ""),
+                "type": row.get("DATA_TYPE", ""),
+                "nullable": row.get("IS_NULLABLE", "YES") == "YES",
+                "default": row.get("COLUMN_DEFAULT"),
+                "position": row.get("ORDINAL_POSITION", 0),
+                "comment": row.get("COMMENT"),
+            })
+
+        if use_cache:
+            metadata_cache.set_columns(account, db_upper, schema_upper, table_upper, columns)
+
+        return columns
+
+    def get_snowflake_table_preview(
+        self, database: str, schema: str, table: str, limit: int = 100
+    ) -> dict:
+        """Get preview data from a Snowflake table."""
+        import re
+
+        # Validate identifiers
+        for name, label in [(database, "database"), (schema, "schema"), (table, "table")]:
+            if not re.match(r'^[A-Za-z_][A-Za-z0-9_$]*$', name):
+                raise ValueError(f"Invalid {label} name: {name}")
+
+        db_upper = database.upper()
+        schema_upper = schema.upper()
+        table_upper = table.upper()
+        limit = min(max(1, limit), 1000)
+
+        columns = self.get_snowflake_columns(database, schema, table)
+        query = f'SELECT * FROM "{db_upper}"."{schema_upper}"."{table_upper}" LIMIT {limit}'
+        rows = self.execute_query(query)
+
+        return {
+            "columns": columns,
+            "rows": rows,
+            "total_rows": len(rows),
+            "limit": limit,
+        }
 
 
 def get_session_id_from_request(
@@ -906,57 +1282,120 @@ def escape_sql_string(value: str) -> str:
 
 
 @router.get("/assets", response_model=AssetSearchResponse)
+@handle_mdlh_errors
 async def search_assets(
-    query: str | None = None,
-    asset_type: AssetType = AssetType.ALL,
-    connector: str | None = None,
-    limit: int = Query(100, ge=1, le=1000),
+    query: str | None = Query(None, description="Text search in name/description"),
+    asset_type: AssetType = Query(AssetType.ALL, description="Filter by asset type"),
+    connector: str | None = Query(None, description="Filter by connector name"),
+    database: str | None = Query(None, description="Filter by database name"),
+    schema: str | None = Query(None, alias="schema", description="Filter by schema name"),
+    include_tags: bool = Query(False, description="Include tags in text search"),
+    limit: int = Query(100, ge=1, le=5000),
     offset: int = Query(0, ge=0),
     service: MdlhSessionContext = Depends(require_mdlh_connection),
 ) -> AssetSearchResponse:
     """
-    Search assets in the MDLH Gold Layer.
+    Unified asset search endpoint for the MDLH Gold Layer.
 
-    Supports filtering by type, connector, and text search.
-    Results are ordered by popularity and recency.
+    Supports filtering by:
+    - query: Text search in asset name and description (optionally tags)
+    - asset_type: Filter by Table, View, MaterializedView, etc.
+    - connector: Filter by connector/connection name
+    - database: Filter by database name (derived from qualified_name)
+    - schema: Filter by schema name (derived from qualified_name)
+
+    Results are ordered by relevance (if query provided) or popularity.
+
+    This endpoint consolidates: /assets, /search, /hierarchy/assets
     """
-    # Build filters with SQL injection protection
-    type_filter = ""
+    # Build parameterized query for safety
+    params: dict[str, Any] = {"limit": limit, "offset": offset}
+    conditions = ["A.STATUS = 'ACTIVE'"]
+
+    # Asset type filter
     if asset_type != AssetType.ALL:
-        # AssetType is an enum, so value is safe, but escape anyway for consistency
-        type_filter = f"AND A.ASSET_TYPE = '{escape_sql_string(asset_type.value)}'"
+        conditions.append("A.ASSET_TYPE = %(asset_type)s")
+        params["asset_type"] = asset_type.value
 
-    connector_filter = ""
+    # Connector filter
     if connector:
-        connector_filter = f"AND A.CONNECTOR_NAME = '{escape_sql_string(connector)}'"
+        conditions.append("A.CONNECTOR_NAME = %(connector)s")
+        params["connector"] = connector
 
-    search_filter = ""
+    # Database filter (from qualified name segment 4: default/snowflake/account/DATABASE/schema/table)
+    if database:
+        conditions.append("SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 4) = %(database)s")
+        params["database"] = database
+
+    # Schema filter (from qualified name segment 5: default/snowflake/account/database/SCHEMA/table)
+    if schema:
+        conditions.append("SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 5) = %(schema)s")
+        params["schema"] = schema
+
+    # Text search filter
+    search_conditions = []
     if query:
-        # Escape search query to prevent SQL injection
-        escaped_query = escape_sql_string(query)
-        search_filter = f"AND (A.ASSET_NAME ILIKE '%{escaped_query}%' OR A.DESCRIPTION ILIKE '%{escaped_query}%')"
+        params["search_query"] = f"%{query}%"
+        search_conditions.append("A.ASSET_NAME ILIKE %(search_query)s")
+        search_conditions.append("A.DESCRIPTION ILIKE %(search_query)s")
+        if include_tags:
+            search_conditions.append(
+                "EXISTS (SELECT 1 FROM TABLE(FLATTEN(A.TAGS)) t WHERE t.VALUE::STRING ILIKE %(search_query)s)"
+            )
+        conditions.append(f"({' OR '.join(search_conditions)})")
 
-    # Execute search query
-    sql = SQL_SEARCH_ASSETS.format(
-        type_filter=type_filter,
-        connector_filter=connector_filter,
-        search_filter=search_filter,
-        limit=limit,
-        offset=offset,
-    )
+    where_clause = " AND ".join(conditions)
 
-    results = service.execute_query(sql)
+    # Build relevance-based ordering if query provided
+    order_clause = "A.POPULARITY_SCORE DESC NULLS LAST, A.UPDATED_AT DESC"
+    if query:
+        # Add relevance scoring for text search
+        order_clause = """
+            CASE
+                WHEN LOWER(A.ASSET_NAME) = LOWER(%(search_query)s) THEN 100
+                WHEN LOWER(A.ASSET_NAME) LIKE LOWER(%(search_query)s) THEN 80
+                WHEN LOWER(A.ASSET_NAME) ILIKE %(search_query)s THEN 60
+                WHEN LOWER(A.DESCRIPTION) ILIKE %(search_query)s THEN 40
+                ELSE 20
+            END DESC,
+            A.POPULARITY_SCORE DESC NULLS LAST
+        """
 
-    # Get total count
-    count_sql = SQL_ASSET_COUNT.format(
-        type_filter=type_filter,
-        connector_filter=connector_filter,
-    )
-    count_result = service.execute_query_single(count_sql)
+    sql = f"""
+    SELECT
+        A.GUID,
+        A.ASSET_NAME,
+        A.ASSET_TYPE,
+        A.ASSET_QUALIFIED_NAME,
+        A.DESCRIPTION,
+        A.CONNECTOR_NAME,
+        A.CERTIFICATE_STATUS,
+        A.HAS_LINEAGE,
+        A.POPULARITY_SCORE,
+        A.OWNER_USERS,
+        A.TAGS,
+        A.TERM_GUIDS,
+        A.UPDATED_AT,
+        A.SOURCE_UPDATED_AT
+    FROM ATLAN_GOLD.PUBLIC.ASSETS A
+    WHERE {where_clause}
+    ORDER BY {order_clause}
+    LIMIT %(limit)s
+    OFFSET %(offset)s
+    """
+
+    results = service.execute_query(sql, params=params)
+
+    # Get total count with same filters
+    count_sql = f"""
+    SELECT COUNT(*) as total_count
+    FROM ATLAN_GOLD.PUBLIC.ASSETS A
+    WHERE {where_clause}
+    """
+    count_result = service.execute_query_single(count_sql, params=params)
     total_count = count_result.get("TOTAL_COUNT", 0) if count_result else 0
 
-    # Transform results to Pydantic models (case-insensitive field mapping)
-    # Note: Snowflake ARRAY columns are returned as JSON strings, so we parse them
+    # Transform results to Pydantic models
     assets = []
     for row in results:
         asset = AssetSummary(
@@ -986,18 +1425,26 @@ async def search_assets(
 
 
 @router.get("/quality-scores", response_model=QualityScoreResponse)
+@handle_mdlh_errors
 async def get_quality_scores(
     asset_type: AssetType = AssetType.ALL,
-    connector: str | None = None,
+    connector: str | None = Query(None, description="Filter by connector name"),
+    database: str | None = Query(None, description="Filter by database name (from qualified name)"),
+    schema_name: str | None = Query(None, alias="schema", description="Filter by schema name (from qualified name)"),
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     service: MdlhSessionContext = Depends(require_mdlh_connection),
 ) -> QualityScoreResponse:
     """
-    Get quality scores for assets.
+    Get quality scores for assets with optional context filtering.
 
     Returns completeness, accuracy, timeliness, consistency, and usability
     scores for each asset, computed using MDLH data.
+
+    Filter parameters allow scoping to specific context:
+    - connector: Filter to specific connector (e.g., "snowflake")
+    - database: Filter to specific database (first segment of qualified name)
+    - schema: Filter to specific schema (second segment of qualified name)
     """
     # Build filters with SQL injection protection
     type_filter = ""
@@ -1008,10 +1455,20 @@ async def get_quality_scores(
     if connector:
         connector_filter = f"AND A.CONNECTOR_NAME = '{escape_sql_string(connector)}'"
 
+    database_filter = ""
+    if database:
+        database_filter = f"AND SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 4) = '{escape_sql_string(database)}'"
+
+    schema_filter = ""
+    if schema_name:
+        schema_filter = f"AND SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 5) = '{escape_sql_string(schema_name)}'"
+
     sql = f"""
     {SQL_QUALITY_SCORES}
     {type_filter}
     {connector_filter}
+    {database_filter}
+    {schema_filter}
     ORDER BY A.POPULARITY_SCORE DESC NULLS LAST
     LIMIT {limit}
     OFFSET {offset}
@@ -1063,6 +1520,7 @@ class BatchScoreRequest(BaseModel):
 
 
 @router.post("/quality-scores/batch")
+@handle_mdlh_errors
 async def get_quality_scores_batch(
     request: BatchScoreRequest,
     service: MdlhSessionContext = Depends(require_mdlh_connection),
@@ -1107,23 +1565,209 @@ async def get_quality_scores_batch(
     }
 
 
+@router.get("/quality")
+@handle_mdlh_errors
+async def get_quality_unified(
+    dimension: PivotDimension = Query(PivotDimension.CONNECTOR, description="Dimension to group by"),
+    asset_type: AssetType = Query(AssetType.ALL, description="Filter by asset type"),
+    connector: str | None = Query(None, description="Filter by connector name"),
+    database: str | None = Query(None, description="Filter by database name (from qualified name)"),
+    schema_name: str | None = Query(None, alias="schema", description="Filter by schema name (from qualified name)"),
+    limit: int = Query(100, ge=1, le=500, description="Max results to return"),
+    service: MdlhSessionContext = Depends(require_mdlh_connection),
+) -> dict[str, Any]:
+    """
+    Unified quality metrics endpoint - aggregates scores by dimension.
+
+    Supports all dimensions including:
+    - connector: Group by connector/connection name
+    - database: Group by database name
+    - schema: Group by schema name
+    - asset_type: Group by asset type (Table, View, etc.)
+    - certificate_status: Group by certification status
+    - owner: Group by owner (uses LATERAL FLATTEN for array handling)
+
+    Filter parameters allow scoping to specific context:
+    - connector: Filter to specific connector (e.g., "snowflake")
+    - database: Filter to specific database (first segment of qualified name)
+    - schema: Filter to specific schema (second segment of qualified name)
+
+    This endpoint consolidates: /quality-rollup, /quality-rollup/by-owner
+
+    Returns:
+    - dimension: The grouping dimension
+    - rollups: List of aggregated metrics per dimension value, including:
+        - dimension_value: The value of the dimension
+        - total_assets: Number of assets in this group
+        - avg_completeness, avg_accuracy, avg_timeliness, avg_consistency, avg_usability
+        - avg_overall: Weighted overall score
+        - pct_with_description, pct_with_owner, pct_with_tags, etc.
+    """
+    # Build filters
+    params: dict[str, Any] = {}
+    filters = []
+
+    if asset_type != AssetType.ALL:
+        filters.append("A.ASSET_TYPE = %(asset_type)s")
+        params["asset_type"] = asset_type.value
+
+    if connector:
+        filters.append("A.CONNECTOR_NAME = %(connector)s")
+        params["connector"] = connector
+
+    if database:
+        filters.append("SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 4) = %(database)s")
+        params["database"] = database
+
+    if schema_name:
+        filters.append("SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 5) = %(schema_name)s")
+        params["schema_name"] = schema_name
+
+    asset_type_filter = f"AND {' AND '.join(filters)}" if filters else ""
+
+    # Special handling for owner dimension (requires LATERAL FLATTEN)
+    if dimension == PivotDimension.OWNER:
+        sql = f"""
+        SELECT
+            COALESCE(owner.VALUE::STRING, 'Unowned') AS dimension_value,
+            COUNT(DISTINCT A.GUID) AS total_assets,
+            AVG(CASE WHEN A.DESCRIPTION IS NOT NULL AND TRIM(A.DESCRIPTION) != '' THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_description,
+            AVG(CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_tags,
+            AVG(CASE WHEN UPPER(COALESCE(A.CERTIFICATE_STATUS, '')) = 'VERIFIED' THEN 1.0 ELSE 0.0 END) * 100 AS pct_certified,
+            AVG(CASE WHEN A.HAS_LINEAGE = TRUE THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_lineage,
+            AVG(CASE WHEN A.README_GUID IS NOT NULL THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_readme,
+            AVG(CASE WHEN A.TERM_GUIDS IS NOT NULL AND ARRAY_SIZE(A.TERM_GUIDS) > 0 THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_terms,
+            AVG(CASE WHEN A.OWNER_USERS IS NOT NULL AND ARRAY_SIZE(A.OWNER_USERS) > 0 THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_owner,
+            AVG((CASE WHEN A.DESCRIPTION IS NOT NULL AND TRIM(A.DESCRIPTION) != '' THEN 1 ELSE 0 END +
+                 CASE WHEN A.OWNER_USERS IS NOT NULL AND ARRAY_SIZE(A.OWNER_USERS) > 0 THEN 1 ELSE 0 END +
+                 CASE WHEN A.CERTIFICATE_STATUS IS NOT NULL AND A.CERTIFICATE_STATUS != '' THEN 1 ELSE 0 END +
+                 CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1 ELSE 0 END +
+                 CASE WHEN A.TERM_GUIDS IS NOT NULL AND ARRAY_SIZE(A.TERM_GUIDS) > 0 THEN 1 ELSE 0 END +
+                 CASE WHEN A.README_GUID IS NOT NULL THEN 1 ELSE 0 END +
+                 CASE WHEN A.HAS_LINEAGE = TRUE THEN 1 ELSE 0 END) / 8.0 * 100) AS avg_completeness,
+            AVG((CASE WHEN REGEXP_LIKE(A.ASSET_NAME, '^[\\w\\-\\.]+$') THEN 1 ELSE 0 END +
+                 CASE WHEN A.OWNER_USERS IS NOT NULL AND ARRAY_SIZE(A.OWNER_USERS) > 0 THEN 1 ELSE 0 END +
+                 CASE WHEN A.CERTIFICATE_STATUS IS NOT NULL AND A.CERTIFICATE_STATUS != '' THEN 1 ELSE 0 END +
+                 CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1 ELSE 0 END +
+                 1) / 5.0 * 100) AS avg_accuracy,
+            AVG(CASE WHEN (DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90 OR
+                          DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.SOURCE_UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90)
+                THEN 100.0 ELSE 0.0 END) AS avg_timeliness,
+            AVG((CASE WHEN A.TERM_GUIDS IS NOT NULL AND ARRAY_SIZE(A.TERM_GUIDS) > 0 THEN 1 ELSE 0 END +
+                 CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1 ELSE 0 END +
+                 CASE WHEN ARRAY_SIZE(SPLIT(A.ASSET_QUALIFIED_NAME, '/')) >= 2 THEN 1 ELSE 0 END +
+                 CASE WHEN A.CONNECTOR_QUALIFIED_NAME IS NOT NULL THEN 1 ELSE 0 END) / 4.0 * 100) AS avg_consistency,
+            AVG((CASE WHEN COALESCE(A.POPULARITY_SCORE, 0) > 0 THEN 1 ELSE 0 END +
+                 CASE WHEN COALESCE(R.TABLE_TOTAL_READ_COUNT, 0) > 0 THEN 1 ELSE 0 END +
+                 1) / 3.0 * 100) AS avg_usability
+        FROM ATLAN_GOLD.PUBLIC.ASSETS A
+        LEFT JOIN ATLAN_GOLD.PUBLIC.RELATIONAL_ASSET_DETAILS R ON A.GUID = R.GUID,
+        LATERAL FLATTEN(input => COALESCE(A.OWNER_USERS, ARRAY_CONSTRUCT(NULL)), outer => true) AS owner
+        WHERE A.STATUS = 'ACTIVE'
+        {asset_type_filter}
+        GROUP BY COALESCE(owner.VALUE::STRING, 'Unowned')
+        ORDER BY total_assets DESC
+        LIMIT {limit}
+        """
+    else:
+        # Standard dimension rollup
+        # Qualified name structure: default/snowflake/account/DATABASE/SCHEMA/TABLE/COLUMN
+        dimension_map = {
+            PivotDimension.CONNECTOR: "A.CONNECTOR_NAME",
+            PivotDimension.DATABASE: "SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 4)",
+            PivotDimension.SCHEMA: "SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 5)",
+            PivotDimension.ASSET_TYPE: "A.ASSET_TYPE",
+            PivotDimension.CERTIFICATE_STATUS: "COALESCE(A.CERTIFICATE_STATUS, 'NONE')",
+        }
+        dimension_col = dimension_map.get(dimension, "A.CONNECTOR_NAME")
+
+        sql = f"""
+        SELECT
+            {dimension_col} AS dimension_value,
+            COUNT(*) AS total_assets,
+            AVG(CASE WHEN A.DESCRIPTION IS NOT NULL AND TRIM(A.DESCRIPTION) != '' THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_description,
+            AVG(CASE WHEN A.OWNER_USERS IS NOT NULL AND ARRAY_SIZE(A.OWNER_USERS) > 0 THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_owner,
+            AVG(CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_tags,
+            AVG(CASE WHEN UPPER(COALESCE(A.CERTIFICATE_STATUS, '')) = 'VERIFIED' THEN 1.0 ELSE 0.0 END) * 100 AS pct_certified,
+            AVG(CASE WHEN A.HAS_LINEAGE = TRUE THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_lineage,
+            AVG(CASE WHEN A.README_GUID IS NOT NULL THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_readme,
+            AVG(CASE WHEN A.TERM_GUIDS IS NOT NULL AND ARRAY_SIZE(A.TERM_GUIDS) > 0 THEN 1.0 ELSE 0.0 END) * 100 AS pct_with_terms,
+            AVG((CASE WHEN A.DESCRIPTION IS NOT NULL AND TRIM(A.DESCRIPTION) != '' THEN 1 ELSE 0 END +
+                 CASE WHEN A.OWNER_USERS IS NOT NULL AND ARRAY_SIZE(A.OWNER_USERS) > 0 THEN 1 ELSE 0 END +
+                 CASE WHEN A.CERTIFICATE_STATUS IS NOT NULL AND A.CERTIFICATE_STATUS != '' THEN 1 ELSE 0 END +
+                 CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1 ELSE 0 END +
+                 CASE WHEN A.TERM_GUIDS IS NOT NULL AND ARRAY_SIZE(A.TERM_GUIDS) > 0 THEN 1 ELSE 0 END +
+                 CASE WHEN A.README_GUID IS NOT NULL THEN 1 ELSE 0 END +
+                 CASE WHEN A.HAS_LINEAGE = TRUE THEN 1 ELSE 0 END) / 8.0 * 100) AS avg_completeness,
+            AVG((CASE WHEN REGEXP_LIKE(A.ASSET_NAME, '^[\\w\\-\\.]+$') THEN 1 ELSE 0 END +
+                 CASE WHEN A.OWNER_USERS IS NOT NULL AND ARRAY_SIZE(A.OWNER_USERS) > 0 THEN 1 ELSE 0 END +
+                 CASE WHEN A.CERTIFICATE_STATUS IS NOT NULL AND A.CERTIFICATE_STATUS != '' THEN 1 ELSE 0 END +
+                 CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1 ELSE 0 END +
+                 1) / 5.0 * 100) AS avg_accuracy,
+            AVG(CASE WHEN (DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90 OR
+                          DATEDIFF('day', TO_TIMESTAMP(COALESCE(A.SOURCE_UPDATED_AT, 0)/1000), CURRENT_TIMESTAMP()) <= 90)
+                THEN 100.0 ELSE 0.0 END) AS avg_timeliness,
+            AVG((CASE WHEN A.TERM_GUIDS IS NOT NULL AND ARRAY_SIZE(A.TERM_GUIDS) > 0 THEN 1 ELSE 0 END +
+                 CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1 ELSE 0 END +
+                 CASE WHEN ARRAY_SIZE(SPLIT(A.ASSET_QUALIFIED_NAME, '/')) >= 2 THEN 1 ELSE 0 END +
+                 CASE WHEN A.CONNECTOR_QUALIFIED_NAME IS NOT NULL THEN 1 ELSE 0 END) / 4.0 * 100) AS avg_consistency,
+            AVG((CASE WHEN COALESCE(A.POPULARITY_SCORE, 0) > 0 THEN 1 ELSE 0 END +
+                 CASE WHEN COALESCE(R.TABLE_TOTAL_READ_COUNT, 0) > 0 THEN 1 ELSE 0 END +
+                 1) / 3.0 * 100) AS avg_usability
+        FROM ATLAN_GOLD.PUBLIC.ASSETS A
+        LEFT JOIN ATLAN_GOLD.PUBLIC.RELATIONAL_ASSET_DETAILS R ON A.GUID = R.GUID
+        WHERE A.STATUS = 'ACTIVE'
+        {asset_type_filter}
+        GROUP BY {dimension_col}
+        ORDER BY total_assets DESC
+        LIMIT {limit}
+        """
+
+    results = service.execute_query(sql, params=params if params else None)
+
+    # Calculate overall score for each rollup
+    for row in results:
+        overall = (
+            (row.get("AVG_COMPLETENESS") or 0) * 0.25 +
+            (row.get("AVG_ACCURACY") or 0) * 0.20 +
+            (row.get("AVG_TIMELINESS") or 0) * 0.20 +
+            (row.get("AVG_CONSISTENCY") or 0) * 0.15 +
+            (row.get("AVG_USABILITY") or 0) * 0.20
+        )
+        row["AVG_OVERALL"] = round(overall, 2)
+
+    return {
+        "dimension": dimension.value,
+        "filters": {
+            "asset_type": asset_type.value if asset_type != AssetType.ALL else None,
+            "connector": connector,
+        },
+        "rollups": results,
+        "count": len(results),
+    }
+
+
 @router.get("/quality-rollup")
+@handle_mdlh_errors
 async def get_quality_rollup(
     dimension: PivotDimension = PivotDimension.CONNECTOR,
     asset_type: AssetType = AssetType.ALL,
     service: MdlhSessionContext = Depends(require_mdlh_connection),
 ) -> dict[str, Any]:
     """
+    DEPRECATED: Use /quality endpoint instead.
+
     Get aggregated quality scores by dimension.
 
     Computes average scores grouped by the specified dimension
     (connector, database, schema, asset_type, or certificate_status).
     """
     # Map dimension to SQL column
+    # Qualified name structure: default/snowflake/account/DATABASE/SCHEMA/TABLE/COLUMN
     dimension_map = {
         PivotDimension.CONNECTOR: "A.CONNECTOR_NAME",
-        PivotDimension.DATABASE: "SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 1)",
-        PivotDimension.SCHEMA: "SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 2)",
+        PivotDimension.DATABASE: "SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 4)",
+        PivotDimension.SCHEMA: "SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 5)",
         PivotDimension.ASSET_TYPE: "A.ASSET_TYPE",
         PivotDimension.CERTIFICATE_STATUS: "COALESCE(A.CERTIFICATE_STATUS, 'NONE')",
     }
@@ -1160,6 +1804,7 @@ async def get_quality_rollup(
 
 
 @router.get("/lineage/{guid}")
+@handle_mdlh_errors
 async def get_lineage(
     guid: str,
     direction: LineageDirection = LineageDirection.BOTH,
@@ -1212,6 +1857,7 @@ async def get_lineage(
 
 
 @router.get("/connectors", response_model=ConnectorsResponse)
+@handle_mdlh_errors
 async def get_connectors(
     service: MdlhSessionContext = Depends(require_mdlh_connection),
 ) -> ConnectorsResponse:
@@ -1230,6 +1876,7 @@ async def get_connectors(
 
 
 @router.get("/databases")
+@handle_mdlh_errors
 async def get_databases(
     connector: str | None = None,
     service: MdlhSessionContext = Depends(require_mdlh_connection),
@@ -1251,6 +1898,7 @@ async def get_databases(
 
 
 @router.get("/pivot")
+@handle_mdlh_errors
 async def get_pivot_data(
     row_dimension: PivotDimension = PivotDimension.CONNECTOR,
     column_dimension: PivotDimension = PivotDimension.ASSET_TYPE,
@@ -1264,10 +1912,11 @@ async def get_pivot_data(
     Returns data aggregated by two dimensions, suitable for pivot table display.
     """
     # Map dimensions to SQL columns
+    # Qualified name structure: default/snowflake/account/DATABASE/SCHEMA/TABLE/COLUMN
     dimension_map = {
         PivotDimension.CONNECTOR: "A.CONNECTOR_NAME",
-        PivotDimension.DATABASE: "SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 1)",
-        PivotDimension.SCHEMA: "SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 2)",
+        PivotDimension.DATABASE: "SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 4)",
+        PivotDimension.SCHEMA: "SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 5)",
         PivotDimension.ASSET_TYPE: "A.ASSET_TYPE",
         PivotDimension.CERTIFICATE_STATUS: "COALESCE(A.CERTIFICATE_STATUS, 'NONE')",
     }
@@ -1449,15 +2098,15 @@ ORDER BY asset_count DESC
 
 
 SQL_HIERARCHY_DATABASES = """
-SELECT DISTINCT 
-    SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 1) as database_name,
+SELECT DISTINCT
+    SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 4) as database_name,
     MIN(GUID) as sample_guid,
     COUNT(*) as asset_count
 FROM ATLAN_GOLD.PUBLIC.ASSETS
-WHERE STATUS = 'ACTIVE' 
+WHERE STATUS = 'ACTIVE'
   AND CONNECTOR_NAME = %(connector)s
   AND ASSET_QUALIFIED_NAME IS NOT NULL
-  AND ASSET_TYPE IN ('Database', 'Table', 'View', 'MaterializedView', 'Schema')
+  AND UPPER(ASSET_TYPE) IN ('DATABASE', 'TABLE', 'VIEW', 'MATERIALIZEDVIEW', 'SCHEMA')
 GROUP BY database_name
 HAVING database_name IS NOT NULL AND database_name != ''
 ORDER BY asset_count DESC
@@ -1466,58 +2115,66 @@ ORDER BY asset_count DESC
 
 SQL_HIERARCHY_SCHEMAS = """
 SELECT DISTINCT
-    SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 2) as schema_name,
+    SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 5) as schema_name,
     MIN(GUID) as sample_guid,
     COUNT(*) as asset_count
 FROM ATLAN_GOLD.PUBLIC.ASSETS
 WHERE STATUS = 'ACTIVE'
   AND CONNECTOR_NAME = %(connector)s
-  AND SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 1) = %(database)s
+  AND SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 4) = %(database)s
   AND ASSET_QUALIFIED_NAME IS NOT NULL
-  AND ASSET_TYPE IN ('Schema', 'Table', 'View', 'MaterializedView')
+  AND UPPER(ASSET_TYPE) IN ('SCHEMA', 'TABLE', 'VIEW', 'MATERIALIZEDVIEW')
 GROUP BY schema_name
 HAVING schema_name IS NOT NULL AND schema_name != ''
 ORDER BY asset_count DESC
 """
 
-# Query to get all schemas across all databases (for assessment scope selection)
-SQL_ALL_SCHEMAS = """
-SELECT DISTINCT
-    SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 1) as database_name,
-    SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 2) as schema_name,
-    CONCAT(SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 1), '/', SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 2)) as qualified_name,
-    MIN(GUID) as sample_guid,
-    COUNT(*) as asset_count
-FROM ATLAN_GOLD.PUBLIC.ASSETS
-WHERE STATUS = 'ACTIVE'
-  AND ASSET_QUALIFIED_NAME IS NOT NULL
-  AND ASSET_TYPE IN ('Schema', 'Table', 'View', 'MaterializedView')
-GROUP BY database_name, schema_name
-HAVING schema_name IS NOT NULL AND schema_name != ''
-ORDER BY database_name, asset_count DESC
-LIMIT 500
-"""
+# Use SQL_CONNECTORS directly - just reference it
+# (Testing if the issue is query content vs endpoint execution)
 
 
 SQL_HIERARCHY_TABLES = """
-SELECT 
+SELECT
+    -- ==========================================================================
+    -- ALL ASSETS FIELDS (25 columns from MDLH Gold Layer ASSETS view)
+    -- ==========================================================================
     GUID,
     ASSET_NAME,
     ASSET_TYPE,
     ASSET_QUALIFIED_NAME,
     DESCRIPTION,
+    README_GUID,
+    STATUS,
+    -- Lifecycle timestamps
+    CREATED_AT,
+    CREATED_BY,
+    UPDATED_AT,
+    UPDATED_BY,
+    -- Certificate fields
     CERTIFICATE_STATUS,
-    HAS_LINEAGE,
-    POPULARITY_SCORE,
+    CERTIFICATE_UPDATED_BY,
+    CERTIFICATE_UPDATED_AT,
+    -- Connector fields
+    CONNECTOR_NAME,
+    CONNECTOR_QUALIFIED_NAME,
+    -- Source system timestamps
+    SOURCE_CREATED_AT,
+    SOURCE_CREATED_BY,
+    SOURCE_UPDATED_AT,
+    SOURCE_UPDATED_BY,
+    -- Ownership and classification
     OWNER_USERS,
+    TERM_GUIDS,
     TAGS,
-    UPDATED_AT
+    -- Metrics
+    POPULARITY_SCORE,
+    HAS_LINEAGE
 FROM ATLAN_GOLD.PUBLIC.ASSETS
 WHERE STATUS = 'ACTIVE'
   AND CONNECTOR_NAME = %(connector)s
-  AND SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 1) = %(database)s
-  AND SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 2) = %(schema)s
-  AND ASSET_TYPE IN ('Table', 'View', 'MaterializedView')
+  AND SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 4) = %(database)s
+  AND SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 5) = %(schema)s
+  AND UPPER(ASSET_TYPE) IN ('TABLE', 'VIEW', 'MATERIALIZEDVIEW')
 ORDER BY POPULARITY_SCORE DESC NULLS LAST, ASSET_NAME ASC
 LIMIT %(limit)s
 """
@@ -1525,33 +2182,50 @@ LIMIT %(limit)s
 
 SQL_ASSET_DETAIL = """
 SELECT
+    -- ==========================================================================
+    -- ALL ASSETS FIELDS (25 columns from MDLH Gold Layer ASSETS view)
+    -- ==========================================================================
     A.GUID,
     A.ASSET_NAME,
     A.ASSET_TYPE,
     A.ASSET_QUALIFIED_NAME,
-    A.CONNECTOR_NAME,
-    A.CONNECTOR_QUALIFIED_NAME,
     A.DESCRIPTION,
-    A.CERTIFICATE_STATUS,
-    A.HAS_LINEAGE,
-    A.POPULARITY_SCORE,
-    A.OWNER_USERS,
-    A.TAGS,
-    A.TERM_GUIDS,
     A.README_GUID,
-    A.UPDATED_AT,
-    A.SOURCE_UPDATED_AT,
+    A.STATUS,
+    -- Lifecycle timestamps
     A.CREATED_AT,
     A.CREATED_BY,
+    A.UPDATED_AT,
     A.UPDATED_BY,
-    A.STATUS,
+    -- Certificate fields
+    A.CERTIFICATE_STATUS,
+    A.CERTIFICATE_UPDATED_BY,
+    A.CERTIFICATE_UPDATED_AT,
+    -- Connector fields
+    A.CONNECTOR_NAME,
+    A.CONNECTOR_QUALIFIED_NAME,
+    -- Source system timestamps
+    A.SOURCE_CREATED_AT,
+    A.SOURCE_CREATED_BY,
+    A.SOURCE_UPDATED_AT,
+    A.SOURCE_UPDATED_BY,
+    -- Ownership and classification
+    A.OWNER_USERS,
+    A.TERM_GUIDS,
+    A.TAGS,
+    -- Metrics
+    A.POPULARITY_SCORE,
+    A.HAS_LINEAGE,
+    -- ==========================================================================
+    -- RELATIONAL_ASSET_DETAILS fields (extended table/view metadata)
+    -- ==========================================================================
     R.TABLE_COLUMN_COUNT,
     R.TABLE_ROW_COUNT,
     R.TABLE_SIZE_BYTES,
     R.TABLE_TOTAL_READ_COUNT,
-    -- Derive database/schema from qualified name (not in RELATIONAL_ASSET_DETAILS)
-    SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 1) AS DATABASE_NAME,
-    SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 2) AS SCHEMA_NAME
+    -- Derived fields (qualified name: default/snowflake/account/DATABASE/SCHEMA/TABLE/COLUMN)
+    SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 4) AS DATABASE_NAME,
+    SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 5) AS SCHEMA_NAME
 FROM ATLAN_GOLD.PUBLIC.ASSETS A
 LEFT JOIN ATLAN_GOLD.PUBLIC.RELATIONAL_ASSET_DETAILS R ON A.GUID = R.GUID
 WHERE A.GUID = %(guid)s
@@ -1559,28 +2233,48 @@ WHERE A.GUID = %(guid)s
 
 
 SQL_HIERARCHY_ASSETS_IN_CONTEXT = """
-SELECT 
+SELECT
+    -- ==========================================================================
+    -- ALL ASSETS FIELDS (25 columns from MDLH Gold Layer ASSETS view)
+    -- ==========================================================================
     A.GUID,
     A.ASSET_NAME,
     A.ASSET_TYPE,
     A.ASSET_QUALIFIED_NAME,
-    A.CONNECTOR_NAME,
     A.DESCRIPTION,
-    A.CERTIFICATE_STATUS,
-    A.HAS_LINEAGE,
-    A.POPULARITY_SCORE,
-    A.OWNER_USERS,
-    A.TAGS,
-    A.TERM_GUIDS,
     A.README_GUID,
+    A.STATUS,
+    -- Lifecycle timestamps
+    A.CREATED_AT,
+    A.CREATED_BY,
     A.UPDATED_AT,
+    A.UPDATED_BY,
+    -- Certificate fields
+    A.CERTIFICATE_STATUS,
+    A.CERTIFICATE_UPDATED_BY,
+    A.CERTIFICATE_UPDATED_AT,
+    -- Connector fields
+    A.CONNECTOR_NAME,
+    A.CONNECTOR_QUALIFIED_NAME,
+    -- Source system timestamps
+    A.SOURCE_CREATED_AT,
+    A.SOURCE_CREATED_BY,
     A.SOURCE_UPDATED_AT,
-    SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 1) as database_name,
-    SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 2) as schema_name,
-    SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 3) as table_name
+    A.SOURCE_UPDATED_BY,
+    -- Ownership and classification
+    A.OWNER_USERS,
+    A.TERM_GUIDS,
+    A.TAGS,
+    -- Metrics
+    A.POPULARITY_SCORE,
+    A.HAS_LINEAGE,
+    -- Derived hierarchy fields (qualified name: default/snowflake/account/DATABASE/SCHEMA/TABLE/COLUMN)
+    SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 4) as database_name,
+    SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 5) as schema_name,
+    SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 6) as table_name
 FROM ATLAN_GOLD.PUBLIC.ASSETS A
 WHERE A.STATUS = 'ACTIVE'
-  AND A.ASSET_TYPE IN ('Table', 'View', 'MaterializedView')
+  AND UPPER(A.ASSET_TYPE) IN ('TABLE', 'VIEW', 'MATERIALIZEDVIEW')
   {connector_filter}
   {database_filter}
   {schema_filter}
@@ -1591,6 +2285,7 @@ OFFSET {offset}
 
 
 @router.get("/hierarchy/connectors")
+@handle_mdlh_errors
 async def get_hierarchy_connectors(
     service: MdlhSessionContext = Depends(require_mdlh_connection),
 ) -> dict[str, Any]:
@@ -1612,6 +2307,7 @@ async def get_hierarchy_connectors(
 
 
 @router.get("/hierarchy/databases")
+@handle_mdlh_errors
 async def get_hierarchy_databases(
     connector: str,
     service: MdlhSessionContext = Depends(require_mdlh_connection),
@@ -1639,6 +2335,7 @@ async def get_hierarchy_databases(
 
 
 @router.get("/hierarchy/schemas")
+@handle_mdlh_errors
 async def get_hierarchy_schemas(
     connector: str,
     database: str,
@@ -1675,38 +2372,85 @@ class SchemaInfo(BaseModel):
     """Schema information for assessment scope selection."""
     name: str
     database_name: str
+    connector_name: str
     qualified_name: str
     asset_count: int = 0
 
 
 @router.get("/schemas")
+@handle_mdlh_errors
 async def get_all_schemas(
     service: MdlhSessionContext = Depends(require_mdlh_connection),
 ) -> dict[str, Any]:
     """
     Get all schemas across all databases for assessment scope selection.
-    Returns schema name, database name, qualified name, and asset counts.
+
+    NOTE: Filtering by ASSET_TYPE requires a Snowflake warehouse with compute.
+    This endpoint returns schema counts by connector as a fallback when detailed
+    schema listing is not available without compute.
+
+    To get full schema details, ensure your Snowflake warehouse is active and
+    has AUTO_RESUME enabled.
     """
-    results = service.execute_query(SQL_ALL_SCHEMAS)
+    # First try the full query with ASSET_TYPE filter (requires warehouse compute)
+    sql_with_filter = """
+SELECT
+    GUID,
+    ASSET_NAME,
+    ASSET_QUALIFIED_NAME,
+    CONNECTOR_NAME
+FROM ATLAN_GOLD.PUBLIC.ASSETS
+WHERE STATUS = 'ACTIVE' AND CONNECTOR_NAME IS NOT NULL AND ASSET_TYPE = 'Schema'
+ORDER BY CONNECTOR_NAME, ASSET_NAME
+LIMIT 1000
+"""
+    try:
+        results = service.execute_query(sql_with_filter)
 
-    schemas = [
-        SchemaInfo(
-            name=row.get("SCHEMA_NAME", "Unknown"),
-            database_name=row.get("DATABASE_NAME", "Unknown"),
-            qualified_name=row.get("QUALIFIED_NAME", ""),
-            asset_count=row.get("ASSET_COUNT", 0),
-        )
-        for row in results
-        if row.get("SCHEMA_NAME")
-    ]
+        # Parse results
+        schemas = []
+        for row in results:
+            schema_name = row.get("ASSET_NAME")
+            if not schema_name:
+                continue
 
-    return {
-        "schemas": [s.model_dump() for s in schemas],
-        "total": len(schemas),
-    }
+            qualified_name = row.get("ASSET_QUALIFIED_NAME", "")
+            connector_name = row.get("CONNECTOR_NAME", "unknown")
+
+            # Extract database name from qualified_name
+            parts = qualified_name.split("/") if qualified_name else []
+            database_name = parts[3] if len(parts) > 3 else "Unknown"
+
+            schemas.append(SchemaInfo(
+                name=schema_name,
+                database_name=database_name,
+                connector_name=connector_name,
+                qualified_name=qualified_name,
+                asset_count=0,
+            ))
+
+        return {
+            "schemas": [s.model_dump() for s in schemas],
+            "total": len(schemas),
+        }
+
+    except Exception as e:
+        error_msg = str(e)
+        if "No active warehouse" in error_msg:
+            # Warehouse not available - return informative error
+            logger.warning(f"Schemas query requires warehouse compute: {e}")
+            raise HTTPException(
+                status_code=503,
+                detail="Schema listing requires an active Snowflake warehouse. "
+                       "Your warehouse may be suspended or not configured. "
+                       "Use the /api/mdlh/connectors endpoint for data that doesn't require compute."
+            )
+        logger.error(f"Error executing schemas query: {e}")
+        raise HTTPException(status_code=500, detail=f"Query failed: {str(e)}")
 
 
 @router.get("/hierarchy/tables")
+@handle_mdlh_errors
 async def get_hierarchy_tables(
     connector: str,
     database: str,
@@ -1755,6 +2499,7 @@ async def get_hierarchy_tables(
 
 
 @router.get("/asset/{guid}")
+@handle_mdlh_errors
 async def get_asset_detail(
     guid: str,
     service: MdlhSessionContext = Depends(require_mdlh_connection),
@@ -1803,6 +2548,7 @@ async def get_asset_detail(
 
 
 @router.get("/hierarchy/assets")
+@handle_mdlh_errors
 async def get_hierarchy_assets(
     connector: str | None = None,
     database: str | None = None,
@@ -1812,42 +2558,65 @@ async def get_hierarchy_assets(
     service: MdlhSessionContext = Depends(require_mdlh_connection),
 ) -> dict[str, Any]:
     """
+    DEPRECATED: Use /assets endpoint instead with database/schema filters.
+
+    Example: GET /assets?connector=snowflake&database=MYDB&schema=PUBLIC
+
     Get assets within a hierarchy context (connection, database, or schema).
     Used for loading assets for quality scoring.
     """
-    # Build filters
-    connector_filter = ""
-    database_filter = ""
-    schema_filter = ""
+    # Build parameterized query to prevent SQL injection
+    params: dict[str, Any] = {"limit": limit, "offset": offset}
+    conditions = ["A.STATUS = 'ACTIVE'", "A.ASSET_TYPE IN ('Table', 'View', 'MaterializedView')"]
 
     if connector:
-        connector_filter = f"AND A.CONNECTOR_NAME = '{connector}'"
+        conditions.append("A.CONNECTOR_NAME = %(connector)s")
+        params["connector"] = connector
     if database:
-        database_filter = f"AND SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 1) = '{database}'"
+        conditions.append("SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 4) = %(database)s")
+        params["database"] = database
     if schema:
-        schema_filter = f"AND SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 2) = '{schema}'"
+        conditions.append("SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 5) = %(schema)s")
+        params["schema"] = schema
 
-    sql = SQL_HIERARCHY_ASSETS_IN_CONTEXT.format(
-        connector_filter=connector_filter,
-        database_filter=database_filter,
-        schema_filter=schema_filter,
-        limit=limit,
-        offset=offset,
-    )
+    where_clause = " AND ".join(conditions)
 
-    results = service.execute_query(sql)
+    sql = f"""
+    SELECT
+        A.GUID,
+        A.ASSET_NAME,
+        A.ASSET_TYPE,
+        A.ASSET_QUALIFIED_NAME,
+        A.CONNECTOR_NAME,
+        A.DESCRIPTION,
+        A.CERTIFICATE_STATUS,
+        A.HAS_LINEAGE,
+        A.POPULARITY_SCORE,
+        A.OWNER_USERS,
+        A.TAGS,
+        A.TERM_GUIDS,
+        A.README_GUID,
+        A.UPDATED_AT,
+        A.SOURCE_UPDATED_AT,
+        SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 4) as database_name,
+        SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 5) as schema_name,
+        SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 6) as table_name
+    FROM ATLAN_GOLD.PUBLIC.ASSETS A
+    WHERE {where_clause}
+    ORDER BY A.POPULARITY_SCORE DESC NULLS LAST, A.UPDATED_AT DESC
+    LIMIT %(limit)s
+    OFFSET %(offset)s
+    """
 
-    # Also get total count for pagination
+    results = service.execute_query(sql, params=params)
+
+    # Also get total count for pagination (using same parameterized conditions)
     count_sql = f"""
     SELECT COUNT(*) as total_count
     FROM ATLAN_GOLD.PUBLIC.ASSETS A
-    WHERE A.STATUS = 'ACTIVE'
-      AND A.ASSET_TYPE IN ('Table', 'View', 'MaterializedView')
-      {connector_filter}
-      {database_filter}
-      {schema_filter}
+    WHERE {where_clause}
     """
-    count_result = service.execute_query_single(count_sql)
+    count_result = service.execute_query_single(count_sql, params=params)
     total_count = count_result.get("TOTAL_COUNT", 0) if count_result else 0
 
     return {
@@ -1897,6 +2666,7 @@ class LineageRollupResult(BaseModel):
 
 
 @router.get("/lineage-metrics")
+@handle_mdlh_errors
 async def get_lineage_metrics(
     asset_type: AssetType = AssetType.ALL,
     connector: str | None = None,
@@ -1962,6 +2732,7 @@ async def get_lineage_metrics(
 
 
 @router.get("/lineage-rollup")
+@handle_mdlh_errors
 async def get_lineage_rollup(
     dimension: PivotDimension = PivotDimension.CONNECTOR,
     asset_type: AssetType = AssetType.ALL,
@@ -1973,10 +2744,11 @@ async def get_lineage_rollup(
     Returns pct_has_upstream, pct_has_downstream, pct_full_lineage, pct_orphaned
     grouped by the specified dimension.
     """
+    # Qualified name structure: default/snowflake/account/DATABASE/SCHEMA/TABLE/COLUMN
     dimension_map = {
         PivotDimension.CONNECTOR: "A.CONNECTOR_NAME",
-        PivotDimension.DATABASE: "SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 1)",
-        PivotDimension.SCHEMA: "SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 2)",
+        PivotDimension.DATABASE: "SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 4)",
+        PivotDimension.SCHEMA: "SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 5)",
         PivotDimension.ASSET_TYPE: "A.ASSET_TYPE",
         PivotDimension.CERTIFICATE_STATUS: "COALESCE(A.CERTIFICATE_STATUS, 'NONE')",
     }
@@ -2019,6 +2791,7 @@ async def get_lineage_rollup(
 
 
 @router.get("/owners")
+@handle_mdlh_errors
 async def get_owners(
     limit: int = Query(500, ge=1, le=1000),
     service: MdlhSessionContext = Depends(require_mdlh_connection),
@@ -2041,14 +2814,18 @@ async def get_owners(
 
 
 @router.get("/quality-rollup/by-owner")
+@handle_mdlh_errors
 async def get_quality_rollup_by_owner(
     asset_type: AssetType = AssetType.ALL,
     limit: int = Query(100, ge=1, le=500),
     service: MdlhSessionContext = Depends(require_mdlh_connection),
 ) -> dict[str, Any]:
     """
-    Get quality scores aggregated by owner.
+    DEPRECATED: Use /quality endpoint instead with dimension=owner.
 
+    Example: GET /quality?dimension=owner&asset_type=Table
+
+    Get quality scores aggregated by owner.
     Uses LATERAL FLATTEN to handle the OWNER_USERS array field.
     Assets with multiple owners appear in each owner's aggregation.
     """
@@ -2106,6 +2883,7 @@ class SnapshotResult(BaseModel):
 
 
 @router.get("/snapshot")
+@handle_mdlh_errors
 async def get_current_snapshot(
     dimension: PivotDimension = PivotDimension.CONNECTOR,
     asset_type: AssetType = AssetType.ALL,
@@ -2117,10 +2895,11 @@ async def get_current_snapshot(
     This captures the current quality metrics for all assets,
     suitable for storing as a historical data point.
     """
+    # Qualified name structure: default/snowflake/account/DATABASE/SCHEMA/TABLE/COLUMN
     dimension_map = {
         PivotDimension.CONNECTOR: "A.CONNECTOR_NAME",
-        PivotDimension.DATABASE: "SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 1)",
-        PivotDimension.SCHEMA: "SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 2)",
+        PivotDimension.DATABASE: "SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 4)",
+        PivotDimension.SCHEMA: "SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 5)",
         PivotDimension.ASSET_TYPE: "A.ASSET_TYPE",
         PivotDimension.CERTIFICATE_STATUS: "COALESCE(A.CERTIFICATE_STATUS, 'NONE')",
     }
@@ -2231,6 +3010,7 @@ async def get_current_snapshot(
 
 
 @router.get("/trends/coverage")
+@handle_mdlh_errors
 async def get_coverage_trends(
     days: int = Query(30, ge=1, le=365),
     service: MdlhSessionContext = Depends(require_mdlh_connection),
@@ -2280,11 +3060,12 @@ async def get_coverage_trends(
 
 
 # ============================================
-# ENHANCED SEARCH ENDPOINT
+# ENHANCED SEARCH ENDPOINT (DEPRECATED)
 # ============================================
 
 
 @router.get("/search")
+@handle_mdlh_errors
 async def enhanced_search(
     query: str,
     asset_type: AssetType = AssetType.ALL,
@@ -2294,8 +3075,11 @@ async def enhanced_search(
     service: MdlhSessionContext = Depends(require_mdlh_connection),
 ) -> dict[str, Any]:
     """
-    Enhanced search with relevance scoring.
+    DEPRECATED: Use /assets endpoint instead with query parameter.
 
+    Example: GET /assets?query=customer&include_tags=true&connector=snowflake
+
+    Enhanced search with relevance scoring.
     Searches asset names, descriptions, and optionally tags.
     Results are ranked by relevance score.
     """
@@ -2361,3 +3145,1082 @@ async def enhanced_search(
             "include_tags": include_tags,
         },
     }
+
+
+# ============================================
+# SCHEMA INTROSPECTION ENDPOINTS
+# ============================================
+# These endpoints support MDLH field reconciliation by introspecting
+# the actual Snowflake schema and comparing to expected field mappings.
+
+
+class MdlhSchemaColumn(BaseModel):
+    """Schema column metadata from INFORMATION_SCHEMA."""
+
+    table_name: str
+    column_name: str
+    data_type: str
+    is_nullable: bool
+    comment: str | None = None
+
+
+class FieldReconciliation(BaseModel):
+    """Result of reconciling a field against the MDLH schema."""
+
+    field_id: str
+    field_name: str
+    category: str
+    expected_mdlh_column: str | None
+    expected_mdlh_table: str | None
+    actual_column: MdlhSchemaColumn | None
+    status: str  # 'available', 'missing', 'type_mismatch', 'no_mapping'
+
+
+class ReconciliationSummary(BaseModel):
+    """Summary of schema reconciliation results."""
+
+    total_expected: int
+    available: int
+    missing: int
+    type_mismatch: int
+    no_mapping: int
+    by_category: dict[str, dict[str, int]]
+    by_table: dict[str, dict[str, int]]
+
+
+class MdlhSchemaResult(BaseModel):
+    """Complete schema introspection result."""
+
+    discovered_at: str
+    columns: list[MdlhSchemaColumn]
+    reconciliation: list[FieldReconciliation]
+    summary: ReconciliationSummary
+
+
+# SQL to fetch schema metadata from INFORMATION_SCHEMA
+SQL_SCHEMA_COLUMNS = """
+SELECT
+    TABLE_NAME,
+    COLUMN_NAME,
+    DATA_TYPE,
+    IS_NULLABLE,
+    COMMENT
+FROM ATLAN_GOLD.INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = 'PUBLIC'
+ORDER BY TABLE_NAME, ORDINAL_POSITION
+"""
+
+# Known field mappings from unified-fields.ts
+# This maps canonical field IDs to their MDLH column and table
+FIELD_MDLH_MAPPINGS = {
+    'owner_users': {'column': 'OWNER_USERS', 'table': 'ASSETS'},
+    'owner_groups': {'column': 'OWNER_GROUPS', 'table': 'ASSETS'},  # NOTE: Missing in MDLH
+    'description': {'column': 'DESCRIPTION', 'table': 'ASSETS'},
+    'readme': {'column': 'README_GUID', 'table': 'ASSETS'},
+    'glossary_terms': {'column': 'TERM_GUIDS', 'table': 'ASSETS'},
+    'has_lineage': {'column': 'HAS_LINEAGE', 'table': 'ASSETS'},
+    'classifications': {'column': 'TAGS', 'table': 'ASSETS'},
+    'certificate_status': {'column': 'CERTIFICATE_STATUS', 'table': 'ASSETS'},
+    'popularity_score': {'column': 'POPULARITY_SCORE', 'table': 'ASSETS'},
+    'created_at': {'column': 'CREATED_AT', 'table': 'ASSETS'},
+    'updated_at': {'column': 'UPDATED_AT', 'table': 'ASSETS'},
+    'created_by': {'column': 'CREATED_BY', 'table': 'ASSETS'},
+    'updated_by': {'column': 'UPDATED_BY', 'table': 'ASSETS'},
+    'certificate_updated_at': {'column': 'CERTIFICATE_UPDATED_AT', 'table': 'ASSETS'},
+    'certificate_updated_by': {'column': 'CERTIFICATE_UPDATED_BY', 'table': 'ASSETS'},
+    'source_created_at': {'column': 'SOURCE_CREATED_AT', 'table': 'ASSETS'},
+    'source_updated_at': {'column': 'SOURCE_UPDATED_AT', 'table': 'ASSETS'},
+    'connector_name': {'column': 'CONNECTOR_NAME', 'table': 'ASSETS'},
+    'connector_qualified_name': {'column': 'CONNECTOR_QUALIFIED_NAME', 'table': 'ASSETS'},
+    # Relational asset details
+    'column_count': {'column': 'TABLE_COLUMN_COUNT', 'table': 'RELATIONAL_ASSET_DETAILS'},
+    'row_count': {'column': 'TABLE_ROW_COUNT', 'table': 'RELATIONAL_ASSET_DETAILS'},
+    'size_bytes': {'column': 'TABLE_SIZE_BYTES', 'table': 'RELATIONAL_ASSET_DETAILS'},
+    'read_count': {'column': 'TABLE_TOTAL_READ_COUNT', 'table': 'RELATIONAL_ASSET_DETAILS'},
+}
+
+# Field categories for grouping
+FIELD_CATEGORIES = {
+    'owner_users': 'ownership',
+    'owner_groups': 'ownership',
+    'description': 'documentation',
+    'readme': 'documentation',
+    'glossary_terms': 'documentation',
+    'has_lineage': 'lineage',
+    'classifications': 'classification',
+    'certificate_status': 'governance',
+    'popularity_score': 'usage',
+    'created_at': 'lifecycle',
+    'updated_at': 'lifecycle',
+    'created_by': 'lifecycle',
+    'updated_by': 'lifecycle',
+    'certificate_updated_at': 'lifecycle',
+    'certificate_updated_by': 'lifecycle',
+    'source_created_at': 'lifecycle',
+    'source_updated_at': 'lifecycle',
+    'connector_name': 'hierarchy',
+    'connector_qualified_name': 'hierarchy',
+    'column_count': 'statistics',
+    'row_count': 'statistics',
+    'size_bytes': 'statistics',
+    'read_count': 'usage',
+}
+
+
+@router.get("/schema")
+@handle_mdlh_errors
+async def get_mdlh_schema(
+    service: MdlhSessionContext = Depends(require_mdlh_connection),
+) -> dict[str, Any]:
+    """
+    Get MDLH Gold Layer schema metadata.
+
+    Returns all columns from ATLAN_GOLD.PUBLIC tables/views with their
+    data types and nullability information.
+    """
+    from datetime import datetime
+
+    results = service.execute_query(SQL_SCHEMA_COLUMNS)
+
+    columns = [
+        MdlhSchemaColumn(
+            table_name=row.get("TABLE_NAME", ""),
+            column_name=row.get("COLUMN_NAME", ""),
+            data_type=row.get("DATA_TYPE", ""),
+            is_nullable=row.get("IS_NULLABLE", "YES") == "YES",
+            comment=row.get("COMMENT"),
+        )
+        for row in results
+    ]
+
+    # Group by table for convenience
+    by_table: dict[str, list[dict]] = {}
+    for col in columns:
+        if col.table_name not in by_table:
+            by_table[col.table_name] = []
+        by_table[col.table_name].append(col.model_dump())
+
+    return {
+        "discovered_at": datetime.utcnow().isoformat() + "Z",
+        "columns": [c.model_dump() for c in columns],
+        "column_count": len(columns),
+        "tables": list(by_table.keys()),
+        "table_count": len(by_table),
+        "by_table": by_table,
+    }
+
+
+@router.get("/schema/reconcile")
+@handle_mdlh_errors
+async def reconcile_mdlh_schema(
+    service: MdlhSessionContext = Depends(require_mdlh_connection),
+) -> dict[str, Any]:
+    """
+    Reconcile expected field mappings against actual MDLH schema.
+
+    Compares the fields defined in unified-fields.ts with their expected
+    MDLH column mappings against the actual schema. Returns:
+    - available: Column exists in MDLH schema
+    - missing: Column does NOT exist in MDLH schema
+    - type_mismatch: Column exists but type doesn't match expected
+    - no_mapping: Field doesn't have an MDLH mapping defined
+    """
+    from datetime import datetime
+
+    # Fetch actual schema
+    results = service.execute_query(SQL_SCHEMA_COLUMNS)
+
+    # Build lookup: (TABLE_NAME, COLUMN_NAME) -> column info
+    schema_lookup: dict[tuple[str, str], MdlhSchemaColumn] = {}
+    for row in results:
+        key = (row.get("TABLE_NAME", ""), row.get("COLUMN_NAME", ""))
+        schema_lookup[key] = MdlhSchemaColumn(
+            table_name=row.get("TABLE_NAME", ""),
+            column_name=row.get("COLUMN_NAME", ""),
+            data_type=row.get("DATA_TYPE", ""),
+            is_nullable=row.get("IS_NULLABLE", "YES") == "YES",
+            comment=row.get("COMMENT"),
+        )
+
+    # Reconcile each known field
+    reconciliation: list[FieldReconciliation] = []
+    summary = {
+        'total_expected': 0,
+        'available': 0,
+        'missing': 0,
+        'type_mismatch': 0,
+        'no_mapping': 0,
+    }
+    by_category: dict[str, dict[str, int]] = {}
+    by_table: dict[str, dict[str, int]] = {}
+
+    for field_id, mapping in FIELD_MDLH_MAPPINGS.items():
+        expected_column = mapping['column']
+        expected_table = mapping['table']
+        category = FIELD_CATEGORIES.get(field_id, 'other')
+
+        # Initialize category stats if needed
+        if category not in by_category:
+            by_category[category] = {'expected': 0, 'available': 0, 'missing': 0}
+        if expected_table not in by_table:
+            by_table[expected_table] = {'expected': 0, 'available': 0, 'missing': 0}
+
+        summary['total_expected'] += 1
+        by_category[category]['expected'] += 1
+        by_table[expected_table]['expected'] += 1
+
+        # Check if column exists in actual schema
+        lookup_key = (expected_table, expected_column)
+        actual_column = schema_lookup.get(lookup_key)
+
+        if actual_column:
+            status = 'available'
+            summary['available'] += 1
+            by_category[category]['available'] += 1
+            by_table[expected_table]['available'] += 1
+        else:
+            status = 'missing'
+            summary['missing'] += 1
+            by_category[category]['missing'] += 1
+            by_table[expected_table]['missing'] += 1
+
+        reconciliation.append(FieldReconciliation(
+            field_id=field_id,
+            field_name=field_id.replace('_', ' ').title(),
+            category=category,
+            expected_mdlh_column=expected_column,
+            expected_mdlh_table=expected_table,
+            actual_column=actual_column,
+            status=status,
+        ))
+
+    return {
+        "discovered_at": datetime.utcnow().isoformat() + "Z",
+        "reconciliation": [r.model_dump() for r in reconciliation],
+        "summary": {
+            **summary,
+            "by_category": by_category,
+            "by_table": by_table,
+        },
+    }
+
+
+# ============================================
+# COMPLETENESS & ENRICHMENT TRACKING
+# ============================================
+# These endpoints track metadata completeness and enrichment
+# including CUSTOM_METADATA attributes (e.g., AI Readiness)
+
+SQL_COMPLETENESS_STATS = """
+-- Completeness and enrichment stats by asset type
+-- Joins ASSETS with CUSTOM_METADATA to count CM property enrichment
+WITH cm_stats AS (
+    SELECT
+        alt.guid as asset_guid,
+        SUM(
+            CASE
+                WHEN cm.attribute_value IS NULL THEN 0
+                WHEN IS_ARRAY(TRY_PARSE_JSON(cm.attribute_value)) THEN
+                    CASE WHEN ARRAY_SIZE(TRY_PARSE_JSON(cm.attribute_value)) > 0 THEN 1 ELSE 0 END
+                WHEN TYPEOF(TRY_PARSE_JSON(cm.attribute_value)) <> 'ARRAY' AND cm.attribute_value IS NOT NULL THEN 1
+                ELSE 0
+            END
+        ) as linked_cm_prop_count,
+        COUNT(DISTINCT cm.custom_metadata_name) as distinct_cm_count
+    FROM ATLAN_GOLD.PUBLIC.ASSETS alt
+    LEFT JOIN ATLAN_GOLD.PUBLIC.CUSTOM_METADATA cm ON alt.guid = cm.asset_guid
+    WHERE alt.STATUS = 'ACTIVE'
+    {cm_filter}
+    GROUP BY alt.guid
+)
+SELECT
+    A.ASSET_TYPE as asset_type,
+    COUNT(*) AS total_count,
+
+    -- Description stats
+    COUNT(CASE WHEN A.DESCRIPTION IS NOT NULL AND TRIM(A.DESCRIPTION) != '' THEN 1 END) AS with_description,
+    COUNT(CASE WHEN A.DESCRIPTION IS NULL OR TRIM(A.DESCRIPTION) = '' THEN 1 END) AS without_description,
+
+    -- Certificate stats
+    COUNT(CASE WHEN UPPER(COALESCE(A.CERTIFICATE_STATUS, '')) = 'VERIFIED' THEN 1 END) AS certified,
+    COUNT(CASE WHEN UPPER(COALESCE(A.CERTIFICATE_STATUS, '')) != 'VERIFIED' OR A.CERTIFICATE_STATUS IS NULL THEN 1 END) AS uncertified,
+
+    -- Tags stats
+    COUNT(CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1 END) AS with_tags,
+    COUNT(CASE WHEN A.TAGS IS NULL OR ARRAY_SIZE(A.TAGS) = 0 THEN 1 END) AS without_tags,
+
+    -- Owner stats
+    COUNT(CASE WHEN A.OWNER_USERS IS NOT NULL AND ARRAY_SIZE(A.OWNER_USERS) > 0 THEN 1 END) AS with_owners,
+    COUNT(CASE WHEN A.OWNER_USERS IS NULL OR ARRAY_SIZE(A.OWNER_USERS) = 0 THEN 1 END) AS without_owners,
+
+    -- Glossary terms stats
+    COUNT(CASE WHEN A.TERM_GUIDS IS NOT NULL AND ARRAY_SIZE(A.TERM_GUIDS) > 0 THEN 1 END) AS with_terms,
+    COUNT(CASE WHEN A.TERM_GUIDS IS NULL OR ARRAY_SIZE(A.TERM_GUIDS) = 0 THEN 1 END) AS without_terms,
+
+    -- README stats
+    COUNT(CASE WHEN A.README_GUID IS NOT NULL THEN 1 END) AS with_readme,
+    COUNT(CASE WHEN A.README_GUID IS NULL THEN 1 END) AS without_readme,
+
+    -- Lineage stats
+    COUNT(CASE WHEN A.HAS_LINEAGE = TRUE THEN 1 END) AS with_lineage,
+    COUNT(CASE WHEN A.HAS_LINEAGE = FALSE OR A.HAS_LINEAGE IS NULL THEN 1 END) AS without_lineage,
+
+    -- Custom Metadata enrichment stats
+    COUNT(CASE WHEN COALESCE(cm.linked_cm_prop_count, 0) > 0 THEN 1 END) AS with_custom_metadata,
+    COUNT(CASE WHEN COALESCE(cm.linked_cm_prop_count, 0) = 0 THEN 1 END) AS without_custom_metadata,
+
+    -- Overall enrichment score (out of 8 checks)
+    AVG(
+        (CASE WHEN A.DESCRIPTION IS NOT NULL AND TRIM(A.DESCRIPTION) != '' THEN 1.0 ELSE 0.0 END +
+         CASE WHEN A.OWNER_USERS IS NOT NULL AND ARRAY_SIZE(A.OWNER_USERS) > 0 THEN 1.0 ELSE 0.0 END +
+         CASE WHEN UPPER(COALESCE(A.CERTIFICATE_STATUS, '')) = 'VERIFIED' THEN 1.0 ELSE 0.0 END +
+         CASE WHEN A.TAGS IS NOT NULL AND ARRAY_SIZE(A.TAGS) > 0 THEN 1.0 ELSE 0.0 END +
+         CASE WHEN A.TERM_GUIDS IS NOT NULL AND ARRAY_SIZE(A.TERM_GUIDS) > 0 THEN 1.0 ELSE 0.0 END +
+         CASE WHEN A.README_GUID IS NOT NULL THEN 1.0 ELSE 0.0 END +
+         CASE WHEN A.HAS_LINEAGE = TRUE THEN 1.0 ELSE 0.0 END +
+         CASE WHEN COALESCE(cm.linked_cm_prop_count, 0) > 0 THEN 1.0 ELSE 0.0 END
+        ) / 8.0 * 100
+    ) AS avg_enrichment_score
+
+FROM ATLAN_GOLD.PUBLIC.ASSETS A
+LEFT JOIN cm_stats cm ON A.guid = cm.asset_guid
+WHERE A.STATUS = 'ACTIVE'
+{asset_type_filter}
+{connector_filter}
+{database_filter}
+{schema_filter}
+GROUP BY A.ASSET_TYPE
+ORDER BY A.ASSET_TYPE
+"""
+
+
+class CompletenessStats(BaseModel):
+    """Completeness statistics for an asset type."""
+
+    asset_type: str
+    total_count: int
+    with_description: int
+    without_description: int
+    certified: int
+    uncertified: int
+    with_tags: int
+    without_tags: int
+    with_owners: int
+    without_owners: int
+    with_terms: int
+    without_terms: int
+    with_readme: int
+    without_readme: int
+    with_lineage: int
+    without_lineage: int
+    with_custom_metadata: int
+    without_custom_metadata: int
+    avg_enrichment_score: float
+
+
+@router.get("/completeness")
+@handle_mdlh_errors
+async def get_completeness_stats(
+    asset_types: str | None = Query(
+        None,
+        description="Comma-separated asset types (e.g., 'Table,Schema,View'). Default: Table,View,Schema"
+    ),
+    cm_names: str | None = Query(
+        None,
+        description="Comma-separated Custom Metadata names to check (e.g., 'AI Readiness,Data Quality'). Default: all CM"
+    ),
+    connector: str | None = Query(None, description="Filter by connector name"),
+    database: str | None = Query(None, description="Filter by database name"),
+    schema_name: str | None = Query(None, alias="schema", description="Filter by schema name"),
+    service: MdlhSessionContext = Depends(require_mdlh_connection),
+) -> dict[str, Any]:
+    """
+    Get metadata completeness and enrichment statistics by asset type.
+
+    This endpoint provides a comprehensive view of:
+    - Description coverage
+    - Certification status
+    - Tag coverage
+    - Owner assignment
+    - Glossary term linkage
+    - README documentation
+    - Lineage coverage
+    - Custom Metadata enrichment (configurable by CM name)
+
+    Use this to build governance and enrichment scorecards.
+    """
+    from datetime import datetime
+
+    # Build asset type filter
+    asset_type_list = ["Table", "View", "Schema"]  # defaults
+    if asset_types:
+        asset_type_list = [t.strip() for t in asset_types.split(",")]
+
+    type_values = ", ".join(f"'{escape_sql_string(t)}'" for t in asset_type_list)
+    asset_type_filter = f"AND A.ASSET_TYPE IN ({type_values})"
+
+    # Build CM filter (for the cm_stats CTE)
+    cm_filter = ""
+    if cm_names:
+        cm_name_list = [n.strip() for n in cm_names.split(",")]
+        cm_values = ", ".join(f"'{escape_sql_string(n)}'" for n in cm_name_list)
+        cm_filter = f"AND (cm.custom_metadata_name IS NULL OR cm.custom_metadata_name IN ({cm_values}))"
+
+    # Build context filters
+    connector_filter = ""
+    if connector:
+        connector_filter = f"AND A.CONNECTOR_NAME = '{escape_sql_string(connector)}'"
+
+    database_filter = ""
+    if database:
+        database_filter = f"AND SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 4) = '{escape_sql_string(database)}'"
+
+    schema_filter = ""
+    if schema_name:
+        schema_filter = f"AND SPLIT_PART(A.ASSET_QUALIFIED_NAME, '/', 5) = '{escape_sql_string(schema_name)}'"
+
+    sql = SQL_COMPLETENESS_STATS.format(
+        cm_filter=cm_filter,
+        asset_type_filter=asset_type_filter,
+        connector_filter=connector_filter,
+        database_filter=database_filter,
+        schema_filter=schema_filter,
+    )
+
+    results = service.execute_query(sql)
+
+    stats = []
+    totals = {
+        "total_count": 0,
+        "with_description": 0,
+        "without_description": 0,
+        "certified": 0,
+        "uncertified": 0,
+        "with_tags": 0,
+        "without_tags": 0,
+        "with_owners": 0,
+        "without_owners": 0,
+        "with_terms": 0,
+        "without_terms": 0,
+        "with_readme": 0,
+        "without_readme": 0,
+        "with_lineage": 0,
+        "without_lineage": 0,
+        "with_custom_metadata": 0,
+        "without_custom_metadata": 0,
+    }
+
+    for row in results:
+        stat = CompletenessStats(
+            asset_type=row.get("ASSET_TYPE", "Unknown"),
+            total_count=row.get("TOTAL_COUNT", 0) or 0,
+            with_description=row.get("WITH_DESCRIPTION", 0) or 0,
+            without_description=row.get("WITHOUT_DESCRIPTION", 0) or 0,
+            certified=row.get("CERTIFIED", 0) or 0,
+            uncertified=row.get("UNCERTIFIED", 0) or 0,
+            with_tags=row.get("WITH_TAGS", 0) or 0,
+            without_tags=row.get("WITHOUT_TAGS", 0) or 0,
+            with_owners=row.get("WITH_OWNERS", 0) or 0,
+            without_owners=row.get("WITHOUT_OWNERS", 0) or 0,
+            with_terms=row.get("WITH_TERMS", 0) or 0,
+            without_terms=row.get("WITHOUT_TERMS", 0) or 0,
+            with_readme=row.get("WITH_README", 0) or 0,
+            without_readme=row.get("WITHOUT_README", 0) or 0,
+            with_lineage=row.get("WITH_LINEAGE", 0) or 0,
+            without_lineage=row.get("WITHOUT_LINEAGE", 0) or 0,
+            with_custom_metadata=row.get("WITH_CUSTOM_METADATA", 0) or 0,
+            without_custom_metadata=row.get("WITHOUT_CUSTOM_METADATA", 0) or 0,
+            avg_enrichment_score=round(row.get("AVG_ENRICHMENT_SCORE", 0) or 0, 2),
+        )
+        stats.append(stat)
+
+        # Accumulate totals
+        for key in totals:
+            totals[key] += getattr(stat, key)
+
+    # Calculate overall enrichment score
+    overall_enrichment = 0
+    if totals["total_count"] > 0:
+        overall_enrichment = round(
+            (
+                totals["with_description"] +
+                totals["with_owners"] +
+                totals["certified"] +
+                totals["with_tags"] +
+                totals["with_terms"] +
+                totals["with_readme"] +
+                totals["with_lineage"] +
+                totals["with_custom_metadata"]
+            ) / (totals["total_count"] * 8) * 100,
+            2
+        )
+
+    return {
+        "discovered_at": datetime.utcnow().isoformat() + "Z",
+        "filters": {
+            "asset_types": asset_type_list,
+            "cm_names": cm_names.split(",") if cm_names else None,
+            "connector": connector,
+            "database": database,
+            "schema": schema_name,
+        },
+        "stats": [s.model_dump() for s in stats],
+        "totals": {
+            **totals,
+            "overall_enrichment_score": overall_enrichment,
+        },
+    }
+
+
+# ============================================
+# DEBUG ENDPOINTS FOR SCHEMA DISCOVERY
+# ============================================
+
+SQL_DEBUG_QUALIFIED_NAMES = """
+-- Sample qualified names to understand structure
+SELECT DISTINCT
+    ASSET_TYPE,
+    CONNECTOR_NAME,
+    ASSET_QUALIFIED_NAME,
+    SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 1) as segment_1,
+    SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 2) as segment_2,
+    SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 3) as segment_3,
+    SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 4) as segment_4,
+    SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 5) as segment_5,
+    ARRAY_SIZE(SPLIT(ASSET_QUALIFIED_NAME, '/')) as segment_count
+FROM ATLAN_GOLD.PUBLIC.ASSETS
+WHERE STATUS = 'ACTIVE'
+  AND ASSET_QUALIFIED_NAME IS NOT NULL
+{connector_filter}
+ORDER BY ASSET_TYPE, CONNECTOR_NAME
+LIMIT 100
+"""
+
+SQL_MDLH_OBJECTS = """
+-- List all tables and views in ATLAN_GOLD.PUBLIC
+SELECT
+    TABLE_NAME,
+    TABLE_TYPE,
+    ROW_COUNT,
+    COMMENT
+FROM ATLAN_GOLD.INFORMATION_SCHEMA.TABLES
+WHERE TABLE_SCHEMA = 'PUBLIC'
+ORDER BY TABLE_TYPE, TABLE_NAME
+"""
+
+SQL_ASSET_TYPE_STATS = """
+-- Asset type distribution
+SELECT
+    ASSET_TYPE,
+    CONNECTOR_NAME,
+    COUNT(*) as asset_count,
+    COUNT(DISTINCT SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 1)) as distinct_segment_1,
+    COUNT(DISTINCT SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 2)) as distinct_segment_2,
+    COUNT(DISTINCT SPLIT_PART(ASSET_QUALIFIED_NAME, '/', 3)) as distinct_segment_3
+FROM ATLAN_GOLD.PUBLIC.ASSETS
+WHERE STATUS = 'ACTIVE'
+GROUP BY ASSET_TYPE, CONNECTOR_NAME
+ORDER BY asset_count DESC
+"""
+
+
+@router.get("/debug/qualified-names")
+@handle_mdlh_errors
+async def debug_qualified_names(
+    connector: str | None = Query(None, description="Filter by connector name"),
+    service: MdlhSessionContext = Depends(require_mdlh_connection),
+) -> dict[str, Any]:
+    """
+    Debug endpoint to examine qualified name structure.
+
+    Returns sample qualified names and their parsed segments to help
+    understand the DB >> Schema >> Table hierarchy structure.
+    """
+    connector_filter = ""
+    if connector:
+        connector_filter = f"AND CONNECTOR_NAME = '{escape_sql_string(connector)}'"
+
+    sql = SQL_DEBUG_QUALIFIED_NAMES.format(connector_filter=connector_filter)
+    results = service.execute_query(sql)
+
+    samples = []
+    for row in results:
+        samples.append({
+            "asset_type": row.get("ASSET_TYPE"),
+            "connector": row.get("CONNECTOR_NAME"),
+            "qualified_name": row.get("ASSET_QUALIFIED_NAME"),
+            "segments": {
+                "1": row.get("SEGMENT_1"),
+                "2": row.get("SEGMENT_2"),
+                "3": row.get("SEGMENT_3"),
+                "4": row.get("SEGMENT_4"),
+                "5": row.get("SEGMENT_5"),
+            },
+            "segment_count": row.get("SEGMENT_COUNT"),
+        })
+
+    return {
+        "samples": samples,
+        "count": len(samples),
+        "note": "Use this to understand qualified name structure for hierarchy navigation",
+    }
+
+
+@router.get("/debug/mdlh-objects")
+@handle_mdlh_errors
+async def debug_mdlh_objects(
+    service: MdlhSessionContext = Depends(require_mdlh_connection),
+) -> dict[str, Any]:
+    """
+    List all tables and views available in ATLAN_GOLD.PUBLIC.
+
+    This shows what MDLH Gold Layer objects we can query.
+    """
+    results = service.execute_query(SQL_MDLH_OBJECTS)
+
+    objects = []
+    for row in results:
+        objects.append({
+            "name": row.get("TABLE_NAME"),
+            "type": row.get("TABLE_TYPE"),
+            "row_count": row.get("ROW_COUNT"),
+            "comment": row.get("COMMENT"),
+        })
+
+    tables = [o for o in objects if o["type"] == "BASE TABLE"]
+    views = [o for o in objects if o["type"] == "VIEW"]
+
+    return {
+        "tables": tables,
+        "views": views,
+        "total_tables": len(tables),
+        "total_views": len(views),
+    }
+
+
+@router.get("/debug/asset-types")
+@handle_mdlh_errors
+async def debug_asset_types(
+    service: MdlhSessionContext = Depends(require_mdlh_connection),
+) -> dict[str, Any]:
+    """
+    Get asset type distribution and segment analysis.
+
+    Shows how many assets of each type exist and how their
+    qualified names are structured.
+    """
+    results = service.execute_query(SQL_ASSET_TYPE_STATS)
+
+    stats = []
+    for row in results:
+        stats.append({
+            "asset_type": row.get("ASSET_TYPE"),
+            "connector": row.get("CONNECTOR_NAME"),
+            "count": row.get("ASSET_COUNT"),
+            "distinct_segments": {
+                "segment_1": row.get("DISTINCT_SEGMENT_1"),
+                "segment_2": row.get("DISTINCT_SEGMENT_2"),
+                "segment_3": row.get("DISTINCT_SEGMENT_3"),
+            }
+        })
+
+    return {
+        "stats": stats,
+        "total_types": len(set(s["asset_type"] for s in stats)),
+    }
+
+
+# ============================================
+# SCHEMA INTROSPECTION ENDPOINTS
+# ============================================
+# These endpoints allow discovering and validating the MDLH Gold Layer schema
+
+SQL_GET_SCHEMA_COLUMNS = """
+-- Discover available MDLH schema columns
+SELECT
+    TABLE_NAME,
+    COLUMN_NAME,
+    DATA_TYPE,
+    IS_NULLABLE,
+    COMMENT
+FROM ATLAN_GOLD.INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = 'PUBLIC'
+ORDER BY TABLE_NAME, ORDINAL_POSITION
+"""
+
+
+class MdlhSchemaColumn(BaseModel):
+    """A column in the MDLH schema."""
+    table_name: str
+    column_name: str
+    data_type: str
+    is_nullable: bool
+    comment: str | None = None
+
+
+class MdlhSchemaResponse(BaseModel):
+    """Response for MDLH schema endpoint."""
+    columns: list[MdlhSchemaColumn]
+    by_table: dict[str, list[MdlhSchemaColumn]]
+    total_columns: int
+    total_tables: int
+
+
+class FieldReconciliation(BaseModel):
+    """Reconciliation result for a single field."""
+    field_id: str
+    field_name: str
+    category: str
+    expected_mdlh_column: str | None
+    expected_mdlh_table: str | None
+    actual_mdlh_column: MdlhSchemaColumn | None = None
+    status: str  # 'available', 'missing', 'type_mismatch', 'no_mapping'
+
+
+class ReconciliationSummary(BaseModel):
+    """Summary of schema reconciliation."""
+    total_expected: int
+    available: int
+    missing: int
+    no_mapping: int
+    by_category: dict[str, dict[str, int]]
+    by_table: dict[str, dict[str, int]]
+
+
+class ReconciliationResponse(BaseModel):
+    """Response for schema reconciliation endpoint."""
+    reconciliations: list[FieldReconciliation]
+    summary: ReconciliationSummary
+
+
+# Expected MDLH field mappings (from unified-fields.ts)
+EXPECTED_MDLH_FIELDS = {
+    # Ownership
+    'owner_users': {'column': 'OWNER_USERS', 'table': 'ASSETS', 'category': 'ownership'},
+    'owner_groups': {'column': 'OWNER_GROUPS', 'table': 'ASSETS', 'category': 'ownership'},  # Known missing
+    # Documentation
+    'description': {'column': 'DESCRIPTION', 'table': 'ASSETS', 'category': 'documentation'},
+    'readme': {'column': 'README_GUID', 'table': 'ASSETS', 'category': 'documentation'},
+    'glossary_terms': {'column': 'TERM_GUIDS', 'table': 'ASSETS', 'category': 'documentation'},
+    # Lineage
+    'has_lineage': {'column': 'HAS_LINEAGE', 'table': 'ASSETS', 'category': 'lineage'},
+    # Classification
+    'classifications': {'column': 'TAGS', 'table': 'ASSETS', 'category': 'classification'},
+    # Usage
+    'popularity_score': {'column': 'POPULARITY_SCORE', 'table': 'ASSETS', 'category': 'usage'},
+    # Governance
+    'certificate_status': {'column': 'CERTIFICATE_STATUS', 'table': 'ASSETS', 'category': 'governance'},
+    # Lifecycle
+    'created_at': {'column': 'CREATED_AT', 'table': 'ASSETS', 'category': 'lifecycle'},
+    'updated_at': {'column': 'UPDATED_AT', 'table': 'ASSETS', 'category': 'lifecycle'},
+    'created_by': {'column': 'CREATED_BY', 'table': 'ASSETS', 'category': 'lifecycle'},
+    'updated_by': {'column': 'UPDATED_BY', 'table': 'ASSETS', 'category': 'lifecycle'},
+    # Certificate timestamps (now confirmed available)
+    'certificate_updated_at': {'column': 'CERTIFICATE_UPDATED_AT', 'table': 'ASSETS', 'category': 'governance'},
+    'certificate_updated_by': {'column': 'CERTIFICATE_UPDATED_BY', 'table': 'ASSETS', 'category': 'governance'},
+    # Source timestamps
+    'source_created_at': {'column': 'SOURCE_CREATED_AT', 'table': 'ASSETS', 'category': 'lifecycle'},
+    'source_updated_at': {'column': 'SOURCE_UPDATED_AT', 'table': 'ASSETS', 'category': 'lifecycle'},
+    # Relational details
+    'column_count': {'column': 'TABLE_COLUMN_COUNT', 'table': 'RELATIONAL_ASSET_DETAILS', 'category': 'relational'},
+    'row_count': {'column': 'TABLE_ROW_COUNT', 'table': 'RELATIONAL_ASSET_DETAILS', 'category': 'relational'},
+    'size_bytes': {'column': 'TABLE_SIZE_BYTES', 'table': 'RELATIONAL_ASSET_DETAILS', 'category': 'relational'},
+    'read_count': {'column': 'TABLE_TOTAL_READ_COUNT', 'table': 'RELATIONAL_ASSET_DETAILS', 'category': 'relational'},
+}
+
+
+@router.get("/schema", response_model=MdlhSchemaResponse)
+@handle_mdlh_errors
+async def get_mdlh_schema(
+    table_filter: str | None = Query(None, description="Filter to specific table (e.g., 'ASSETS')"),
+    service: MdlhSessionContext = Depends(require_mdlh_connection),
+) -> MdlhSchemaResponse:
+    """
+    Discover available MDLH Gold Layer schema columns.
+
+    Returns all columns from ATLAN_GOLD.PUBLIC tables/views with their data types.
+    This is useful for:
+    - Understanding what fields are available in MDLH
+    - Validating expected vs actual schema
+    - Building dynamic queries
+    """
+    results = service.execute_query(SQL_GET_SCHEMA_COLUMNS)
+
+    columns = []
+    by_table: dict[str, list[MdlhSchemaColumn]] = {}
+
+    for row in results:
+        table_name = row.get("TABLE_NAME", "")
+
+        # Apply table filter if specified
+        if table_filter and table_name.upper() != table_filter.upper():
+            continue
+
+        column = MdlhSchemaColumn(
+            table_name=table_name,
+            column_name=row.get("COLUMN_NAME", ""),
+            data_type=row.get("DATA_TYPE", ""),
+            is_nullable=row.get("IS_NULLABLE", "YES") == "YES",
+            comment=row.get("COMMENT"),
+        )
+        columns.append(column)
+
+        if table_name not in by_table:
+            by_table[table_name] = []
+        by_table[table_name].append(column)
+
+    return MdlhSchemaResponse(
+        columns=columns,
+        by_table=by_table,
+        total_columns=len(columns),
+        total_tables=len(by_table),
+    )
+
+
+@router.get("/schema/reconcile", response_model=ReconciliationResponse)
+@handle_mdlh_errors
+async def reconcile_schema(
+    service: MdlhSessionContext = Depends(require_mdlh_connection),
+) -> ReconciliationResponse:
+    """
+    Compare expected fields vs actual MDLH schema.
+
+    Returns a reconciliation report showing:
+    - Which expected fields are available in MDLH
+    - Which fields are missing
+    - Which fields have no MDLH mapping defined
+    - Summary by category
+    """
+    # Fetch actual schema
+    results = service.execute_query(SQL_GET_SCHEMA_COLUMNS)
+
+    # Build lookup: (table_name, column_name) -> MdlhSchemaColumn
+    schema_lookup: dict[tuple[str, str], MdlhSchemaColumn] = {}
+    for row in results:
+        table_name = row.get("TABLE_NAME", "")
+        column_name = row.get("COLUMN_NAME", "")
+        column = MdlhSchemaColumn(
+            table_name=table_name,
+            column_name=column_name,
+            data_type=row.get("DATA_TYPE", ""),
+            is_nullable=row.get("IS_NULLABLE", "YES") == "YES",
+            comment=row.get("COMMENT"),
+        )
+        schema_lookup[(table_name.upper(), column_name.upper())] = column
+
+    # Reconcile expected fields
+    reconciliations = []
+    summary_available = 0
+    summary_missing = 0
+    summary_no_mapping = 0
+    by_category: dict[str, dict[str, int]] = {}
+    by_table: dict[str, dict[str, int]] = {}
+
+    for field_id, mapping in EXPECTED_MDLH_FIELDS.items():
+        expected_table = mapping['table']
+        expected_column = mapping['column']
+        category = mapping['category']
+
+        # Initialize category stats
+        if category not in by_category:
+            by_category[category] = {'expected': 0, 'available': 0, 'missing': 0}
+        by_category[category]['expected'] += 1
+
+        # Initialize table stats
+        if expected_table not in by_table:
+            by_table[expected_table] = {'expected': 0, 'available': 0, 'missing': 0}
+        by_table[expected_table]['expected'] += 1
+
+        # Check if column exists in schema
+        key = (expected_table.upper(), expected_column.upper())
+        actual_column = schema_lookup.get(key)
+
+        if actual_column:
+            status = 'available'
+            summary_available += 1
+            by_category[category]['available'] += 1
+            by_table[expected_table]['available'] += 1
+        else:
+            status = 'missing'
+            summary_missing += 1
+            by_category[category]['missing'] += 1
+            by_table[expected_table]['missing'] += 1
+
+        reconciliations.append(FieldReconciliation(
+            field_id=field_id,
+            field_name=field_id.replace('_', ' ').title(),
+            category=category,
+            expected_mdlh_column=expected_column,
+            expected_mdlh_table=expected_table,
+            actual_mdlh_column=actual_column,
+            status=status,
+        ))
+
+    summary = ReconciliationSummary(
+        total_expected=len(EXPECTED_MDLH_FIELDS),
+        available=summary_available,
+        missing=summary_missing,
+        no_mapping=summary_no_mapping,
+        by_category=by_category,
+        by_table=by_table,
+    )
+
+    return ReconciliationResponse(
+        reconciliations=reconciliations,
+        summary=summary,
+    )
+
+
+# ============================================
+# Direct Snowflake Metadata Endpoints
+# ============================================
+# These endpoints query Snowflake directly (SHOW commands, INFORMATION_SCHEMA)
+# for raw schema metadata. Useful for query building and data exploration.
+# Uses the same session as MDLH endpoints for unified connection management.
+
+
+@router.get("/snowflake/databases")
+@handle_mdlh_errors
+async def get_snowflake_databases_endpoint(
+    service: MdlhSessionContext = Depends(require_mdlh_connection),
+) -> dict[str, Any]:
+    """
+    Get list of accessible Snowflake databases (direct query via SHOW DATABASES).
+    Uses metadata cache for performance.
+    """
+    databases = service.get_snowflake_databases()
+    return {
+        "databases": databases,
+        "count": len(databases),
+        "source": "snowflake_direct",
+    }
+
+
+@router.get("/snowflake/schemas/{database}")
+@handle_mdlh_errors
+async def get_snowflake_schemas_endpoint(
+    database: str,
+    service: MdlhSessionContext = Depends(require_mdlh_connection),
+) -> dict[str, Any]:
+    """
+    Get list of schemas in a Snowflake database (direct query via SHOW SCHEMAS).
+    Uses metadata cache for performance.
+    """
+    schemas = service.get_snowflake_schemas(database)
+    return {
+        "database": database,
+        "schemas": schemas,
+        "count": len(schemas),
+        "source": "snowflake_direct",
+    }
+
+
+@router.get("/snowflake/tables/{database}/{schema}")
+@handle_mdlh_errors
+async def get_snowflake_tables_endpoint(
+    database: str,
+    schema: str,
+    include_views: bool = Query(True),
+    service: MdlhSessionContext = Depends(require_mdlh_connection),
+) -> dict[str, Any]:
+    """
+    Get list of tables/views in a Snowflake schema (direct query via SHOW TABLES/VIEWS).
+    Uses metadata cache for performance.
+    """
+    tables = service.get_snowflake_tables(database, schema, include_views=include_views)
+    return {
+        "database": database,
+        "schema": schema,
+        "tables": tables,
+        "count": len(tables),
+        "source": "snowflake_direct",
+    }
+
+
+@router.get("/snowflake/columns/{database}/{schema}/{table}")
+@handle_mdlh_errors
+async def get_snowflake_columns_endpoint(
+    database: str,
+    schema: str,
+    table: str,
+    service: MdlhSessionContext = Depends(require_mdlh_connection),
+) -> dict[str, Any]:
+    """
+    Get list of columns for a Snowflake table (via INFORMATION_SCHEMA.COLUMNS).
+    Uses metadata cache for performance.
+    """
+    columns = service.get_snowflake_columns(database, schema, table)
+    return {
+        "database": database,
+        "schema": schema,
+        "table": table,
+        "columns": columns,
+        "count": len(columns),
+        "source": "snowflake_direct",
+    }
+
+
+@router.get("/snowflake/preview/{database}/{schema}/{table}")
+@handle_mdlh_errors
+async def get_snowflake_table_preview_endpoint(
+    database: str,
+    schema: str,
+    table: str,
+    limit: int = Query(100, ge=1, le=1000),
+    service: MdlhSessionContext = Depends(require_mdlh_connection),
+) -> dict[str, Any]:
+    """
+    Get preview data from a Snowflake table (SELECT * LIMIT N).
+    Returns column metadata and sample rows.
+    """
+    preview = service.get_snowflake_table_preview(database, schema, table, limit=limit)
+    preview["source"] = "snowflake_direct"
+    return preview
+
+
+# ============================================
+# Cache Management Endpoints
+# ============================================
+
+from ..services.cache import query_cache, metadata_cache as _metadata_cache
+
+
+@router.get("/cache/stats")
+async def get_cache_stats() -> dict[str, Any]:
+    """
+    Get statistics for query and metadata caches.
+    Useful for monitoring and debugging cache performance.
+    """
+    return {
+        "query_cache": query_cache.get_stats(),
+        "metadata_cache": _metadata_cache.get_stats(),
+    }
+
+
+@router.post("/cache/invalidate")
+async def invalidate_cache(
+    cache_type: str = Query("all", description="Cache type: query, metadata, or all"),
+) -> dict[str, Any]:
+    """
+    Invalidate caches to force fresh data retrieval.
+
+    Args:
+        cache_type: "query" for query cache, "metadata" for schema cache, "all" for both
+    """
+    if cache_type not in ("query", "metadata", "all"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid cache_type: {cache_type}. Use 'query', 'metadata', or 'all'."
+        )
+
+    result = {}
+    if cache_type in ("query", "all"):
+        count = query_cache.invalidate()
+        result["query_entries_cleared"] = count
+
+    if cache_type in ("metadata", "all"):
+        _metadata_cache.invalidate_all()
+        result["metadata_cleared"] = True
+
+    result["cache_type"] = cache_type
+    return result

@@ -12,6 +12,7 @@ import { Link2, Link2Off, ChevronLeft, ChevronRight, Search, RotateCcw } from 'l
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
 import { usePageActionsStore, type PageAction } from '../../stores/pageActionsStore';
+import { useBackendModeStore } from '../../stores/backendModeStore';
 import { getAtlanConfig, testAtlanConnection, configureAtlanApi, getSavedAtlanBaseUrl } from '../../services/atlan/api';
 import { loadAssetsForContext, generateContextLabel } from '../../utils/assetContextLoader';
 import { sanitizeError } from '../../utils/sanitize';
@@ -80,13 +81,19 @@ export function UnifiedHeader({ isSidebarCollapsed, onToggleSidebar }: UnifiedHe
   const location = useLocation();
   const pageTitle = pageTitles[location.pathname] || 'Metadata Quality';
 
-  // Atlan connection state
-  const [isConnected, setIsConnected] = useState(false);
+  // Atlan API connection state
+  const [isAtlanConnected, setIsAtlanConnected] = useState(false);
   const [showConnectModal, setShowConnectModal] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [baseUrl, setBaseUrl] = useState('');
   const [connectError, setConnectError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+
+  // Snowflake/MDLH connection state (select actual state for reactivity)
+  const isSnowflakeConnected = useBackendModeStore((state) => state.snowflakeStatus.connected);
+
+  // Combined connection state: connected if EITHER Atlan API OR Snowflake/MDLH is connected
+  const isConnected = isAtlanConnected || isSnowflakeConnected;
 
   // Page actions from store
   const { actions: pageActions, lastUpdated, pageSubtitle } = usePageActionsStore();
@@ -126,7 +133,7 @@ export function UnifiedHeader({ isSidebarCollapsed, onToggleSidebar }: UnifiedHe
       setBaseUrl(savedBaseUrl);
     }
     const config = getAtlanConfig();
-    setIsConnected(!!config);
+    setIsAtlanConnected(!!config);
   }, []);
 
   // Auto-reload assets when context is restored but assets are empty
@@ -192,7 +199,7 @@ export function UnifiedHeader({ isSidebarCollapsed, onToggleSidebar }: UnifiedHe
     try {
       await testAtlanConnection({ apiKey, baseUrl });
       configureAtlanApi({ apiKey, baseUrl });
-      setIsConnected(true);
+      setIsAtlanConnected(true);
       setShowConnectModal(false);
       window.dispatchEvent(new CustomEvent('atlan-connected', { detail: { baseUrl } }));
     } catch (err: unknown) {

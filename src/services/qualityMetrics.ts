@@ -561,8 +561,25 @@ export function calculateUsability(asset: AssetMetadata): number {
 }
 
 /**
- * Calculate overall quality score
- * Simple average of all dimensions
+ * Scoring Weights Configuration
+ *
+ * These weights determine how the five quality dimensions combine
+ * into a single overall score. They should match config/scoring-weights.yaml
+ * and backend/app/scoring_config.py
+ */
+export const DIMENSION_WEIGHTS = {
+  completeness: 0.30,  // 30%
+  accuracy: 0.25,      // 25%
+  timeliness: 0.20,    // 20%
+  consistency: 0.15,   // 15%
+  usability: 0.10,     // 10%
+} as const;
+
+/**
+ * Calculate overall quality score using weighted average
+ *
+ * Uses DIMENSION_WEIGHTS for proper weighting of each dimension.
+ * Matches the calculation in backend/app/scoring_config.py
  */
 export function calculateOverallScore(scores: {
   completeness: number;
@@ -572,12 +589,11 @@ export function calculateOverallScore(scores: {
   usability: number;
 }): number {
   return Math.round(
-    (scores.completeness +
-      scores.accuracy +
-      scores.timeliness +
-      scores.consistency +
-      scores.usability) /
-      5
+    DIMENSION_WEIGHTS.completeness * scores.completeness +
+    DIMENSION_WEIGHTS.accuracy * scores.accuracy +
+    DIMENSION_WEIGHTS.timeliness * scores.timeliness +
+    DIMENSION_WEIGHTS.consistency * scores.consistency +
+    DIMENSION_WEIGHTS.usability * scores.usability
   );
 }
 

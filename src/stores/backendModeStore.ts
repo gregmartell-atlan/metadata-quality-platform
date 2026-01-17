@@ -382,10 +382,10 @@ export const useBackendModeStore = create<BackendModeState>()(
 
           set({ snowflakeStatus: status });
 
-          // If we were in MDLH mode but lost connection, fall back to API
+          // Log if connection was lost but do NOT auto-switch to API
+          // The UI should handle prompting for reconnection
           if (!status.connected && get().dataBackend === 'mdlh') {
-            logger.warn('[BackendModeStore] Lost Snowflake connection, falling back to API');
-            set({ dataBackend: 'api' });
+            logger.warn('[BackendModeStore] Lost Snowflake connection - connection required');
           }
         } catch (error) {
           logger.error('[BackendModeStore] Status refresh failed:', error);
@@ -419,17 +419,23 @@ export const useBackendModeStore = create<BackendModeState>()(
 
 /**
  * Hook to get the current data backend with connection awareness.
- * Returns 'api' if MDLH is selected but not connected.
+ *
+ * IMPORTANT: No longer auto-falls back to API. If MDLH is selected,
+ * it stays MDLH - the UI should prompt for connection instead of
+ * silently switching backends.
  */
 export function useEffectiveBackend(): DataBackend {
-  const { dataBackend, snowflakeStatus } = useBackendModeStore();
-
-  // If MDLH is selected but not connected, fall back to API
-  if (dataBackend === 'mdlh' && !snowflakeStatus.connected) {
-    return 'api';
-  }
-
+  const { dataBackend } = useBackendModeStore();
   return dataBackend;
+}
+
+/**
+ * Hook to check if MDLH is selected but not connected.
+ * Use this to show connection prompts instead of auto-fallback.
+ */
+export function useMdlhConnectionRequired(): boolean {
+  const { dataBackend, snowflakeStatus } = useBackendModeStore();
+  return dataBackend === 'mdlh' && !snowflakeStatus.connected;
 }
 
 /**

@@ -2,14 +2,18 @@
  * Connection Cards
  * Shows available connections with quality scores for quick exploration
  * Auto-computes scores for all visible connections on mount
+ *
+ * Uses unified loader for MDLH-aware data fetching.
  */
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Snowflake, Database, Link2, ArrowRight, Loader2, RefreshCw, BarChart2 } from 'lucide-react';
+import { Snowflake, Database, Link2, ArrowRight, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { useAssetContextStore } from '../../stores/assetContextStore';
 import { useScoresStore } from '../../stores/scoresStore';
-import { getConnectors } from '../../services/atlan/api';
+import { useBackendModeStore } from '../../stores/backendModeStore';
+import { loadConnectors } from '../../utils/unifiedAssetLoader';
+import { MdlhConnectionRequiredError } from '../../utils/unifiedAssetLoader';
 import { loadAssetsForContext, generateContextLabel } from '../../utils/assetContextLoader';
 import { calculateAssetQuality } from '../../services/qualityMetrics';
 import { transformAtlanAsset } from '../../services/atlan/transformer';
@@ -27,10 +31,12 @@ export function ConnectionCards() {
   const [loadingConnector, setLoadingConnector] = useState<string | null>(null);
   const [computingScores, setComputingScores] = useState<Set<string>>(new Set());
   const [cachedScores, setCachedScores] = useState<Record<string, { score: number; count: number; critical: number }>>(connectionScoresCache);
+  const [needsConnection, setNeedsConnection] = useState(false);
   const hasAutoComputed = useRef(false);
 
   const { setContext, setLoading } = useAssetContextStore();
-  const { assetsWithScores, setAssetsWithScores } = useScoresStore();
+  const { assetsWithScores } = useScoresStore();
+  const { dataBackend, snowflakeStatus } = useBackendModeStore();
 
   // Calculate scores by connection from store (live scores)
   const scoresByConnection = useMemo(() => {
@@ -113,13 +119,27 @@ export function ConnectionCards() {
     }
   }, [computingScores]);
 
-  // Load connectors on mount
+  // Load connectors on mount using unified loader
   useEffect(() => {
-    getConnectors()
-      .then(setConnectors)
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
-  }, []);
+    const fetchConnectors = async () => {
+      try {
+        setNeedsConnection(false);
+        const result = await loadConnectors();
+        setConnectors(result.data);
+      } catch (err) {
+        if (err instanceof MdlhConnectionRequiredError) {
+          setNeedsConnection(true);
+          console.info('MDLH connection required for connectors');
+        } else {
+          console.error('Failed to load connectors:', err);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchConnectors();
+  }, [dataBackend, snowflakeStatus.connected]); // Re-fetch when backend or connection changes
 
   // Auto-compute scores for all connections after they load
   useEffect(() => {
@@ -189,6 +209,34 @@ export function ConnectionCards() {
         <div className="connection-cards-loading">
           <Loader2 size={24} className="spin" />
           <span>Loading connections...</span>
+        </div>
+      </section>
+    );
+  }
+
+  // Show connection prompt when MDLH is selected but not connected
+  if (needsConnection) {
+    return (
+      <section className="home-section connection-cards-section">
+        <h2 className="section-title">
+          <Database size={16} />
+          Your Connections
+        </h2>
+        <div className="connection-required-card">
+          <div className="connection-required-icon">
+            <Snowflake size={32} />
+          </div>
+          <div className="connection-required-content">
+            <h3>MDLH Connection Required</h3>
+            <p>Connect to Snowflake to view your metadata connections and quality scores.</p>
+          </div>
+          <button
+            className="connect-btn"
+            onClick={() => navigate('/settings')}
+          >
+            <Snowflake size={16} />
+            Connect to MDLH
+          </button>
         </div>
       </section>
     );

@@ -28,8 +28,8 @@ class Settings(BaseSettings):
     state_store_name: str = "statestore"
     object_store_name: str = "objectstore"
 
-    # CORS settings
-    cors_origins: str = "http://localhost:5173,http://localhost:8080"
+    # CORS settings - include range of Vite dev server ports
+    cors_origins: str = "http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:5178,http://localhost:8080,http://localhost:3000"
 
     # Tenant (for multi-tenant deployments)
     atlan_tenant_id: str = "default"

@@ -179,6 +179,48 @@
   animation: pulse 2s ease-in-out infinite;
 }
 
+/* Connection Required State */
+.smart-questions-connection-required {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%);
+  border: 1px dashed #38BDF8;
+  border-radius: 12px;
+  color: #0F172A;
+}
+
+.smart-questions-connection-required svg {
+  color: #0EA5E9;
+  flex-shrink: 0;
+}
+
+.smart-questions-connection-required span {
+  flex: 1;
+  font-size: 0.938rem;
+  font-weight: 500;
+  color: #475569;
+}
+
+.smart-questions-connect-btn {
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, #0EA5E9 0%, #0284C7 100%);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.smart-questions-connect-btn:hover {
+  background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .smart-questions-grid {
@@ -192,5 +234,15 @@
   .smart-question-icon {
     width: 40px;
     height: 40px;
+  }
+
+  .smart-questions-connection-required {
+    flex-direction: column;
+    text-align: center;
+    padding: 1.5rem;
+  }
+
+  .smart-questions-connection-required span {
+    text-align: center;
   }
 }

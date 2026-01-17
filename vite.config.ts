@@ -24,23 +24,19 @@ export default defineConfig({
         configure: (proxy) => {
           proxy.on('proxyReq', (proxyReq, req) => {
             console.log(`[Vite Proxy] ${req.method} ${req.url} -> ${proxyReq.path}`);
-            console.log(`[Vite Proxy] Headers forwarded:`, {
-              'x-atlan-url': req.headers['x-atlan-url'] ? 'present' : 'MISSING',
-              'x-atlan-api-key': req.headers['x-atlan-api-key'] ? 'present' : 'MISSING',
-            });
           });
           proxy.on('error', (err) => {
             console.error('[Vite Proxy] Error:', err.message);
           });
         },
       },
-      // Proxy /api/snowflake/* and /api/mdlh/* requests to the Python backend
+      // All other /api/* requests go to the unified Node.js server
       '/api/snowflake': {
-        target: `http://${PROXY_HOST}:8000`,
+        target: `http://${PROXY_HOST}:3002`,
         changeOrigin: true,
       },
       '/api/mdlh': {
-        target: `http://${PROXY_HOST}:8000`,
+        target: `http://${PROXY_HOST}:3002`,
         changeOrigin: true,
       },
     },

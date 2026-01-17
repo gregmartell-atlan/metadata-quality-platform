@@ -143,6 +143,11 @@ export interface SignalContribution {
 }
 
 /**
+ * MDLH availability status
+ */
+export type MdlhAvailability = 'available' | 'missing' | 'type_mismatch' | 'no_mapping';
+
+/**
  * Unified field definition
  * The core building block of the field catalog
  */
@@ -175,6 +180,11 @@ export interface UnifiedField {
   // Atlan documentation
   atlanDocsUrl?: string;
   atlanApiHint?: string;                // API hint for fetching
+
+  // MDLH Gold Layer mapping
+  mdlhColumn?: string;                  // MDLH column name, e.g., 'OWNER_USERS'
+  mdlhTable?: string;                   // MDLH table/view, e.g., 'ASSETS', 'RELATIONAL_ASSET_DETAILS'
+  mdlhAvailable?: MdlhAvailability;     // Availability status in MDLH schema
 
   // Status
   status: 'active' | 'deprecated' | 'experimental';

@@ -11,7 +11,7 @@ Define a unified metadata quality and lineage metrics spec that:
   - API/SDK functions with matching semantics
 
 This is a specification document. Implementations map the canonical model to:
-- MDLH (Snowflake): ATLAN_GOLD.PUBLIC.ASSETS, CUSTOM_METADATA, FULL_LINEAGE,
+- MDLH (Snowflake): ATLAN_GOLD.PUBLIC.ASSETS, CUSTOM_METADATA, LINEAGE,
   RELATIONAL_ASSET_DETAILS, etc.
 - API/SDK: Asset / Table models + get_custom_metadata() and lineage/DQ APIs.
 
@@ -213,10 +213,10 @@ WITH lineage_flags AS (
     CASE WHEN u.guid IS NOT NULL THEN 1 ELSE 0 END AS has_upstream,
     CASE WHEN d.guid IS NOT NULL THEN 1 ELSE 0 END AS has_downstream
   FROM ATLAN_GOLD.PUBLIC.ASSETS a
-  LEFT JOIN (SELECT DISTINCT downstream_guid AS guid
-             FROM ATLAN_GOLD.PUBLIC.FULL_LINEAGE) u ON a.guid = u.guid
-  LEFT JOIN (SELECT DISTINCT upstream_guid AS guid
-             FROM ATLAN_GOLD.PUBLIC.FULL_LINEAGE) d ON a.guid = d.guid
+  LEFT JOIN (SELECT DISTINCT START_GUID AS guid
+             FROM ATLAN_GOLD.PUBLIC.LINEAGE WHERE DIRECTION = 'UPSTREAM') u ON a.guid = u.guid
+  LEFT JOIN (SELECT DISTINCT START_GUID AS guid
+             FROM ATLAN_GOLD.PUBLIC.LINEAGE WHERE DIRECTION = 'DOWNSTREAM') d ON a.guid = d.guid
 ),
 completeness_scores AS (
   SELECT
@@ -239,14 +239,13 @@ SELECT
 
   -- coverage flags
   CASE WHEN a.description IS NOT NULL AND a.description <> '' THEN 1 ELSE 0 END AS has_description,
-  CASE WHEN (a.owner_users IS NOT NULL AND ARRAY_SIZE(a.owner_users) > 0)
-        OR (a.owner_groups IS NOT NULL AND ARRAY_SIZE(a.owner_groups) > 0)
+  CASE WHEN a.owner_users IS NOT NULL AND ARRAY_SIZE(a.owner_users) > 0
        THEN 1 ELSE 0 END AS has_owner,
   CASE WHEN LOWER(a.certificate_status) = 'verified' THEN 1 ELSE 0 END AS is_certified,
   CASE WHEN a.tags IS NOT NULL AND ARRAY_SIZE(a.tags) > 0 THEN 1 ELSE 0 END AS has_tags,
 
-  TO_TIMESTAMP(a.updated_at_ms/1000) AS metadata_updated_at,
-  CASE WHEN TO_TIMESTAMP(a.updated_at_ms/1000)
+  TO_TIMESTAMP(a.UPDATED_AT/1000) AS metadata_updated_at,
+  CASE WHEN TO_TIMESTAMP(a.UPDATED_AT/1000)
             >= DATEADD('day', -30, CURRENT_TIMESTAMP())
        THEN 1 ELSE 0 END AS timely_flag,
 
